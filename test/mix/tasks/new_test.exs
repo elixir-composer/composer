@@ -1,0 +1,140 @@
+defmodule Mix.Tasks.Composer.NewTest do
+  # --from reads the :composer application env.
+  use ExUnit.Case, async: false
+
+  import Igniter.Test
+
+  alias Composer.{Discovery, Recipe, Resolver}
+
+  @recipe "lib/composer/test/recipes/app.exs"
+
+  defp content(igniter, path) do
+    igniter.rewrite |> Rewrite.source!(path) |> Rewrite.Source.get(:content)
+  end
+
+  defp generated(argv \\ []) do
+    igniter = Igniter.compose_task(test_project(), Mix.Tasks.Composer.New, argv)
+    assert_creates(igniter, @recipe)
+    {igniter, content(igniter, @recipe)}
+  end
+
+  test "writes the cookbook layout" do
+    {igniter, _content} = generated()
+
+    cookbook = content(igniter, "lib/composer/test.ex")
+    assert cookbook =~ "defmodule Composer.Test do"
+    assert cookbook =~ "use Composer.Cookbook"
+
+    # Composer is a dev-only dependency, so the cookbook is guarded.
+    assert cookbook =~ "if Code.ensure_loaded?(Composer) do"
+    assert_creates(igniter, "lib/composer/test/steps/.gitkeep")
+    assert_creates(igniter, "lib/composer/test/manifest.exs")
+    assert Enum.any?(igniter.notices, &(&1 =~ "mix composer.recipe.run app/default"))
+
+    # The manifest lists the recipe with its shortdoc, so lint passes.
+    {manifest, _} = Code.eval_string(content(igniter, "lib/composer/test/manifest.exs"))
+
+    assert manifest.recipes == [
+             %{id: "app/default", shortdoc: "Every built-in step, in a sensible order"}
+           ]
+  end
+
+  test "the default recipe is a valid, formatted group with every flag declared" do
+    {_igniter, content} = generated()
+
+    {group, _binding} = Code.eval_string(content)
+    assert {[default], []} = Recipe.Group.check(group, @recipe, "test")
+    assert default.shortdoc == "Every built-in step, in a sensible order"
+    assert default.doc =~ "Every built-in step"
+    assert Keyword.keys(default.flags) == [:exsync, :mix_test_watch, :oban_pro, :gigalixir]
+    assert content == content |> Code.format_string!() |> IO.iodata_to_binary() |> Kernel.<>("\n")
+    assert content =~ "This project's recipe group"
+  end
+
+  test "every step carries its description from the step's summary" do
+    {_igniter, content} = generated()
+
+    assert content =~ ~r{# Removes daisyUI\n\s+"core:phx/remove_daisy_ui",}
+    assert content =~ ~r{# Adds pgvector support\n\s+"core:pg/vector",}
+
+    assert content =~
+             ~r/# Installs oban and runs the package's own igniter installer\n\s+"hex:oban",/
+  end
+
+  test "optional steps document their flag" do
+    {_igniter, content} = generated()
+
+    assert content =~ ~s({"core:oban_pro", if: :oban_pro})
+    assert content =~ "Adds Oban Pro extensions (only with --oban-pro)"
+    assert content =~ ~s({"core:cluster/gigalixir/libcluster", if: :gigalixir})
+  end
+
+  test "oban_pro follows oban, whose installer it patches, and sort_deps is last" do
+    refs = Mix.Tasks.Composer.New.cookbook()
+    position = &Enum.find_index(refs, fn ref -> ref == &1 end)
+
+    assert position.("hex:oban") < position.("core:oban_pro")
+    assert List.last(refs) == "core:setup/sort_deps"
+  end
+
+  test "the default recipe references only resolvable steps, without warnings" do
+    {:ok, cookbooks} = Discovery.cookbooks(apps: [], local: false)
+
+    for ref <- Mix.Tasks.Composer.New.cookbook() do
+      assert {:ok, _} = Resolver.find_step(cookbooks, ref, nil), "unknown step #{ref}"
+    end
+  end
+
+  describe "--from" do
+    @tag :tmp_dir
+    test "copies a recipe instead of the cookbook, qualifying same-group uses", %{
+      tmp_dir: dir
+    } do
+      File.mkdir_p!(Path.join(dir, "recipes"))
+
+      File.write!(Path.join(dir, "recipes/mine.exs"), """
+      [
+        base: [shortdoc: "Base", steps: ["core:setup/credo"]],
+        app: [
+          shortdoc: "Mine",
+          doc: "My app.",
+          flags: [gigalixir: "Deploy"],
+          steps: [{:use, "base"}, {:use, "base", if: :gigalixir}, {"core:cluster/gigalixir", if: :gigalixir}]
+        ]
+      ]
+      """)
+
+      Application.put_env(:composer, :discovery, local: true)
+      on_exit(fn -> Application.delete_env(:composer, :discovery) end)
+
+      {igniter, content} = generated(["--from", "local:mine/app", "-c", dir])
+
+      assert content =~ "Copied from local:mine/app"
+      refute content =~ "core:phx/remove_daisy_ui"
+
+      {group, _} = Code.eval_string(content)
+
+      assert group == [
+               default: [
+                 shortdoc: "Mine",
+                 doc: "My app.",
+                 flags: [gigalixir: "Deploy"],
+                 steps: [
+                   {:use, "local:mine/base"},
+                   {:use, "local:mine/base", if: :gigalixir},
+                   {"core:cluster/gigalixir", if: :gigalixir}
+                 ]
+               ]
+             ]
+
+      {manifest, _} = Code.eval_string(content(igniter, "lib/composer/test/manifest.exs"))
+      assert manifest.recipes == [%{id: "app/default", shortdoc: "Mine"}]
+    end
+
+    test "raises for an unknown recipe" do
+      assert_raise Mix.Error, ~r/no recipe matches "nope"/, fn ->
+        Igniter.compose_task(test_project(), Mix.Tasks.Composer.New, ["--from", "nope"])
+      end
+    end
+  end
+end

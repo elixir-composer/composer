@@ -1,0 +1,586 @@
+defmodule Composer.Cookbook do
+  @moduledoc """
+  Defines a cookbook: one package's tree of steps and recipes.
+
+  Every cookbook is laid out the same way:
+
+      lib/composer/composer_lab.ex                    # the cookbook module
+      lib/composer/composer_lab/steps/astral/nav1.ex  # a step (use Composer.Step)
+      lib/composer/composer_lab/steps/astral/_nav1/   # its templates
+      lib/composer/composer_lab/recipes/*.exs         # recipe groups (see Composer.Recipe.Group)
+      lib/composer/composer_lab/manifest.exs          # written by mix composer.cookbook.manifest
+
+  A step's templates live in the directory named after its file (see
+  `Composer.Templates`). There is no cookbook-level `templates/` directory.
+
+  and declared with:
+
+      defmodule Composer.ComposerLab do
+        use Composer.Cookbook,
+          summary: "Andy's composer steps",
+          homepage: "https://github.com/andyl/composer_lab"
+      end
+
+  ## Naming
+
+  The cookbook name comes from the module (`Composer.ComposerLab` is `composer_lab`)
+  and must equal the package's OTP app name, so one package defines at most
+  one cookbook and Hex's package uniqueness keeps cookbook names unique.
+  The one exception is composer's own built-in cookbook, `core`.
+
+  These names are reserved and rejected at compile time: #{Enum.join(["core", "hex", "local"], ", ")}
+  and every top-level `Composer.*` module name (see `reserved/0`).
+
+  ## Compile-time checks
+
+  `use Composer.Cookbook` fails compilation, with a message that says how to
+  fix it, when:
+
+    * the module is nested (`Composer.Foo.Bar`) or its name does not match
+      the app
+    * the name is reserved
+    * the module is not defined in `lib/composer/<name>.ex`
+    * a group file under `recipes/` has an invalid name or does not parse
+    * a `.ex` file under `steps/` is not a step (a template stored as bare
+      `.ex` would be compiled as part of the package; rename it `.ex.eex`)
+
+  Group files are external resources, and adding or removing a group or a
+  file under `steps/` triggers a recompile. The `.ex` check is textual (the
+  file must `use Composer.Step` and be named for its path), since step
+  modules may not be compiled yet; `mix composer.cookbook.lint` checks the
+  compiled modules.
+
+  ## Runtime
+
+  A cookbook is described at run time by a `%Composer.Cookbook{}` struct.
+  `kind` is `:code` for a package's cookbook, `:local` for your recipes
+  (see `Composer.Local`) and `:virtual` for `hex`. Recipes and
+  templates are read from `source_dir/1`, the cookbook's tree in the
+  dependency's source, so composer is a development tool: running from a
+  release is not supported.
+  """
+
+  alias Composer.Recipe.Group
+
+  defstruct [:name, :app, :module, :kind, :summary, :homepage, :source_dir]
+
+  @type kind :: :code | :local | :virtual
+
+  @type t :: %__MODULE__{
+          name: String.t(),
+          app: atom() | nil,
+          module: module() | nil,
+          kind: kind(),
+          summary: String.t() | nil,
+          homepage: String.t() | nil,
+          source_dir: Path.t() | nil
+        }
+
+  # Composer's own top-level module names. A test asserts that every
+  # top-level module composer ships is listed here.
+  @module_names ~w(
+    runner step cookbook templates helpers versions resolver ref recipe
+    discovery local manifest index completion facets error git cli preflight
+    lint lsp
+  )
+
+  @reserved ["core", "hex", "local" | @module_names]
+
+  @doc "The cookbook names no package may use."
+  @spec reserved() :: [String.t()]
+  def reserved, do: @reserved
+
+  defmacro __using__(opts) do
+    {opts, _binding} = Code.eval_quoted(opts, [], __CALLER__)
+    info = define!(__CALLER__, opts)
+
+    resources = for file <- info.resources, do: quote(do: @external_resource(unquote(file)))
+
+    quote do
+      unquote_splicing(resources)
+
+      @composer_cookbook_source_dir unquote(info.source_dir)
+      @composer_cookbook_hash unquote(info.hash)
+
+      @doc false
+      def __composer_cookbook__ do
+        unquote(
+          Macro.escape(%{
+            name: info.name,
+            app: info.app,
+            summary: opts[:summary],
+            homepage: opts[:homepage],
+            source_dir: info.source_dir,
+            recipes: info.recipes
+          })
+        )
+      end
+
+      # @external_resource only notices edits to files that existed at
+      # compile time; this makes an added or removed recipe, or file under
+      # steps/, recompile the cookbook too.
+      @doc false
+      def __mix_recompile__? do
+        Composer.Cookbook.listing_hash(@composer_cookbook_source_dir) !=
+          @composer_cookbook_hash
+      end
+    end
+  end
+
+  # -- runtime ------------------------------------------------------------
+
+  @doc "Builds the struct for a cookbook module."
+  @spec from_module(module()) :: t()
+  def from_module(module) do
+    info = module.__composer_cookbook__()
+
+    %__MODULE__{
+      name: info.name,
+      app: info.app,
+      module: module,
+      kind: :code,
+      summary: info.summary,
+      homepage: info.homepage,
+      source_dir: info.source_dir
+    }
+  end
+
+  @doc "The virtual `hex` cookbook."
+  @spec hex() :: t()
+  def hex do
+    %__MODULE__{
+      name: "hex",
+      kind: :virtual,
+      summary: "Hex packages, added to mix.exs and installed with their own installer"
+    }
+  end
+
+  @doc """
+  Returns the module a cookbook named `name` is defined by, e.g.
+  `Composer.ComposerLab` for `"composer_lab"`.
+  """
+  @spec module_for(String.t()) :: module()
+  def module_for(name), do: Module.concat(["Composer", Macro.camelize(name)])
+
+  @doc "True when `module` is loaded and defines a cookbook."
+  @spec cookbook_module?(module()) :: boolean()
+  def cookbook_module?(module) do
+    Code.ensure_loaded?(module) and function_exported?(module, :__composer_cookbook__, 0)
+  end
+
+  @doc """
+  Returns the cookbook's steps, sorted by id.
+
+  The steps are the modules of the cookbook's app named
+  `Composer.<Cookbook>.Steps.*` that define `__composer_step__/0`. Only the
+  app's own module list is read; nothing is scanned.
+  """
+  @spec steps(t()) :: [Composer.Step.Meta.t()]
+  def steps(%__MODULE__{kind: :code, module: module} = cookbook) do
+    prefix = "Elixir." <> inspect(module) <> ".Steps."
+
+    cookbook
+    |> app_modules()
+    |> Enum.filter(&String.starts_with?(Atom.to_string(&1), prefix))
+    |> Enum.filter(&(Code.ensure_loaded?(&1) and function_exported?(&1, :__composer_step__, 0)))
+    |> Enum.map(& &1.__composer_step__())
+    |> Enum.sort_by(& &1.id)
+  end
+
+  def steps(%__MODULE__{}), do: []
+
+  @doc "Finds a step by id."
+  @spec step(t(), String.t()) :: {:ok, Composer.Step.Meta.t()} | :error
+  def step(cookbook, id) do
+    case Enum.find(steps(cookbook), &(&1.id == id)) do
+      nil -> :error
+      meta -> {:ok, meta}
+    end
+  end
+
+  @doc """
+  Returns the cookbook's recipe ids (`"group/name"`), sorted.
+
+  Ids are read from each group file's syntax tree, without evaluating it.
+  A group file that cannot be read this way is skipped; `load_recipes/1`
+  reports it.
+  """
+  @spec recipes(t()) :: [String.t()]
+  def recipes(%__MODULE__{} = cookbook) do
+    for {group, path} <- groups(cookbook),
+        {:ok, names} <- [Group.ids(path)],
+        name <- names,
+        do: group <> "/" <> name
+  end
+
+  @doc """
+  Returns the cookbook's group files as `{group, path}`, sorted by name.
+  Files with an invalid group name are left out.
+  """
+  @spec groups(t()) :: [{String.t(), Path.t()}]
+  def groups(%__MODULE__{kind: :virtual}), do: []
+
+  def groups(%__MODULE__{} = cookbook) do
+    case source_dir(cookbook) do
+      nil -> []
+      dir -> dir |> group_files() |> Enum.filter(&Group.valid_name?(elem(&1, 0)))
+    end
+  end
+
+  @doc "Returns the path of group `group`, or `nil` when it does not exist."
+  @spec group_path(t(), String.t()) :: Path.t() | nil
+  def group_path(%__MODULE__{} = cookbook, group) do
+    case List.keyfind(groups(cookbook), group, 0) do
+      {_group, path} -> path
+      nil -> nil
+    end
+  end
+
+  @doc """
+  Returns the group file holding recipe `id` (`"group/name"`), or `nil`
+  when the group or the recipe does not exist.
+  """
+  @spec recipe_path(t(), String.t()) :: Path.t() | nil
+  def recipe_path(%__MODULE__{} = cookbook, id) do
+    with [group, name] <- String.split(id, "/"),
+         path when is_binary(path) <- group_path(cookbook, group),
+         {:ok, names} <- Group.ids(path),
+         true <- name in names do
+      path
+    else
+      _ -> nil
+    end
+  end
+
+  @doc """
+  Evaluates every group file of the cookbook. Returns the valid recipes,
+  sorted by id, and `{path, reason}` for each group, or recipe, that
+  failed to load.
+  """
+  @spec load_recipes(t()) :: {[Composer.Recipe.t()], [{Path.t(), term()}]}
+  def load_recipes(%__MODULE__{name: name} = cookbook) do
+    cookbook
+    |> groups()
+    |> Enum.reduce({[], []}, fn {_group, path}, {recipes, errors} ->
+      case Group.load_all(path, name) do
+        {:ok, {loaded, problems}} ->
+          {recipes ++ loaded, errors ++ Enum.map(problems, &{path, &1})}
+
+        {:error, reason} ->
+          {recipes, errors ++ [{path, reason}]}
+      end
+    end)
+    |> then(fn {recipes, errors} -> {Enum.sort_by(recipes, & &1.id), errors} end)
+  end
+
+  @doc false
+  # Every group file, including ones with invalid names, as {group, path};
+  # and the subdirectories under recipes/. For lint.
+  def recipe_entries(%__MODULE__{kind: :virtual}), do: {[], []}
+
+  def recipe_entries(%__MODULE__{} = cookbook) do
+    case source_dir(cookbook) do
+      nil ->
+        {[], []}
+
+      dir ->
+        root = Path.join(dir, "recipes")
+
+        subdirs =
+          case File.ls(root) do
+            {:ok, entries} ->
+              for entry <- Enum.sort(entries),
+                  not String.starts_with?(entry, "."),
+                  File.dir?(Path.join(root, entry)),
+                  do: Path.join(root, entry)
+
+            {:error, _} ->
+              []
+          end
+
+        {group_files(dir), subdirs}
+    end
+  end
+
+  @doc false
+  # Every file under steps/, as {step files (.ex), other files}, relative
+  # to steps/. For lint.
+  def step_entries(%__MODULE__{kind: :code} = cookbook) do
+    case source_dir(cookbook) do
+      nil ->
+        {[], []}
+
+      dir ->
+        root = Path.join(dir, "steps")
+
+        root
+        |> step_listing()
+        |> Enum.map(&Path.relative_to(&1, root))
+        |> Enum.split_with(&(Path.extname(&1) == ".ex"))
+    end
+  end
+
+  def step_entries(%__MODULE__{}), do: {[], []}
+
+  @doc """
+  Returns the directory the cookbook's recipes and templates are read from.
+
+  For a package cookbook, in order: the dependency's source path, the
+  project root when the cookbook belongs to the current project, then the
+  directory recorded at compile time.
+  """
+  @spec source_dir(t()) :: Path.t() | nil
+  def source_dir(%__MODULE__{kind: :code, app: app, name: name, source_dir: recorded}) do
+    relative = Path.join(["lib", "composer", name])
+
+    candidates =
+      if Mix.Project.get() do
+        dep = Mix.Project.deps_paths()[app]
+        own = if Mix.Project.config()[:app] == app, do: project_root()
+        for root <- [dep, own], root != nil, do: Path.join(root, relative)
+      else
+        []
+      end
+
+    Enum.find(candidates, &File.dir?/1) || recorded
+  end
+
+  def source_dir(%__MODULE__{source_dir: dir}), do: dir
+
+  @doc false
+  # A hash of the group files and the files under steps/ in `dir`, used by
+  # __mix_recompile__?/0 to notice added and removed files.
+  def listing_hash(dir) do
+    dir
+    |> listing()
+    |> Enum.map(&Path.relative_to(&1, dir))
+    |> :erlang.phash2()
+  end
+
+  # -- compile time -------------------------------------------------------
+
+  @doc false
+  # Runs every compile-time check and returns what the cookbook module
+  # records. Public so tests can exercise it.
+  def define!(env, opts) do
+    name = name!(env)
+    app = Keyword.get_lazy(opts, :app, fn -> Mix.Project.get() && Mix.Project.config()[:app] end)
+
+    check_name!(env, name, app)
+    check_file!(env, name)
+
+    source_dir = Path.rootname(env.file)
+    groups = group_files(source_dir)
+
+    Enum.each(groups, fn {group, path} ->
+      check_group_name!(env, group, path)
+      check_recipe_parses!(path)
+    end)
+
+    recipes =
+      for {group, path} <- groups,
+          {:ok, names} <- [Group.ids(path)],
+          name <- names,
+          do: group <> "/" <> name
+
+    source_dir
+    |> Path.join("steps")
+    |> step_listing()
+    |> Enum.filter(&(Path.extname(&1) == ".ex"))
+    |> Enum.each(&check_step_file!(env, &1))
+
+    %{
+      name: name,
+      app: app,
+      source_dir: source_dir,
+      recipes: recipes,
+      resources: Enum.map(groups, &elem(&1, 1)),
+      hash: listing_hash(source_dir)
+    }
+  end
+
+  defp name!(env) do
+    case Module.split(env.module) do
+      ["Composer", segment] ->
+        Macro.underscore(segment)
+
+      _ ->
+        compile_error!(env, """
+        #{inspect(env.module)} cannot be a cookbook: a cookbook module is \
+        Composer.<App>, one level below Composer, named after the package's \
+        OTP app (Composer.ComposerLab for :composer_lab).
+
+        Rename the module, and move its file to lib/composer/<app>.ex.
+        """)
+    end
+  end
+
+  defp check_name!(env, "core", :composer), do: env
+
+  defp check_name!(env, "core", _app) do
+    compile_error!(env, """
+    The cookbook name "core" is reserved for composer's built-in cookbook.
+
+    Name the cookbook after your package's OTP app instead.
+    """)
+  end
+
+  defp check_name!(env, name, app) do
+    cond do
+      name in @reserved ->
+        compile_error!(env, """
+        The cookbook name #{inspect(name)} is reserved by composer \
+        (reserved: #{Enum.join(@reserved, ", ")}).
+
+        A cookbook is named after its package's OTP app; a package whose app \
+        name is reserved cannot ship a cookbook.
+        """)
+
+      is_nil(app) ->
+        compile_error!(env, """
+        #{inspect(env.module)} must be compiled inside a Mix project, so its \
+        name can be checked against the project's app.
+        """)
+
+      name != Atom.to_string(app) ->
+        compile_error!(env, """
+        #{inspect(env.module)} defines the cookbook #{inspect(name)}, but this \
+        package's OTP app is #{inspect(app)}.
+
+        A cookbook is named after its package, so a package has exactly one. \
+        Rename the module to #{inspect(module_for(Atom.to_string(app)))} and \
+        move it to lib/composer/#{app}.ex.
+        """)
+
+      true ->
+        env
+    end
+  end
+
+  defp check_file!(env, name) do
+    unless Path.basename(env.file) == name <> ".ex" and
+             Path.basename(Path.dirname(env.file)) == "composer" do
+      compile_error!(env, """
+      #{inspect(env.module)} must be defined in lib/composer/#{name}.ex, \
+      next to its lib/composer/#{name}/ tree, but it is in \
+      #{Path.relative_to_cwd(env.file)}.
+      """)
+    end
+  end
+
+  defp check_group_name!(env, group, path) do
+    unless Group.valid_name?(group) do
+      compile_error!(env, """
+      Recipe group #{Path.relative_to_cwd(path)} has an invalid name. A group \
+      name is a lowercase [a-z0-9_] segment; rename the file (for example \
+      lv-base.exs to lv_base.exs).
+      """)
+    end
+  end
+
+  # Parse only: a recipe is never evaluated at compile time.
+  defp check_recipe_parses!(path) do
+    case Code.string_to_quoted(File.read!(path), file: path) do
+      {:ok, _quoted} ->
+        :ok
+
+      {:error, {location, message, token}} ->
+        line = if is_list(location), do: Keyword.get(location, :line, 0), else: location
+
+        raise CompileError,
+          file: path,
+          line: line,
+          description:
+            "recipe group #{Path.relative_to_cwd(path)} does not parse: " <>
+              error_text(message) <> error_text(token)
+    end
+  end
+
+  defp error_text({prefix, suffix}), do: "#{prefix}#{suffix}"
+  defp error_text(text), do: to_string(text)
+
+  # A .ex file under steps/ is compiled with the package, so it must be a
+  # step; a template stored as bare .ex would not be.
+  defp check_step_file!(env, path) do
+    step? = File.read!(path) =~ ~r/^\s*use Composer\.Step\b/m
+
+    case Composer.Step.path_id(path) do
+      {:ok, _} when step? ->
+        :ok
+
+      found ->
+        named =
+          case found do
+            {:ok, {cookbook, id}} ->
+              ", or make it a step named #{inspect(Composer.Step.module_for(cookbook, id))}"
+
+            :error ->
+              ""
+          end
+
+        compile_error!(env, """
+        #{Path.relative_to_cwd(path)} is a .ex file under steps/ that is not \
+        a step. Every .ex file there is compiled as part of this package, \
+        and is taken to be a step.
+
+        If it is a template, rename it to #{Path.basename(path)}.eex (it will \
+        be rendered with EEx and written without the .eex extension)#{named}.
+        """)
+    end
+  end
+
+  defp compile_error!(env, description) do
+    raise CompileError, file: env.file, line: env.line, description: description
+  end
+
+  # -- files --------------------------------------------------------------
+
+  # Groups are the .exs files directly under recipes/.
+  defp group_files(dir) do
+    dir
+    |> Path.join("recipes/*.exs")
+    |> Path.wildcard()
+    |> Enum.filter(&File.regular?/1)
+    |> Enum.map(&{Group.name(&1), &1})
+    |> Enum.sort()
+  end
+
+  # Includes files in subdirectories, so adding one recompiles and lint
+  # then reports it.
+  defp recipe_listing(dir) do
+    dir
+    |> Path.join("recipes/**/*.exs")
+    |> Path.wildcard()
+    |> Enum.sort()
+  end
+
+  # Every file under a steps/ directory: step modules and templates.
+  defp step_listing(root) do
+    root
+    |> Path.join("**/*")
+    |> Path.wildcard(match_dot: true)
+    |> Enum.filter(&File.regular?/1)
+    |> Enum.sort()
+  end
+
+  defp listing(dir), do: recipe_listing(dir) ++ step_listing(Path.join(dir, "steps"))
+
+  defp project_root, do: Path.dirname(Mix.Project.project_file())
+
+  defp app_modules(%__MODULE__{module: module, app: app}) do
+    # A cookbook's modules normally belong to its app, but a test fixture is
+    # compiled into another app; ask which app actually holds the module.
+    app =
+      case :application.get_application(module) do
+        {:ok, owner} -> owner
+        :undefined -> app
+      end
+
+    Application.load(app)
+
+    case :application.get_key(app, :modules) do
+      {:ok, modules} -> modules
+      :undefined -> []
+    end
+  end
+end

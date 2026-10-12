@@ -1,0 +1,311 @@
+defmodule Mix.Tasks.Composer.New do
+  @shortdoc "Generates your project's cookbook and default recipe"
+
+  @moduledoc """
+  Sets up the current app as a composer cookbook, with a default recipe
+  listing every built-in step:
+
+      lib/composer/<app>.ex
+      lib/composer/<app>/recipes/app.exs   (the recipe app/default)
+      lib/composer/<app>/steps/             (your own one-off steps)
+
+  The recipe lists every built-in step in a sensible order, each with a
+  one-line description pulled from the step itself. It is data, not
+  machinery: delete what you don't want, reorder freely, add your own steps.
+  Run it with:
+
+      mix composer.recipe.run app/default
+
+  The cookbook module is guarded with `if Code.ensure_loaded?(Composer)`, so
+  the app still compiles where composer, a dev-only dependency, is absent.
+
+  ## Starting from a shared recipe
+
+  Pass `--from` with a recipe reference (from a dependency's cookbook or
+  your local one) to copy *that* recipe instead of the built-in cookbook:
+
+      mix composer.new --from composer_lab:lv/base
+      mix composer.new --from local:phx/app
+
+  The copy becomes `app/default`. Unqualified `{:use, ...}` entries are
+  qualified, so they still name the recipes they did in the source group.
+  Comments in the source are not copied. The app owns and can edit its
+  copy, while the shared recipe stays the template.
+
+  ## Options
+
+    * `--from REF` - copy this recipe instead of the built-in cookbook
+    * `-c`, `--config` - the local config directory, for `--from local:...`
+  """
+
+  use Igniter.Mix.Task
+
+  alias Composer.{CLI, Ref, Cookbook}
+  alias Mix.Tasks.Composer.Gen.Cookbook, as: GenCookbook
+
+  # The default recipe written into new projects: every built-in step,
+  # grouped and ordered, with taste-heavy or license-gated steps behind
+  # flags. Descriptions are rendered from each step's summary at generation
+  # time, so the file can never drift from the actual cookbook.
+  @shortdoc_default "Every built-in step, in a sensible order"
+
+  @sections [
+    {"Undo phx.new defaults you don't want",
+     [
+       "core:phx/remove_agents_md",
+       "core:phx/remove_daisy_ui",
+       "core:phx/remove_live_title_suffix",
+       "core:phx/remove_theme_toggle",
+       "core:phx/remove_topbar"
+     ]},
+    {"Generate configuration and code",
+     [
+       "core:phx/minimal_app_layout",
+       "core:phx/minimal_home_page",
+       "core:phx/tailwind_formatter",
+       "core:setup/gitignore",
+       "core:pg/extensions",
+       "core:setup/generator_defaults",
+       "core:ecto/base_schema",
+       "core:setup/mix_env_config"
+     ]},
+    {"Add packages",
+     [
+       "core:phx/bun",
+       "core:setup/credo",
+       "core:setup/dotenv_parser",
+       {"core:setup/exsync", if: :exsync},
+       "core:cluster/libcluster",
+       "core:pg/vector",
+       "core:setup/quokka",
+       "core:phx/remixicons",
+       "core:ecto/uuidv7",
+       {"core:setup/mix_test_watch", if: :mix_test_watch},
+       {:comment, "No built-in step: these ship their own installers, which run here."},
+       "hex:oban",
+       "hex:oban_web",
+       "hex:tidewave",
+       {:comment,
+        "tidewave's own installer only wires the plug — it writes no MCP config, so this follows it in the list to fill that gap."},
+       "core:tidewave/tidewave_config",
+       {:comment, "Patches what oban's installer wrote, so it follows it in the list."},
+       {"core:oban_pro", if: :oban_pro}
+     ]},
+    {"Deployment",
+     [
+       {"core:cluster/gigalixir", if: :gigalixir},
+       {"core:cluster/gigalixir/libcluster", if: :gigalixir}
+     ]},
+    {"Tidy mix.exs",
+     [
+       "core:ecto/force_drop",
+       {:comment, "Last, so it also sorts the deps the steps above added"},
+       "core:setup/sort_deps"
+     ]}
+  ]
+
+  @doc false
+  # The step references the default recipe uses, for tests.
+  def cookbook do
+    for {_title, entries} <- @sections, entry <- entries, ref = ref(entry), do: ref
+  end
+
+  @impl Igniter.Mix.Task
+  def info(_argv, _composing_task) do
+    %Igniter.Mix.Task.Info{
+      schema: [from: :string, config: :string],
+      aliases: [c: :config],
+      composes: ["composer.gen.cookbook"],
+      example: "mix composer.new --from local:phx/app"
+    }
+  end
+
+  @impl Igniter.Mix.Task
+  def igniter(igniter) do
+    app = Igniter.Project.Application.app_name(igniter)
+    name = GenCookbook.cookbook_name(app)
+    path = "lib/composer/#{name}/recipes/app.exs"
+    opts = igniter.args.options
+
+    source =
+      case opts[:from] do
+        nil -> cookbook_source()
+        from -> from_source(from, opts[:config])
+      end
+
+    igniter
+    |> Igniter.create_new_file(path, source)
+    |> Igniter.compose_task("composer.gen.cookbook", ["--bundled"])
+    |> Igniter.add_notice("""
+    Your default recipe is app/default in #{path} — every step is
+    documented in place. Edit the list, then run it with:
+
+        mix composer.recipe.run app/default
+
+    When it finishes, set up the database and start the server:
+
+        mix ecto.setup && mix phx.server
+
+    Browse steps with `mix composer.step.list` and `mix composer.step.help REF`.
+    """)
+  end
+
+  defp cookbook_source do
+    core = Cookbook.from_module(Composer.Core)
+
+    steps =
+      @sections
+      |> Enum.map(fn {title, entries} ->
+        "      # #{title}\n\n" <> Enum.map_join(entries, "\n", &render_entry(&1, core))
+      end)
+      |> Enum.join("\n\n")
+
+    # A flag shared by several steps is described by the first.
+    flags =
+      for({_title, entries} <- @sections, entry <- entries, flag = flag(entry), do: {flag, entry})
+      |> Enum.uniq_by(&elem(&1, 0))
+      |> Enum.map(fn {flag, entry} ->
+        "      #{flag}: #{inspect(describe(ref(entry), core))},"
+      end)
+
+    """
+    # This project's recipe group, generated by `mix composer.new`. Each
+    # recipe here is addressed as app/<name>:
+    #
+    #     mix composer.recipe.run app/default
+    #     mix composer.recipe.run app/default --oban-pro --gigalixir
+    #
+    # Steps run top to bottom, and every change is shown as one diff before it
+    # is applied. This file is yours: delete steps you don't want, reorder
+    # freely, add more recipes. Tag a step with `if: :flag` to make it
+    # optional (it then runs only when you pass the matching `--flag`), and
+    # describe the flag under flags:.
+    #
+    #   "core:setup/credo"        a step, as "cookbook:path"
+    #   "hex:oban"                a Hex package and its own installer
+    #   {:use, "other"}           another recipe in this group, in place
+    #   {:use, "local:ash/base"}  a recipe in another group or cookbook
+    #   {:task, "x.y", []}        compose any Igniter task
+    #
+    # Write your own steps with `mix composer.gen.step NAME`, and browse the
+    # rest with `mix composer.step.list`. Docs: https://github.com/andyl/composer
+    [
+      default: [
+        shortdoc: #{inspect(@shortdoc_default)},
+        doc: \"\"\"
+        Every built-in step, grouped and ordered. Taste-heavy or license-gated
+        steps run only with their flag.
+        \"\"\",
+        flags: [
+    #{Enum.join(flags, "\n")}
+        ],
+        steps: [
+    #{steps}
+        ]
+      ]
+    ]
+    """
+    |> Code.format_string!()
+    |> IO.iodata_to_binary()
+    |> Kernel.<>("\n")
+  end
+
+  defp render_entry({:comment, text}, _core), do: "      # #{text}"
+
+  defp render_entry(entry, core) do
+    ref = ref(entry)
+
+    description =
+      case flag(entry) do
+        nil ->
+          describe(ref, core)
+
+        flag ->
+          "#{describe(ref, core)} (only with --#{String.replace(to_string(flag), "_", "-")})"
+      end
+
+    code =
+      case flag(entry) do
+        nil -> inspect(ref)
+        flag -> "{#{inspect(ref)}, if: #{inspect(flag)}}"
+      end
+
+    "      # #{description}\n      #{code},"
+  end
+
+  defp ref({:comment, _text}), do: nil
+  defp ref({ref, _opts}), do: ref
+  defp ref(ref), do: ref
+
+  defp flag({ref, opts}) when is_binary(ref), do: opts[:if]
+  defp flag(_entry), do: nil
+
+  defp describe("hex:" <> package, _core) do
+    "Installs #{package} and runs the package's own igniter installer"
+  end
+
+  defp describe(ref, core) do
+    %Ref{path: id} = Ref.parse!(ref)
+
+    case Cookbook.step(core, id) do
+      {:ok, meta} -> meta.summary || ref
+      :error -> raise "the default recipe references unknown step: #{ref}"
+    end
+  end
+
+  defp from_source(from, config) do
+    cookbooks = CLI.cookbooks!(config)
+    id = CLI.ok!(Composer.Resolver.find_recipe(cookbooks, from, nil))
+    %Ref{cookbook: name, path: path} = Ref.parse!(id)
+    cookbook = Enum.find(cookbooks, &(&1.name == name))
+    [_group, recipe_name] = String.split(path, "/")
+
+    recipe =
+      CLI.ok!(Composer.Recipe.load(Cookbook.recipe_path(cookbook, path), name, recipe_name))
+
+    steps = Enum.map(recipe.steps, &qualify(&1, recipe, cookbooks))
+
+    fields =
+      [shortdoc: recipe.shortdoc, doc: recipe.doc, flags: recipe.flags, steps: steps]
+      |> Enum.reject(fn {key, value} -> value in [nil, []] and key != :steps end)
+
+    body =
+      [default: fields]
+      |> inspect(pretty: true, limit: :infinity, printable_limit: :infinity)
+      |> Code.format_string!()
+      |> IO.iodata_to_binary()
+
+    """
+    # Copied from #{id} (#{recipe.path}) by `mix composer.new --from #{from}`.
+    # Edits here do not affect the shared recipe. Run it with:
+    #
+    #     mix composer.recipe.run app/default
+    """ <> body <> "\n"
+  end
+
+  # Unqualified includes are resolved where the source recipe lives, so the
+  # copy still names the same recipes.
+  defp qualify({:use, ref}, recipe, cookbooks), do: {:use, qualified(ref, recipe, cookbooks)}
+
+  defp qualify({:use, ref, opts}, recipe, cookbooks),
+    do: {:use, qualified(ref, recipe, cookbooks), opts}
+
+  defp qualify(entry, _recipe, _cookbooks), do: entry
+
+  defp qualified(ref, recipe, cookbooks) do
+    case Ref.parse(ref) do
+      {:ok, %Ref{cookbook: nil, path: path} = parsed} ->
+        if Ref.grouped?(parsed) do
+          case Composer.Resolver.find_recipe(cookbooks, ref, recipe.cookbook) do
+            {:ok, id} -> id
+            {:error, _} -> ref
+          end
+        else
+          Ref.id(recipe.cookbook, recipe.group <> "/" <> path)
+        end
+
+      _ ->
+        ref
+    end
+  end
+end

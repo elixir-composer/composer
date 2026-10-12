@@ -1,0 +1,2 @@
+defmodule <%= @web_module %>.Components.Hello do
+end

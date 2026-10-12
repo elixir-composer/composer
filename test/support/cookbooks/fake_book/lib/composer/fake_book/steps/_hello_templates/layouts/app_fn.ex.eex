@@ -1,0 +1,5 @@
+def app(assigns) do
+  ~H"""
+  <main class="<%= @class %>">{render_slot(@inner_block)}</main>
+  """
+end

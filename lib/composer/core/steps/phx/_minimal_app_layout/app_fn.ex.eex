@@ -1,0 +1,15 @@
+def app(assigns) do
+  ~H"""
+  <header class="flex gap-4 items-center px-4 py-3">
+    <a href="/" class="font-semibold"><%= @app_module %></a>
+    <div class="flex-1"></div>
+    <.button class="bg-black font-semibold h-8 px-4 rounded text-sm text-white">
+      Primary Action
+    </.button>
+  </header>
+  <main>
+    {render_slot(@inner_block)}
+  </main>
+  <.flash_group flash={@flash} />
+  """
+end

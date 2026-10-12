@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    name: Test (Elixir 1.20 / OTP 28)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.20"
+          otp-version: "28"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: mix-1.20-28-${{ hashFiles('mix.lock') }}
+          restore-keys: mix-1.20-28-
+      # Igniter.Test.phx_test_project/1 generates a real Phoenix app
+      - run: mix archive.install hex phx_new --force
+      - run: mix deps.get
+      - run: mix format --check-formatted
+      - run: mix compile --warnings-as-errors
+      # gen_lsp is optional: composer must also compile cleanly without it.
+      - run: mix compile --no-optional-deps --warnings-as-errors --force
+      - run: mix compile --warnings-as-errors --force
+      # The core cookbook: metadata, a test per step, an up-to-date manifest.
+      - run: mix composer.cookbook.lint --format github
+      # Includes the host-app integration test (a cookbook in a dependency).
+      - run: mix test --include integration
+
+  golden:
+    name: Golden test (fresh phx.new app)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: composer
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.20"
+          otp-version: "28"
+      - name: Generate a fresh Phoenix app
+        run: |
+          mix archive.install hex phx_new --force
+          mix phx.new demo --no-install
+      - name: Add composer as a path dependency
+        working-directory: demo
+        run: |
+          sed -i 's|{:phoenix,|{:composer, path: "../composer", only: :dev},\n      {:phoenix,|' mix.exs
+          mix deps.get
+      - name: Generate and run the default recipe
+        working-directory: demo
+        run: |
+          set -euo pipefail
+          mix composer.new --yes
+          # The generated cookbook passes lint as written.
+          mix composer.cookbook.lint --format github
+          # Flag-gated steps are off by default, so pass the ones CI can run —
+          # otherwise they are never exercised against real phx.new output.
+          # --oban-pro is absent on purpose: oban_pro is a licensed package
+          # from a private Hex repo, so its step stays covered by unit tests
+          # only. The demo app is not a git repo, hence --no-commit.
+          mix composer.recipe.run default --no-commit --exsync --mix-test-watch --gigalixir 2>&1  | tee composer_run.log
+          mix deps.get
+      - name: No steps silently no-oped
+        working-directory: demo
+        run: |
+          if grep -E "Nothing was modified|skipped (adding|removing|generating|mounting)|was skipped" composer_run.log; then
+            echo "A step no-oped against fresh phx.new output (see warnings above)."
+            exit 1
+          fi
+      - name: App still compiles without warnings
+        working-directory: demo
+        run: mix compile --warnings-as-errors
+      - name: Migrations run
+        working-directory: demo
+        run: mix ecto.create && mix ecto.migrate
+      - name: App tests still pass
+        working-directory: demo
+        run: mix test

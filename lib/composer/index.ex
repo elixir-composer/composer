@@ -1,0 +1,97 @@
+defmodule Composer.Index do
+  @moduledoc """
+  The shell completion index: `_build/composer/index`.
+
+  A plain-text file of tab-separated lines that the completion script reads
+  without starting the BEAM:
+
+      cookbook	local	Your recipes in /home/you/.config/composer
+      group	local:ash/	3 recipes
+      recipe	local:ash/base	Ash core: sourceror, ash and ash_phoenix
+      step	core:setup/credo	Adds Credo for static code analysis
+
+  Package cookbooks are read from their committed manifests (falling back
+  to runtime metadata when a cookbook has none). Local group files are
+  evaluated to read their shortdocs (they are evaluated on every run
+  anyway); a group that fails to load lists its recipes with no shortdoc
+  and never fails the refresh.
+
+  Every composer task refreshes the index as a side effect, and
+  `mix composer.index` rebuilds it explicitly.
+  """
+
+  alias Composer.{Manifest, Ref, Cookbook}
+
+  @doc "The index path for the current project."
+  @spec path() :: Path.t()
+  def path, do: Path.join([Path.dirname(Mix.Project.build_path()), "composer", "index"])
+
+  @doc "Builds the index lines for `cookbooks`."
+  @spec lines([Cookbook.t()]) :: [String.t()]
+  def lines(cookbooks) do
+    cookbooks
+    |> Enum.flat_map(&entries/1)
+    |> Enum.sort()
+    |> Enum.map(fn {kind, id, text} -> Enum.join([kind, id, clean(text)], "\t") end)
+  end
+
+  @doc "Writes the index atomically (a temp file, then a rename)."
+  @spec write([Cookbook.t()], Path.t()) :: :ok
+  def write(cookbooks, path \\ path()) do
+    File.mkdir_p!(Path.dirname(path))
+    tmp = path <> ".tmp#{System.unique_integer([:positive])}"
+    File.write!(tmp, Enum.map(lines(cookbooks), &[&1, "\n"]))
+    File.rename!(tmp, path)
+  end
+
+  @doc false
+  # The cheap side effect every task runs. It never fails a task.
+  def refresh(cookbooks) do
+    if Application.get_env(:composer, :write_index, true) and Mix.Project.get() do
+      write(cookbooks)
+    end
+
+    :ok
+  rescue
+    _ -> :ok
+  end
+
+  @doc false
+  # A cookbook's index entries, as {kind, id, text}; the language server
+  # completes from them.
+  def entries(%Cookbook{kind: :virtual}), do: []
+
+  def entries(%Cookbook{name: name} = cookbook) do
+    {steps, recipes} =
+      case cookbook.kind == :code && Manifest.read(cookbook) do
+        {:ok, data} ->
+          {Enum.map(data.steps, &{&1.id, &1.summary}),
+           Enum.map(data.recipes, &{&1.id, &1[:shortdoc]})}
+
+        _ ->
+          {Enum.map(Cookbook.steps(cookbook), &{&1.id, &1.summary}),
+           Enum.map(Manifest.recipes(cookbook), &{&1.id, &1.shortdoc})}
+      end
+
+    groups =
+      recipes
+      |> Enum.map(&Path.dirname(elem(&1, 0)))
+      |> Enum.frequencies()
+      |> Enum.map(fn {group, count} ->
+        {"group", Ref.id(name, group <> "/"), "#{count} recipe#{if count != 1, do: "s"}"}
+      end)
+
+    [{"cookbook", name, cookbook.summary}] ++
+      groups ++
+      Enum.map(recipes, fn {id, shortdoc} ->
+        {"recipe", Ref.id(name, id), first_line(shortdoc)}
+      end) ++
+      Enum.map(steps, fn {id, summary} -> {"step", Ref.id(name, id), summary} end)
+  end
+
+  defp first_line(nil), do: ""
+  defp first_line(text), do: text |> String.split("\n", parts: 2) |> hd()
+
+  defp clean(nil), do: ""
+  defp clean(text), do: String.replace(text, ["\t", "\n"], " ")
+end
