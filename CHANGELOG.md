@@ -5,6 +5,27 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.2.0 (2026-10-12)
+
+
+
+
+### Features:
+
+* add 'step.edit' mix task by andyl
+
+* add 'recipe.edit' mix task by andyl
+
+### Bug Fixes:
+
+* lint should ignore junk files indicated in .gitignore by andyl
+
+* add link and test checks to the release script by andyl
+
+* eliminate CLAUDE warning message by andyl
+
+* update the release script by andyl
+
 ## v0.1.0 (2026-10-12)
 
 
