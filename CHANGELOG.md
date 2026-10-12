@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.1.0 (2026-10-12)
+
+
+
+
+### Features:
+
+* prep for hex.pm by andyl
+
+* Add release script by andyl
+
 ## v0.0.1 (2026-10-12)
 
 Initial Commit
