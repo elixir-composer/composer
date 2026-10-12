@@ -12,6 +12,17 @@ if [ -n "$(git status --porcelain)" ]; then
   exit 1
 fi
 
+# tests and cookbook lint must pass before releasing
+if ! mix test; then
+  echo "error: 'mix test' failed; aborting release" >&2
+  exit 1
+fi
+
+if ! mix composer.cookbook.lint; then
+  echo "error: 'mix composer.cookbook.lint' failed; aborting release" >&2
+  exit 1
+fi
+
 # update the manifest, committing it if it changed
 mix composer.cookbook.manifest
 
