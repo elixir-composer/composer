@@ -1,5 +1,7 @@
 # Elixir Composer
 
+Composer is an app generation tool for Elixir.
+
 Elixir package maintainers ship [generators](https://hexdocs.pm/phoenix/Mix.Tasks.Phx.New.html) and
 [igniter](https://github.com/ash-project/igniter) installers. These tools are
 indispensable, yet turning a generated skeleton into a working prototype can
@@ -404,13 +406,6 @@ Composer supports **only the latest stable Phoenix** (currently 1.8) and its
 runs the generated recipe against a freshly generated `phx.new` app on
 every commit, so generator drift breaks loudly here instead of silently in
 your project.
-
-## Roadmap
-
-- A community hub for discovering cookbooks
-
-Contributions welcome — a step is a small, self-contained module with tests,
-and adding one is a great first PR.
 
 ## Thanks
 
