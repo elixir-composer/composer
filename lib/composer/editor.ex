@@ -16,8 +16,9 @@ defmodule Composer.Editor do
       # Neovim in the current terminal
       export COMPOSER_EDITOR="nvim +__LINE__ __FILE__"
 
-      # Neovim in a new Ghostty window
-      export COMPOSER_EDITOR="ghostty -e 'nvim +__LINE__ __FILE__'"
+      # Neovim in a new Ghostty window (Ghostty drops `+N` arguments,
+      # so the line goes in as `-c N`)
+      export COMPOSER_EDITOR="ghostty -e nvim -c __LINE__ __FILE__"
 
   The command runs through `sh -c` and inherits the terminal (stdin,
   stdout and stderr), so a terminal editor takes it over until it exits;

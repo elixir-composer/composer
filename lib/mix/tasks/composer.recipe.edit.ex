@@ -15,7 +15,7 @@ defmodule Mix.Tasks.Composer.Recipe.Edit do
       export COMPOSER_EDITOR="nvim +__LINE__ __FILE__"
 
       # Neovim in a new Ghostty window
-      export COMPOSER_EDITOR="ghostty -e 'nvim +__LINE__ __FILE__'"
+      export COMPOSER_EDITOR="ghostty -e nvim -c __LINE__ __FILE__"
 
   The recipe is found as `mix composer.recipe.run` finds it, but is not
   evaluated, so a recipe that fails to load can still be opened, as long

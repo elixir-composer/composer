@@ -336,8 +336,8 @@ the command in `COMPOSER_EDITOR` (then `VISUAL`, then `EDITOR`).
 `__FILE__` and `__LINE__` in it are replaced, as in `ELIXIR_EDITOR`:
 
 ```bash
-export COMPOSER_EDITOR="nvim +__LINE__ __FILE__"                  # this terminal
-export COMPOSER_EDITOR="ghostty -e 'nvim +__LINE__ __FILE__'"   # a new window
+export COMPOSER_EDITOR="nvim +__LINE__ __FILE__"                 # this terminal
+export COMPOSER_EDITOR="ghostty -e nvim -c __LINE__ __FILE__"   # a new window
 ```
 
 Pass `--print` to print `path:line` instead.
