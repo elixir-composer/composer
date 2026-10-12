@@ -1,0 +1,3 @@
+#!/usr/bin/env bash 
+
+mix git_ops.release --yes &&  git push --follow-tags
