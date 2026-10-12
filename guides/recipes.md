@@ -316,6 +316,7 @@ mix composer.recipe.list local                  # one cookbook
 mix composer.recipe.list local composer_lab     # several (separate arguments)
 mix composer.recipe.list local:phx/             # one group (note the slash)
 mix composer.recipe.show local:phx/app          # docs, flags, resolved steps
+mix composer.recipe.edit local:phx/app          # open its group file in your editor
 mix composer.recipe.run local:phx/app --oban-pro
 mix composer.recipe.run local:phx/app --dry-run
 ```
@@ -329,6 +330,17 @@ before anything runs, applies the steps as one diff without asking, and
 records the run as one git commit listing every step and the recipe it
 came from. It refuses to start outside a git work tree or in a dirty one;
 `--no-commit` skips the git checks and the commit.
+
+`recipe.edit` opens the recipe's group file at the recipe's line, with
+the command in `COMPOSER_EDITOR` (then `VISUAL`, then `EDITOR`).
+`__FILE__` and `__LINE__` in it are replaced, as in `ELIXIR_EDITOR`:
+
+```bash
+export COMPOSER_EDITOR="nvim +__LINE__ __FILE__"                  # this terminal
+export COMPOSER_EDITOR="ghostty -e 'nvim +__LINE__ __FILE__'"   # a new window
+```
+
+Pass `--print` to print `path:line` instead.
 
 ## Checking recipes
 

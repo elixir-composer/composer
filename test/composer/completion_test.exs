@@ -86,6 +86,7 @@ defmodule Composer.CompletionTest do
 
     # Together with "local:" on the line: the recipes in the ash group.
     assert complete(dir, "mix composer.recipe.show local:ash/") == ["ash/auth", "ash/base"]
+    assert complete(dir, "mix composer.recipe.edit local:lv/") == ["lv/base"]
   end
 
   test "recipe.list completes cookbooks and groups, in every position", %{tmp_dir: dir} do

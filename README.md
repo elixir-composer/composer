@@ -122,7 +122,8 @@ mix composer.new
 This makes your app a cookbook and writes
 **`lib/composer/my_app/recipes/app.exs`**, holding the recipe
 `app/default`: every built-in step in a sensible order, each with a one-line
-description. Open it and make it yours:
+description. Open it (`mix composer.recipe.edit app/default`) and make it
+yours:
 
 - **Delete** any step you don't want — the file is yours.
 - **Reorder** steps freely; they run top to bottom.

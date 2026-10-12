@@ -1,7 +1,7 @@
 # Bash completion for composer's mix tasks, from `mix composer.completion bash`.
 #
 # Completes step ids for `mix composer.step.{run,help}`, recipe ids for
-# `mix composer.recipe.{run,show}`, and cookbook and group names
+# `mix composer.recipe.{run,show,edit}`, and cookbook and group names
 # (`local`, `local:ash/`) for `mix composer.recipe.list`, from
 # _build/composer/index, without starting the BEAM, and hands every
 # other `mix` completion to mix_completions (https://hex.pm/packages/mix_completions)
@@ -67,7 +67,7 @@ _composer_mix_complete() {
   local kind=""
   case ${COMP_WORDS[1]-} in
     composer.step.run | composer.step.help) kind=step ;;
-    composer.recipe.run  | composer.recipe.show) kind=recipe ;;
+    composer.recipe.run | composer.recipe.show | composer.recipe.edit) kind=recipe ;;
     composer.recipe.list) kind="cookbook group" ;;
   esac
 
