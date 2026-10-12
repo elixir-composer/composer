@@ -98,13 +98,12 @@ mix igniter.new my_app --with phx.new
 cd my_app
 ```
 
-Add `composer` to your deps in `mix.exs` (it isn't published to Hex yet, so
-pull it from GitHub):
+Add `composer` to your deps in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:composer, github: "andyl/composer", only: :dev},
+    {:composer, "~> 0.0.1", only: :dev},
     # ...
   ]
 end

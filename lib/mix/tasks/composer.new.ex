@@ -188,7 +188,7 @@ defmodule Mix.Tasks.Composer.New do
     #   {:task, "x.y", []}        compose any Igniter task
     #
     # Write your own steps with `mix composer.gen.step NAME`, and browse the
-    # rest with `mix composer.step.list`. Docs: https://github.com/andyl/composer
+    # rest with `mix composer.step.list`. Docs: https://hexdocs.pm/composer
     [
       default: [
         shortdoc: #{inspect(@shortdoc_default)},

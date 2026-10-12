@@ -227,7 +227,7 @@ A framework can ship a cookbook alongside its own code, with composer as an
 optional dependency:
 
 ```elixir
-{:composer, github: "andyl/composer", optional: true, only: :dev}
+{:composer, "~> 0.0.1", optional: true, only: :dev}
 ```
 
 ```bash

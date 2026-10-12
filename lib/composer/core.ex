@@ -14,5 +14,5 @@ defmodule Composer.Core do
 
   use Composer.Cookbook,
     summary: "Composer's built-in steps for Phoenix apps",
-    homepage: "https://github.com/andyl/composer"
+    homepage: "https://github.com/elixir-composer/composer"
 end
