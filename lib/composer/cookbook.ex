@@ -316,11 +316,28 @@ defmodule Composer.Cookbook do
         root
         |> step_listing()
         |> Enum.map(&Path.relative_to(&1, root))
+        |> reject_git_ignored(root)
         |> Enum.split_with(&(Path.extname(&1) == ".ex"))
     end
   end
 
   def step_entries(%__MODULE__{}), do: {[], []}
+
+  # Drops the files git ignores, such as an editor's `.expert/` log
+  # directory; keeps them all when `root` is not in a git work tree.
+  defp reject_git_ignored([], _root), do: []
+
+  defp reject_git_ignored(files, root) do
+    case System.cmd("git", ["-c", "core.quotePath=false", "check-ignore", "--" | files],
+           cd: root,
+           stderr_to_stdout: true
+         ) do
+      {output, 0} -> files -- String.split(output, "\n", trim: true)
+      _ -> files
+    end
+  rescue
+    ErlangError -> files
+  end
 
   @doc """
   Returns the directory the cookbook's recipes and templates are read from.

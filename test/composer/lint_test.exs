@@ -140,6 +140,8 @@ defmodule Composer.LintTest do
     defp cookbook(dir, files) do
       name = "tpl#{System.unique_integer([:positive])}"
       root = Path.join([dir, "lib", "composer"])
+      # Its own work tree: the tmp dir sits in this repo's ignored tmp/.
+      System.cmd("git", ["init", "--quiet", dir])
 
       for {path, content} <- files do
         file = Path.join([root, name, path])
@@ -190,6 +192,19 @@ defmodule Composer.LintTest do
       assert errors_matching(report, ~r/_gone\/deeper|_a |steps\/\. |\.gitkeep/) == []
       # Not compiled, so not a step as far as lint can tell.
       assert_error(report, ~r/steps\/ns\/a.ex is a .ex file under steps\/ that is not a step/)
+    end
+
+    test "files git ignores are skipped", %{tmp_dir: dir, cookbooks: cookbooks} do
+      {_name, cookbook} =
+        cookbook(dir, %{
+          "steps/.expert/.gitignore" => "*",
+          "steps/.expert/expert.log" => "log",
+          "steps/junk/x.txt" => "x"
+        })
+
+      File.write!(Path.join(dir, ".gitignore"), "junk/\n")
+
+      assert errors_matching(Lint.run(cookbook, cookbooks, dir), ~r/no step owns/) == []
     end
 
     test "templates in an unprefixed directory are an error", %{

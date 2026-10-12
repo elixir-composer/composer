@@ -27,6 +27,8 @@ defmodule Composer.Lint do
     * a `.ex` file under `steps/` that is not a compiled step module
     * a `template/1` path that does not exist
 
+  Files under `steps/` that git ignores are skipped.
+
   Errors, for local (`local/2`):
 
     * a `steps/` or `templates/` directory (local holds recipes only)
