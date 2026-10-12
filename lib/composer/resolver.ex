@@ -437,11 +437,33 @@ defmodule Composer.Resolver do
 
   # Close names, so a typo is reported instead of becoming a Hex lookup.
   defp step_suggestions(index, path) do
-    for {_name, steps} <- index.steps,
-        {id, meta} <- steps,
-        similar?(id, path) or similar?(Path.basename(id), path),
-        uniq: true,
-        do: meta.ref
+    for({_name, steps} <- index.steps, {id, meta} <- steps, do: {meta.ref, id})
+    |> ranked(path)
+  end
+
+  # The refs whose ids are close to `path`, closest first. An id that moved
+  # into or out of a group outranks a spelling match.
+  defp ranked(candidates, path) do
+    for({ref, id} <- candidates, score = closeness(id, path), do: {score, ref})
+    |> Enum.sort_by(fn {score, ref} -> {-score, ref} end)
+    |> Enum.map(&elem(&1, 1))
+    |> Enum.uniq()
+  end
+
+  defp closeness(id, path) do
+    if regrouped?(id, path) do
+      2.0
+    else
+      score = max(String.jaro_distance(id, path), String.jaro_distance(Path.basename(id), path))
+      if score > @typo_threshold, do: score
+    end
+  end
+
+  # gigalixir/libcluster -> cluster/gigalixir/libcluster and
+  # pg_extensions -> pg/extensions, or the reverse.
+  defp regrouped?(id, path) do
+    String.ends_with?(id, "/" <> path) or String.ends_with?(path, "/" <> id) or
+      String.replace(id, "/", "_") == String.replace(path, "/", "_")
   end
 
   defp similar?(a, b), do: String.jaro_distance(a, b) > @typo_threshold
@@ -480,9 +502,9 @@ defmodule Composer.Resolver do
   defp recipe_suggestions(index, path) do
     all = for {name, ids} <- index.recipes, id <- ids, do: {Ref.id(name, id), id}
 
-    case for({ref, id} <- all, similar?(id, path) or similar?(Path.basename(id), path), do: ref) do
+    case ranked(all, path) do
       [] -> all |> Enum.map(&elem(&1, 0)) |> Enum.sort()
-      close -> Enum.sort(close)
+      close -> close
     end
   end
 

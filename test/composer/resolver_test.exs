@@ -94,6 +94,20 @@ defmodule Composer.ResolverTest do
                resolve(books, "local:g/p")
     end
 
+    test "a step that moved into a group is suggested first", %{tmp_dir: dir} do
+      books = cookbooks(dir, %{"g/p" => ~s(["core:gigalixir/libcluster"])})
+
+      assert {:error, {:missing_step, _, _, ["core:cluster/gigalixir/libcluster" | _]}} =
+               resolve(books, "local:g/p")
+    end
+
+    test "a step whose name became a group is suggested first", %{tmp_dir: dir} do
+      books = cookbooks(dir, %{"g/p" => ~s(["core:setup_gitignore"])})
+
+      assert {:error, {:missing_step, _, _, ["core:setup/gitignore" | _]}} =
+               resolve(books, "local:g/p")
+    end
+
     test "an unknown cookbook suggests adding the package", %{tmp_dir: dir} do
       books = cookbooks(dir, %{"g/p" => ~s(["composer_lab:ash"])})
 
