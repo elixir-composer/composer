@@ -72,7 +72,7 @@ defmodule Composer.Step.Meta do
   end
 
   @doc """
-  The metadata shown for a step (by `mix composer.step.help` and the
+  The metadata shown for a step (by `mix composer.step.show` and the
   language server's hover), as `{label, text}` rows. Empty values are left
   out.
   """

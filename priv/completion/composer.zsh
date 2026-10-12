@@ -1,7 +1,7 @@
 #compdef mix
 # Zsh completion for composer's mix tasks, from `mix composer.completion zsh`.
 #
-# Completes step ids for `mix composer.step.{run,help}`, recipe ids for
+# Completes step ids for `mix composer.step.{run,show,edit}`, recipe ids for
 # `mix composer.recipe.{run,show,edit}`, and cookbook and group names
 # (`local`, `local:ash/`) for `mix composer.recipe.list`, from
 # _build/composer/index, without starting the BEAM, and hands every
@@ -26,8 +26,8 @@ __composer_index() {
 _composer_mix() {
   local kind=""
   case ${words[2]} in
-    composer.step.run|composer.step.help) kind=step ;;
-    composer.recipe.run|composer.recipe.show|composer.recipe.edit) kind=recipe ;;
+    composer.step.run|composer.step.show|composer.step.help|composer.step.edit) kind=step ;;
+    composer.recipe.run|composer.recipe.show|composer.recipe.help|composer.recipe.edit) kind=recipe ;;
     composer.recipe.list) kind=list ;;
   esac
 

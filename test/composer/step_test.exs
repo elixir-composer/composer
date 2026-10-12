@@ -28,7 +28,7 @@ defmodule Composer.StepTest do
     refute Mix.Task.shortdoc(Composer.Core.Steps.Setup.Credo)
   end
 
-  test "Meta.rows/1: the metadata shown by step.help and hover, empty values left out" do
+  test "Meta.rows/1: the metadata shown by step.show and hover, empty values left out" do
     meta = Composer.FakeBook.Steps.Hello.__composer_step__()
 
     assert Composer.Step.Meta.rows(meta) == [

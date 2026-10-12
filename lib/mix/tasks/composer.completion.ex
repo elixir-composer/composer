@@ -8,7 +8,7 @@ defmodule Mix.Tasks.Composer.Completion do
       mix composer.completion zsh > ~/.zsh/functions/_composer_mix
       mix composer.completion fish > ~/.config/fish/completions/mix.fish
 
-  The script completes step ids for `mix composer.step.{run,help}`, recipe
+  The script completes step ids for `mix composer.step.{run,show,edit}`, recipe
   ids for `mix composer.recipe.{run,show,edit}`, and cookbook and group names
   (`local`, `local:ash/`) for `mix composer.recipe.list`, from
   `_build/composer/index`

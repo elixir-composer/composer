@@ -1,6 +1,7 @@
 defmodule Composer.Editor do
   @moduledoc """
-  Opens a file in the user's editor, for `mix composer.recipe.edit`.
+  Opens a file in the user's editor, for `mix composer.recipe.edit` and
+  `mix composer.step.edit`.
 
   The command is the first of these environment variables that is set:
 
@@ -74,6 +75,51 @@ defmodule Composer.Editor do
       {^port, {:exit_status, 0}} -> :ok
       {^port, {:exit_status, status}} -> {:error, {:exit, status}}
     end
+  end
+
+  @doc """
+  Opens `file` at `line` in the editor from the environment and waits for
+  it to exit. Raises a `Mix.Error` when no editor is set or the editor
+  exits with a non-zero status.
+  """
+  @spec open!(Path.t(), pos_integer()) :: :ok
+  def open!(file, line) do
+    command =
+      case command(file, line) do
+        {:ok, command} ->
+          command
+
+        {:error, :no_editor} ->
+          Mix.raise("""
+          No editor set. Set one of #{Enum.join(@vars, ", ")}, e.g.
+
+              export COMPOSER_EDITOR="nvim +__LINE__ __FILE__"
+          """)
+      end
+
+    case run(command) do
+      :ok -> :ok
+      {:error, {:exit, status}} -> Mix.raise("Editor exited with status #{status}: #{command}")
+    end
+  end
+
+  @doc """
+  Warns when `file` lies under the project's deps directory: edits there
+  are lost when the dependency is updated.
+  """
+  @spec warn_if_dep(Path.t()) :: :ok
+  def warn_if_dep(file) do
+    deps = Path.expand(Mix.Project.deps_path())
+
+    if String.starts_with?(Path.expand(file), deps <> "/") do
+      Mix.shell().info([
+        :yellow,
+        "warning: #{file} belongs to a dependency; edits are lost when it is updated",
+        :reset
+      ])
+    end
+
+    :ok
   end
 
   defp quote_arg(arg), do: "'" <> String.replace(arg, "'", ~S('\'')) <> "'"

@@ -191,7 +191,7 @@ defmodule Composer.Resolver do
 
   @doc """
   Resolves one step reference to its metadata or Hex package, without
-  building an entry. Used by `mix composer.step.help`.
+  building an entry. Used by `mix composer.step.show`.
   """
   @spec find_step([Cookbook.t()], String.t(), String.t() | nil) ::
           {:ok, {:step, Composer.Step.Meta.t()} | {:hex, String.t()}} | {:error, term()}

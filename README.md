@@ -47,16 +47,16 @@ steps make changes and can render templates.
 
 ### Mix tasks
 
-| Task                                    | Purpose                                          |
-|-----------------------------------------|--------------------------------------------------|
-| `composer.new`                          | Make your app a cookbook and generate its recipe |
-| `composer.recipe.{list,show,run}`       | List, inspect and run recipes                    |
-| `composer.step.{list,find,help,run}`    | List, search, inspect and run steps              |
-| `composer.cookbook.list`                | List discovered cookbooks                        |
-| `composer.gen.{step,recipe,cookbook}`   | Scaffold a step, recipe or cookbook              |
-| `composer.cookbook.{manifest,lint}`     | Write a cookbook's manifest; lint it             |
-| `composer.completion`, `composer.index` | Shell completion                                 |
-| `composer.lsp`                          | Language server for recipe files                 |
+| Task                                      | Purpose                                          |
+|-------------------------------------------|--------------------------------------------------|
+| `composer.new`                            | Make your app a cookbook and generate its recipe |
+| `composer.recipe.{list,show,run,edit}`    | List, inspect, run and edit recipes              |
+| `composer.step.{list,find,help,run,edit}` | List, search, inspect, run and edit steps        |
+| `composer.cookbook.list`                  | List discovered cookbooks                        |
+| `composer.gen.{step,recipe,cookbook}`     | Scaffold a step, recipe or cookbook              |
+| `composer.cookbook.{manifest,lint}`       | Write a cookbook's manifest; lint it             |
+| `composer.completion`, `composer.index`   | Shell completion                                 |
+| `composer.lsp`                            | Language server for recipe files                 |
 
 ### Recipes
 
@@ -181,7 +181,8 @@ mix composer.step.run hex:ash_authentication -- --auth-strategy password  # ... 
 mix composer.cookbook.list                   # cookbooks, with step and recipe counts
 mix composer.step.list --action remove       # also --cookbook, --framework, --tag
 mix composer.step.find tailwind
-mix composer.step.help core:phx/bun          # facets, requires, and a dry run
+mix composer.step.show core:phx/bun          # facets, requires, and a dry run
+mix composer.step.edit core:phx/bun          # open its source in your editor
 mix composer.recipe.list
 ```
 

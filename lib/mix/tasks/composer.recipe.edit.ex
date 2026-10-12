@@ -58,8 +58,8 @@ defmodule Mix.Tasks.Composer.Recipe.Edit do
     if opts[:print] do
       Mix.shell().info("#{path}:#{line}")
     else
-      warn_if_dep(path)
-      open!(path, line)
+      Editor.warn_if_dep(path)
+      Editor.open!(path, line)
     end
   end
 
@@ -70,38 +70,6 @@ defmodule Mix.Tasks.Composer.Recipe.Edit do
       line
     else
       _ -> 1
-    end
-  end
-
-  defp warn_if_dep(path) do
-    deps = Path.expand(Mix.Project.deps_path())
-
-    if String.starts_with?(Path.expand(path), deps <> "/") do
-      Mix.shell().info([
-        :yellow,
-        "warning: #{path} belongs to a dependency; edits are lost when it is updated",
-        :reset
-      ])
-    end
-  end
-
-  defp open!(path, line) do
-    command =
-      case Editor.command(path, line) do
-        {:ok, command} ->
-          command
-
-        {:error, :no_editor} ->
-          Mix.raise("""
-          No editor set. Set one of #{Enum.join(Editor.vars(), ", ")}, e.g.
-
-              export COMPOSER_EDITOR="nvim +__LINE__ __FILE__"
-          """)
-      end
-
-    case Editor.run(command) do
-      :ok -> :ok
-      {:error, {:exit, status}} -> Mix.raise("Editor exited with status #{status}: #{command}")
     end
   end
 end

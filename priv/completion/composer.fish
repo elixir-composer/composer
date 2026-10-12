@@ -1,6 +1,6 @@
 # Fish completion for composer's mix tasks, from `mix composer.completion fish`.
 #
-# Completes step ids for `mix composer.step.{run,help}`, recipe ids for
+# Completes step ids for `mix composer.step.{run,show,edit}`, recipe ids for
 # `mix composer.recipe.{run,show,edit}`, and cookbook and group names
 # (`local`, `local:ash/`) for `mix composer.recipe.list`, from
 # _build/composer/index, without starting the BEAM. Fish completions
@@ -23,6 +23,6 @@ function __composer_ids --argument-names kind
     string match -r -- "^$kind\t.*" <$index | string replace -r -- "^$kind\t([^\t]*)\t?(.*)" '$1\t$2'
 end
 
-complete -c mix -f -n '__fish_seen_subcommand_from composer.step.run composer.step.help' -a '(__composer_ids step)'
-complete -c mix -f -n '__fish_seen_subcommand_from composer.recipe.run composer.recipe.show composer.recipe.edit' -a '(__composer_ids recipe)'
+complete -c mix -f -n '__fish_seen_subcommand_from composer.step.run composer.step.show composer.step.help composer.step.edit' -a '(__composer_ids step)'
+complete -c mix -f -n '__fish_seen_subcommand_from composer.recipe.run composer.recipe.show composer.recipe.help composer.recipe.edit' -a '(__composer_ids recipe)'
 complete -c mix -f -n '__fish_seen_subcommand_from composer.recipe.list' -a '(__composer_ids cookbook; __composer_ids group)'

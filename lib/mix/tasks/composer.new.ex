@@ -146,7 +146,7 @@ defmodule Mix.Tasks.Composer.New do
 
         mix ecto.setup && mix phx.server
 
-    Browse steps with `mix composer.step.list` and `mix composer.step.help REF`.
+    Browse steps with `mix composer.step.list` and `mix composer.step.show REF`.
     """)
   end
 

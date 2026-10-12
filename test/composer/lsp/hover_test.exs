@@ -39,7 +39,7 @@ defmodule Composer.LSP.HoverTest do
     assert String.ends_with?(text, @footer)
   end
 
-  test "hex: and a fall-through to Hex: step.help's wording", %{hover: hover} do
+  test "hex: and a fall-through to Hex: step.show's wording", %{hover: hover} do
     explicit = hover.(10, 8)
     assert explicit =~ "hex:oban - the Hex package oban"
     assert String.ends_with?(explicit, @footer)

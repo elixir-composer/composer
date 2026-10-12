@@ -85,20 +85,30 @@ defmodule Mix.Tasks.Composer.ListTest do
     assert run("composer.step.find", ["-c", config, "zzzz"]) =~ "No steps found."
   end
 
-  test "step.help shows facets, requires and a dry run", %{config: config} do
-    output = run("composer.step.help", ["-c", config, "fake_book:ash/postgres"])
+  test "step.show shows facets, requires and a dry run", %{config: config} do
+    output = run("composer.step.show", ["-c", config, "fake_book:ash/postgres"])
     assert output =~ "fake_book:ash/postgres - Adds AshPostgres"
     assert output =~ ~r/requires:\s+fake_book:hello/
     assert output =~ ~r/files: .*postgres.txt/
 
-    data = json("composer.step.help", ["-c", config, "core:setup/credo"])
+    data = json("composer.step.show", ["-c", config, "core:setup/credo"])
     assert data["summary"] == "Adds Credo for static code analysis"
     assert %{"files" => ["mix.exs"], "deps" => ["credo"]} = data["dry_run"]
 
+    assert run("composer.step.show", ["-c", config, "oban"]) =~ "hex:oban - the Hex package oban"
+
+    assert run("composer.step.show", ["-c", config, "hex:my-lib@path:../my-lib"]) =~
+             "hex:my_lib - the Hex package my_lib"
+  end
+
+  test "step.help and recipe.help are hidden aliases for the show tasks", %{config: config} do
     assert run("composer.step.help", ["-c", config, "oban"]) =~ "hex:oban - the Hex package oban"
 
-    assert run("composer.step.help", ["-c", config, "hex:my-lib@path:../my-lib"]) =~
-             "hex:my_lib - the Hex package my_lib"
+    assert run("composer.recipe.help", ["-c", config, "phx/standard_app"]) =~
+             "Recipe local:phx/standard_app"
+
+    refute Mix.Task.shortdoc(Mix.Tasks.Composer.Step.Help)
+    refute Mix.Task.shortdoc(Mix.Tasks.Composer.Recipe.Help)
   end
 
   test "recipe.list lists local recipes first, then cookbooks'", %{config: config} do
@@ -231,7 +241,7 @@ defmodule Mix.Tasks.Composer.ListTest do
 
   test "errors are raised with their message", %{config: config} do
     assert_raise Mix.Error, ~r/no step matches "fake_book:nope"/, fn ->
-      run("composer.step.help", ["-c", config, "fake_book:nope"])
+      run("composer.step.show", ["-c", config, "fake_book:nope"])
     end
 
     assert_raise Mix.Error, ~r/no recipe matches "nope"/, fn ->

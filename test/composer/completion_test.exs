@@ -59,7 +59,10 @@ defmodule Composer.CompletionTest do
   test "completes ids, trimming what bash already has before the last ':'", %{tmp_dir: dir} do
     assert complete(dir, "mix composer.step.run composer_lab:a") == ["ash", "ash/postgres"]
 
-    assert complete(dir, "mix composer.step.help co") == [
+    assert complete(dir, "mix composer.step.edit composer_lab:ash/") == ["ash/postgres"]
+    assert complete(dir, "mix composer.step.help composer_lab:ash/") == ["ash/postgres"]
+
+    assert complete(dir, "mix composer.step.show co") == [
              "composer_lab:ash",
              "composer_lab:ash/postgres",
              "core:setup/credo"
@@ -87,6 +90,7 @@ defmodule Composer.CompletionTest do
     # Together with "local:" on the line: the recipes in the ash group.
     assert complete(dir, "mix composer.recipe.show local:ash/") == ["ash/auth", "ash/base"]
     assert complete(dir, "mix composer.recipe.edit local:lv/") == ["lv/base"]
+    assert complete(dir, "mix composer.recipe.help local:lv/") == ["lv/base"]
   end
 
   test "recipe.list completes cookbooks and groups, in every position", %{tmp_dir: dir} do

@@ -112,6 +112,12 @@ The step's id is its path under `steps/`, and the module name must match it
 module fails to compile. Steps are Igniter tasks, so they compose into one
 diff, but they are not Mix tasks, so they never appear in `mix help`.
 
+`mix composer.step.edit ash/postgres` opens a step's source file at its
+`use Composer.Step` line, with the same editor command as
+`mix composer.recipe.edit` (`COMPOSER_EDITOR`, then `VISUAL`, then
+`EDITOR`; see the [recipes guide](recipes.md)). Pass `--print` to print
+`path:line` instead.
+
 ### When to group by path
 
 Use `/` to group steps that belong together: `ash/postgres`, `ash/sqlite`,
