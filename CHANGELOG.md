@@ -7,5 +7,5 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 ## v0.0.1 (2026-10-12)
 
-
+Initial Commit
 
