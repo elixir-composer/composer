@@ -3,6 +3,8 @@ defmodule Composer.CompletionTest do
 
   @moduletag :tmp_dir
 
+  unless System.find_executable("bash"), do: @moduletag(skip: "bash is not installed")
+
   @script Path.expand("priv/completion/composer.bash")
 
   @index """
@@ -22,8 +24,6 @@ defmodule Composer.CompletionTest do
   """
 
   setup %{tmp_dir: dir} do
-    unless System.find_executable("bash"), do: raise(ExUnit.SkipError, "bash is not installed")
-
     File.write!(Path.join(dir, "mix.exs"), "")
     File.write!(Path.join(dir, "mix.lock"), "")
     File.mkdir_p!(Path.join(dir, "_build/composer"))

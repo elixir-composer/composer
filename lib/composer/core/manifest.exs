@@ -383,6 +383,5 @@
       summary: "Adds a Tidewave MCP server config",
       tags: []
     }
-  ],
-  version: "0.1.0"
+  ]
 }

@@ -90,7 +90,6 @@ defmodule Mix.Tasks.Composer.Gen.Cookbook do
     manifest = %{
       name: name,
       package: app,
-      version: version(app),
       steps: [],
       recipes: recipes
     }
@@ -159,10 +158,5 @@ defmodule Mix.Tasks.Composer.Gen.Cookbook do
       ]
     ]
     """
-  end
-
-  defp version(app) do
-    if Mix.Project.get() && Mix.Project.config()[:app] == app,
-      do: Mix.Project.config()[:version]
   end
 end

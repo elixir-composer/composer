@@ -2,8 +2,8 @@ defmodule Composer.Manifest do
   @moduledoc """
   A cookbook's static manifest: `lib/composer/<package>/manifest.exs`.
 
-  The manifest is plain data - the cookbook's name, package and version,
-  and every step's id, summary and facets, and every recipe's id
+  The manifest is plain data - the cookbook's name and package, and
+  every step's id, summary and facets, and every recipe's id
   (`"group/name"`) and shortdoc - so tools such as shell completion can read a cookbook without
   running its code.
 
@@ -25,7 +25,6 @@ defmodule Composer.Manifest do
     %{
       name: cookbook.name,
       package: cookbook.app,
-      version: version(cookbook.app),
       steps: cookbook |> Cookbook.steps() |> Enum.map(&step/1),
       recipes: recipes(cookbook)
     }
@@ -104,16 +103,5 @@ defmodule Composer.Manifest do
       provides: meta.provides,
       conflicts: meta.conflicts
     }
-  end
-
-  defp version(nil), do: nil
-
-  defp version(app) do
-    Application.load(app)
-
-    case Application.spec(app, :vsn) do
-      nil -> nil
-      vsn -> to_string(vsn)
-    end
   end
 end
