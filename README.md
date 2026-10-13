@@ -362,8 +362,8 @@ on-save checks in Vim, Neovim, VS Code and others); see the
 For editing recipes, `mix composer.lsp` runs `composer-ls`, a language
 server beside your Elixir one: warm diagnostics on save (also in the files
 that include the saved recipe), hover, goto-definition, completion of step
-and recipe ids, and quick fixes. It needs the optional `gen_lsp`
-dependency; see the [Composer LSP guide](guides/composer_lsp.md).
+and recipe ids, and quick fixes. See the
+[Composer LSP guide](guides/composer_lsp.md).
 
 A step entry can carry options: `{"composer_lab:x", argv: ["--all"]}` passes
 arguments to the step, as `--` does on `mix composer.step.run`, and combines

@@ -1,5 +1,5 @@
 defmodule Composer.Integration.LspStdioTest do
-  # Runs `mix composer.lsp` in a real host app with gen_lsp, over stdio, as
+  # Runs `mix composer.lsp` in a real host app, over stdio, as
   # an editor does, and checks that stdout holds nothing but protocol
   # frames. It compiles every dependency, so it only runs with:
   #
@@ -40,8 +40,7 @@ defmodule Composer.Integration.LspStdioTest do
           deps_path: #{inspect(Path.join(@root, "deps"))},
           deps: [
             {:composer, path: #{inspect(@root)}},
-            {:fake_dep, path: #{inspect(Path.join(@root, "test/fixtures/fake_dep"))}},
-            {:gen_lsp, "~> 0.11.4"}
+            {:fake_dep, path: #{inspect(Path.join(@root, "test/fixtures/fake_dep"))}}
           ]
         ]
       end

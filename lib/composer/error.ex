@@ -534,18 +534,6 @@ defmodule Composer.Error do
     "#{target} has #{count} #{if count == 1, do: "problem", else: "problems"}."
   end
 
-  def message(:gen_lsp_missing) do
-    """
-    mix composer.lsp needs the gen_lsp package, an optional dependency of \
-    composer. Add it to your project's deps in mix.exs:
-
-        {:gen_lsp, "~> 0.11.4", only: :dev}
-
-    then run mix deps.get. See the Composer LSP guide \
-    (guides/composer_lsp.md) for the editor setup.
-    """
-  end
-
   def message({:lint_file_missing, path}) do
     "#{path} does not exist. --file takes an existing recipe group file."
   end
@@ -710,7 +698,6 @@ defmodule Composer.Error do
   def anchor({:lint_file_unknown, _path}), do: nil
   def anchor({:lint_file_mismatch, _path, _cookbook}), do: nil
   def anchor(:not_in_project), do: nil
-  def anchor(:gen_lsp_missing), do: nil
 
   def anchor(_other), do: :unknown
 

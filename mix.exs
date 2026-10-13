@@ -37,7 +37,7 @@ defmodule Composer.MixProject do
       {:igniter, "~> 0.6"},
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"},
-      {:gen_lsp, "~> 0.11", optional: true},
+      {:gen_lsp, "~> 0.11.4"},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false}
     ]
   end

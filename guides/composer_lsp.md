@@ -1,5 +1,7 @@
 # Composer LSP
 
+WARNING: this is experimental.  Proceed at your own risk! 
+
 `composer-ls` is a language server for recipe group files. It runs
 *beside* your Elixir language server (ElixirLS, Next LS, Expert), handles
 only recipe references, and replaces nothing. It keeps your cookbooks
@@ -26,16 +28,8 @@ It gives the editor:
 
 ## Install
 
-`composer-ls` needs the `gen_lsp` package, an optional dependency of
-composer. Add it to the host project, next to composer:
-
-```elixir
-{:composer, "~> 0.1", only: :dev},
-{:gen_lsp, "~> 0.11.4", only: :dev}
-```
-
-then `mix deps.get`. Hosts without it pay nothing; there,
-`mix composer.lsp` says what to add and exits.
+`composer-ls` ships with composer: a host with composer in its deps
+needs nothing more.
 
 ## Start: the working directory is the host project
 
@@ -99,6 +93,75 @@ Completion arrives through your completion plugin or
 `vim.lsp.completion.enable()`. The HexDocs links of `hex:` references are
 LSP document links, for clients and plugins that show them.
 
+### Keep the host when the working directory changes
+
+The configuration above roots the server at Neovim's working directory
+when a recipe buffer opens. Change directory first, and the next recipe
+starts a second server there. A file explorer does this when it offers
+to make the recipes directory the working directory (nvim-tree asks "do
+you want to change your CWD?"). If that directory is not a Mix project,
+the server exits with "must be run inside a Mix project".
+
+To browse a recipes or steps directory and keep one server, pin the host
+on the first recipe and run `mix` there. This variant needs Neovim 0.12,
+where a `cmd` function receives the resolved config:
+
+```lua
+-- Host Mix project that runs `mix composer.lsp`; set on first attach.
+local host_root = nil
+
+local function find_host_root()
+  local root = vim.fs.root(vim.fn.getcwd(), "mix.exs")
+  if root then host_root = host_root or root end
+  return host_root
+end
+
+vim.lsp.config("composer_ls", {
+  -- Run mix from the host root, not Neovim's (possibly changed) cwd.
+  cmd = function(dispatchers, config)
+    return vim.lsp.rpc.start({ "mix", "composer.lsp" }, dispatchers, {
+      cwd = config.root_dir,
+      -- Keep Mix's own output (compiling dependencies) off stdout.
+      env = { MIX_QUIET = "1" },
+    })
+  end,
+  filetypes = { "elixir" },
+  root_dir = function(bufnr, on_dir)
+    local name = vim.api.nvim_buf_get_name(bufnr)
+    if name:match("/composer/recipes/[^/]+%.exs$")
+      or name:match("/lib/composer/[^/]+/recipes/[^/]+%.exs$")
+    then
+      local root = find_host_root()
+      if root then
+        on_dir(root)
+      else
+        vim.notify("composer_ls: no host Mix project; start nvim in one", vim.log.levels.WARN)
+      end
+    end
+  end,
+})
+```
+
+The host is the nearest `mix.exs` at or above the working directory when
+the first recipe opens. After that every recipe buffer gets the same
+root, so Neovim reuses the one client. Neither `:cd` nor a steps
+directory in another Mix project moves it. To change host, restart
+Neovim from the other project.
+
+Both parts matter. A pinned `root_dir` alone keeps the client, but a
+restarted server would still run `mix` in Neovim's current directory:
+without `cmd_cwd`, the process inherits it. The `cmd` function starts it
+in the root.
+
+If `~/.config/composer` is a symlink, Neovim names the buffer by its
+resolved path, which may not match `/composer/recipes/`. Also accept
+paths under the resolved directory:
+
+```lua
+local local_dir = vim.fn.resolve(vim.fn.expand("~/.config/composer/recipes")) .. "/"
+-- in root_dir: ... or vim.startswith(name, local_dir)
+```
+
 ### Turn off nvim-lint for these buffers
 
 If you followed the [lint guide](lint.md) and run `composer.cookbook.lint`
@@ -130,13 +193,14 @@ more; restart after changing composer itself.
 **Nothing attaches.** Check `:checkhealth vim.lsp`. The buffer's path
 must match one of the two `root_dir` patterns, and `mix composer.lsp`
 must start in the host project: run it in a terminal there. It should
-print nothing and wait for input; a message about `gen_lsp` means the
-dependency is missing.
+print nothing and wait for input.
 
 **The wrong project, or unknown cookbooks.** The startup message and the
 hover footer name the host. Things that move Neovim's working directory
 (`:cd`, `autochdir`, project-root plugins) before the first recipe buffer
-opens give the server another project, or none.
+opens give the server another project, or none. Moving it afterwards
+starts a second server in the new directory; see [Keep the host when the
+working directory changes](#keep-the-host-when-the-working-directory-changes).
 
 **The server died at startup, or garbage in the log.** Only protocol
 messages may go to stdout. The server sends its own logging, and any

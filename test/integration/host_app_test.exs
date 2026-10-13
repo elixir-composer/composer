@@ -102,15 +102,10 @@ defmodule Composer.Integration.HostAppTest do
     mix!(app, config, ["composer.recipe.run", "app/default", "--yes", "--no-commit"])
   end
 
-  test "without gen_lsp: composer compiles cleanly and composer.lsp says what to add",
-       %{app: app, config: config} do
+  test "composer compiles cleanly in a host", %{app: app, config: config} do
     mix!(app, config, ["compile"])
     output = mix!(app, config, ["deps.compile", "composer", "--force"])
     refute output =~ "warning"
-
-    {output, status} = mix(app, config, ["composer.lsp"])
-    assert status != 0
-    assert output =~ ~s({:gen_lsp, "~> 0.11.4", only: :dev})
   end
 
   test "a local grouped recipe uses a sibling and takes a declared flag",

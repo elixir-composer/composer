@@ -10,8 +10,7 @@ defmodule Composer.LSP do
   `Composer.Lint`, `Composer.Recipe.Locator` and `Composer.Resolver`.
 
   The host project is the working directory the editor starts the server
-  in. GenLSP is an optional dependency: only `Composer.LSP.Server` uses it,
-  and everything else here compiles without it.
+  in. Only `Composer.LSP.Server` uses GenLSP.
 
   ## Startup
 
@@ -22,12 +21,6 @@ defmodule Composer.LSP do
   """
 
   alias Composer.{CLI, Discovery, Local}
-
-  @compile {:no_warn_undefined, Composer.LSP.Server}
-
-  @doc "True when GenLSP, and so the server, is available."
-  @spec available?() :: boolean()
-  def available?, do: Code.ensure_loaded?(Composer.LSP.Server)
 
   @doc "Starts the language server on stdio and blocks."
   @spec start(keyword()) :: no_return()
