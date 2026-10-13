@@ -400,22 +400,6 @@ Completion of step and recipe ids reads a plain-text index under
 `_build/composer/`, so it never starts the BEAM. Every composer task keeps
 the index fresh; `mix composer.index` rebuilds it.
 
-## Compatibility
-
-Composer supports **only the latest stable Phoenix** (currently 1.8) and its
-`phx.new` output. Runs warn when applied to an app on an older Phoenix. CI
-runs the generated recipe against a freshly generated `phx.new` app on
-every commit, so generator drift breaks loudly here instead of silently in
-your project.
-
-## Thanks
-
-Composer stands on the work of the
-[Igniter](https://github.com/ash-project/igniter/graphs/contributors),
-[Sourceror](https://github.com/doorgan/sourceror/graphs/contributors?all=1)
-and [ExAst](https://github.com/elixir-vibe/ex_ast/graphs/contributors?all=1)
-contributors, and of the wider Elixir ecosystem.
-
 ## License
 
 MIT — see [LICENSE.md](LICENSE.md).
