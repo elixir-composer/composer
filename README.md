@@ -2,14 +2,17 @@
 
 Composer is an app generation tool for Elixir.
 
-Elixir package maintainers ship [generators](https://hexdocs.pm/phoenix/Mix.Tasks.Phx.New.html) and
-[igniter](https://github.com/ash-project/igniter) installers. These tools are
-indispensable, yet turning a generated skeleton into a working prototype can
-still be a lot of work.
+Elixir package maintainers ship
+[generators](https://hexdocs.pm/phoenix/Mix.Tasks.Phx.New.html) and
+[igniters](https://github.com/ash-project/igniter) — indispensable tools. And
+yet, turning a generated skeleton into a working prototype can still be a lot
+of work. Knowing which defaults to remove, which packages to add, and how to
+wire and configure them lives in blog posts, READMEs, conference talks and
+people's heads. Composer aims to capture this tacit knowledge in code.
 
-Composer builds on generators and igniter to produce a skeleton that is better
-fit for purpose from the start, so you reach a first working prototype sooner.
-Composer manages changes like:
+Composer builds on generators and Igniter to produce a skeleton that is better
+suited to its purpose from the start, so you reach a first working prototype
+sooner. Composer manages changes like:
 
 - removing generator defaults you don't want
 - injecting layouts and styles

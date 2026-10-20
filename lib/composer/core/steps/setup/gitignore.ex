@@ -1,19 +1,19 @@
 defmodule Composer.Core.Steps.Setup.Gitignore do
   @moduledoc "Adds macOS system files to `.gitignore`, creating the file if needed."
   use Composer.Step,
-    summary: "Adds macOS system files to .gitignore",
+    summary: "Adds expert cache to .gitignore",
     action: :config,
     capability: [:devtools],
     phase: :setup,
     stability: :stable
 
-  @entry "\n# Ignore macOS system files\n.DS_Store\n"
+  @entry "\n# Ignore .expert droppings\n.expert/\n"
 
   @impl Igniter.Mix.Task
   def igniter(igniter) do
     if Igniter.exists?(igniter, ".gitignore") do
       Composer.Helpers.update_file_content(igniter, ".gitignore", fn content ->
-        if String.contains?(content, ".DS_Store") do
+        if String.contains?(content, ".expert") do
           content
         else
           String.trim_trailing(content) <> "\n" <> @entry
