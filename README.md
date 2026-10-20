@@ -31,6 +31,15 @@ are easy to:
 - share between teams
 - search and discover, by humans and agents
 
+Composer is also inspired by dev-ops tools like Chef, Puppet, Ansible and Salt.
+Before them, configuring a server was a manual craft, built on the tacit
+knowledge of Ops engineers, arcane bash scripts and obscure configuration
+spells. Devops tools encoded that know-how as code, in cookbooks of repeatable,
+composable recipes, and turned provisioning into a reliable scalable process.
+Setting up a new application is still a manual craft. Composer applies the same
+approach: setup know-how lives in shared cookbooks, and every new app starts
+from proven recipes instead of from scratch.
+
 ## Overview
 
 ### Concepts
