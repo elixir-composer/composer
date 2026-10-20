@@ -29,7 +29,7 @@ defmodule Mix.Tasks.Composer.Step.RunTest do
   test "runs comma-separated steps as one diff" do
     run(["fake_book:hello,core:setup/gitignore"])
     |> assert_creates("hello.txt", "hello\n")
-    |> assert_has_patch(".gitignore", "+ |.DS_Store")
+    |> assert_has_patch(".gitignore", "+ |.expert/")
   end
 
   # Inside composer the project's own cookbook is core, so it wins.

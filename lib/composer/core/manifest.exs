@@ -315,7 +315,7 @@
       provides: [],
       requires: [],
       stability: :stable,
-      summary: "Adds macOS system files to .gitignore",
+      summary: "Adds expert cache to .gitignore",
       tags: []
     },
     %{

@@ -8,7 +8,7 @@ defmodule Composer.Core.Steps.GitignoreTest do
       test_project()
       |> Igniter.compose_task(Composer.Core.Steps.Setup.Gitignore)
 
-    assert diff(igniter, only: ".gitignore") =~ ".DS_Store"
+    assert diff(igniter, only: ".gitignore") =~ ".expert/"
   end
 
   test "appends to an existing .gitignore" do
@@ -16,11 +16,11 @@ defmodule Composer.Core.Steps.GitignoreTest do
       test_project(files: %{".gitignore" => "/_build/\n/deps/\n"})
       |> Igniter.compose_task(Composer.Core.Steps.Setup.Gitignore)
 
-    assert diff(igniter, only: ".gitignore") =~ ".DS_Store"
+    assert diff(igniter, only: ".gitignore") =~ ".expert/"
   end
 
-  test "is idempotent when .DS_Store is already ignored" do
-    test_project(files: %{".gitignore" => ".DS_Store\n"})
+  test "is idempotent when .expert is already ignored" do
+    test_project(files: %{".gitignore" => ".expert/\n"})
     |> Igniter.compose_task(Composer.Core.Steps.Setup.Gitignore)
     |> assert_unchanged(".gitignore")
   end

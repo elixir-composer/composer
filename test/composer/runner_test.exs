@@ -12,7 +12,7 @@ defmodule Composer.RunnerTest do
         {:module, Composer.Core.Steps.Setup.Credo}
       ])
 
-    assert diff(igniter, only: ".gitignore") =~ ".DS_Store"
+    assert diff(igniter, only: ".gitignore") =~ ".expert/"
     assert diff(igniter, only: "mix.exs") =~ ":credo"
   end
 

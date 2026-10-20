@@ -1,5 +1,5 @@
 defmodule Composer.Core.Steps.Setup.Gitignore do
-  @moduledoc "Adds macOS system files to `.gitignore`, creating the file if needed."
+  @moduledoc "Adds the expert cache directory to `.gitignore`, creating the file if needed."
   use Composer.Step,
     summary: "Adds expert cache to .gitignore",
     action: :config,

@@ -278,7 +278,7 @@ as `"core:<id>"`, e.g. `"core:setup/credo"`. `mix composer.step.list
 | `setup/dotenv_parser`          | add    | Loads `.env` in runtime config; creates and gitignores `.env`                                                                              |
 | `setup/exsync`                 | add    | Auto-recompilation on file changes (dev)                                                                                                   |
 | `setup/generator_defaults`     | config | Generators default to `binary_id` + `utc_datetime_usec`                                                                                    |
-| `setup/gitignore`              | config | Adds macOS system files to `.gitignore`                                                                                                    |
+| `setup/gitignore`              | config | Adds the expert cache (`.expert/`) to `.gitignore`                                                                                         |
 | `setup/mix_env_config`         | config | `config :app, env: Mix.env()` for runtime environment checks                                                                               |
 | `setup/mix_test_watch`         | add    | Runs tests on file changes                                                                                                                 |
 | `setup/quokka`                 | add    | Credo-configured formatter plugin                                                                                                          |
