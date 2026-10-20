@@ -20,6 +20,8 @@ sooner. Composer manages changes like:
 - creating seed data
 - configuring add-on packages: auth, mailers, API extensions, and more
 
+Each change becomes **repeatable, composable and shareable**.
+
 Composer is inspired by the `installer` feature on
 [AshHQ](https://ash-hq.org/installer/). It extends that idea so that cookbooks
 are easy to:
