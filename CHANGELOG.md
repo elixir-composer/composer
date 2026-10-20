@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.2.1 (2026-10-20)
+
+
+
+
+### Bug Fixes:
+
+* Handle failing tests by andyl
+
+* remove the requirement for 'gen_lsp' on the target app by andyl
+
+* improve did-you-mean logic by andyl
+
+* remove test warnings by andyl
+
 ## v0.2.0 (2026-10-12)
 
 

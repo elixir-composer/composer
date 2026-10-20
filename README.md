@@ -106,7 +106,7 @@ Add `composer` to your deps in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:composer, "~> 0.2.0", only: :dev},
+    {:composer, "~> 0.2.1", only: :dev},
     # ...
   ]
 end
