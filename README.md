@@ -6,9 +6,11 @@ Elixir package maintainers ship
 [generators](https://hexdocs.pm/phoenix/Mix.Tasks.Phx.New.html) and
 [igniters](https://github.com/ash-project/igniter) — indispensable tools. And
 yet, turning a generated skeleton into a working prototype can still be a lot
-of work. Knowing which defaults to remove, which packages to add, and how to
-wire and configure them lives in blog posts, READMEs, conference talks and
-people's heads. Composer aims to capture this tacit knowledge in code.
+of work. You need to know which defaults to remove, which packages to add, how
+to configure them, and a dozen other things. That knowledge is scattered across
+blog posts, READMEs, conference talks and developers' heads. Composer aims to
+capture this scattered tacit knowledge into an organized cookbook that is
+**repeatable, composable and sharable**.
 
 Composer builds on generators and Igniter to produce a skeleton that is better
 suited to its purpose from the start, so you reach a first working prototype
@@ -19,8 +21,6 @@ sooner. Composer manages changes like:
 - adding pages and navigation
 - creating seed data
 - configuring add-on packages: auth, mailers, API extensions, and more
-
-Each change becomes **repeatable, composable and shareable**.
 
 Composer is inspired by the `installer` feature on
 [AshHQ](https://ash-hq.org/installer/). It extends that idea so that cookbooks
