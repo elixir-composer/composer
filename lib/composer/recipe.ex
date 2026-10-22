@@ -8,7 +8,7 @@ defmodule Composer.Recipe do
       [
         base: [
           shortdoc: "Ash core: sourceror, ash and ash_phoenix",
-          steps: ["composer_lab:sourceror", "composer_lab:ash", "composer_lab:ash/phoenix"]
+          steps: ["cc_lab:sourceror", "cc_lab:ash", "cc_lab:ash/phoenix"]
         ],
         auth: [
           shortdoc: "Ash with authentication and accounts",
@@ -18,7 +18,7 @@ defmodule Composer.Recipe do
           flags: [oban_pro: "Add Oban Pro"],
           steps: [
             {:use, "base"},
-            "composer_lab:ash/authentication",
+            "cc_lab:ash/authentication",
             {"core:oban_pro", if: :oban_pro},
             {:task, "ash.codegen", ["initial"]},
             {:queue, "ecto.setup", []}
@@ -68,8 +68,8 @@ defmodule Composer.Recipe do
 
   ## Cookbook aliases
 
-  `aliases: [lab: "composer_lab"]` lets the recipe write `"lab:auth/passkeys"`
-  (or `{:use, "lab:auth/base"}`) for `"composer_lab:auth/passkeys"`. An
+  `aliases: [lab: "cc_lab"]` lets the recipe write `"lab:auth/passkeys"`
+  (or `{:use, "lab:auth/base"}`) for `"cc_lab:auth/passkeys"`. An
   alias is only a lookup shortcut:
 
     * it applies to the declaring recipe's own references, never inside a

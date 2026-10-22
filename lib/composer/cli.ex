@@ -157,7 +157,7 @@ defmodule Composer.CLI do
   Renders numbered entries: `   4. core:setup/credo  [local:tooling] if :dev`.
 
   With `aliases: true`, a step referenced through a cookbook alias is
-  followed by the alias: `composer_lab:auth/passkeys (as lab)`.
+  followed by the alias: `cc_lab:auth/passkeys (as lab)`.
   """
   def render_entries(entries, opts \\ []) do
     width = entries |> length() |> Integer.to_string() |> String.length()

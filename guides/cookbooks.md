@@ -5,17 +5,17 @@ contains recipes; recipes are lists of steps, filed in groups; steps render
 templates, which live beside them. Every cookbook has the same layout:
 
 ```
-lib/composer/composer_lab.ex                    # the cookbook module
-lib/composer/composer_lab/
+lib/composer/cc_lab.ex                    # the cookbook module
+lib/composer/cc_lab/
   steps/                                        # step modules
-    ash.ex                                      #   composer_lab:ash
-    ash/postgres.ex                             #   composer_lab:ash/postgres
-    astral/nav1.ex                              #   composer_lab:astral/nav1
+    ash.ex                                      #   cc_lab:ash
+    ash/postgres.ex                             #   cc_lab:ash/postgres
+    astral/nav1.ex                              #   cc_lab:astral/nav1
     astral/_nav1/navbar.astral                  #   its template: template("navbar.astral")
   recipes/                                      # recipe groups
-    lv.exs                                      #   composer_lab:lv/base, composer_lab:lv/auth, ...
+    lv.exs                                      #   cc_lab:lv/base, cc_lab:lv/auth, ...
   manifest.exs                                  # written by mix composer.cookbook.manifest
-test/composer/composer_lab/steps/
+test/composer/cc_lab/steps/
   ash_test.exs                                  # one test per step
   ash/postgres_test.exs
 ```
@@ -35,26 +35,26 @@ mix composer.gen.recipe lv/base
 ## The cookbook module
 
 ```elixir
-defmodule Composer.ComposerLab do
+defmodule Composer.CcLab do
   use Composer.Cookbook,
     summary: "Andy's composer steps",
-    homepage: "https://github.com/andyl/composer_lab"
+    homepage: "https://github.com/andyl/cc_lab"
 end
 ```
 
 ### Naming
 
-**The cookbook name equals the package's OTP app name.** `Composer.ComposerLab`
-is the cookbook `composer_lab`, and it must live in the `:composer_lab` package, in
-`lib/composer/composer_lab.ex`. So a package has exactly one cookbook, and Hex's
+**The cookbook name equals the package's OTP app name.** `Composer.CcLab`
+is the cookbook `cc_lab`, and it must live in the `:cc_lab` package, in
+`lib/composer/cc_lab.ex`. So a package has exactly one cookbook, and Hex's
 package-name uniqueness keeps cookbook names unique. A mismatch is a compile
 error that says how to fix it.
 
 The one exception is composer itself, whose built-in cookbook is `core`.
 
 Cookbook packages are usually named `composer_<x>`, which makes qualified
-references long (`composer_lab:auth/passkeys`). Recipes can declare short
-cookbook aliases (`aliases: [lab: "composer_lab"]`) for their own
+references long (`cc_lab:auth/passkeys`). Recipes can declare short
+cookbook aliases (`aliases: [lab: "cc_lab"]`) for their own
 references; see "Cookbook aliases" in the recipes guide. An alias never
 changes the cookbook's name.
 
@@ -88,7 +88,7 @@ config :composer, cookbooks: [except: [:some_cookbook]]
 A step is a module that uses `Composer.Step`:
 
 ```elixir
-defmodule Composer.ComposerLab.Steps.Ash.Postgres do
+defmodule Composer.CcLab.Steps.Ash.Postgres do
   use Composer.Step,
     summary: "Adds AshPostgres with a Postgres data layer",
     action: :add,
@@ -97,7 +97,7 @@ defmodule Composer.ComposerLab.Steps.Ash.Postgres do
     phase: :setup,
     stability: :stable,
     tags: [:postgres],
-    requires: ["composer_lab:ash", {:executable, "psql"}],
+    requires: ["cc_lab:ash", {:executable, "psql"}],
     provides: [:datalayer]
 
   @impl Igniter.Mix.Task
@@ -108,7 +108,7 @@ end
 ```
 
 The step's id is its path under `steps/`, and the module name must match it
-(`steps/ash/postgres.ex` is `Composer.ComposerLab.Steps.Ash.Postgres`), or the
+(`steps/ash/postgres.ex` is `Composer.CcLab.Steps.Ash.Postgres`), or the
 module fails to compile. Steps are Igniter tasks, so they compose into one
 diff, but they are not Mix tasks, so they never appear in `mix help`.
 
@@ -133,7 +133,7 @@ vocabulary (see `Composer.Facets`):
 
 | Facet        | Values                                                                                                       |
 |--------------|--------------------------------------------------------------------------------------------------------------|
-| `action`     | `add`, `remove`, `gen`, `config`, `patch`                                                                    |
+| `action`     | `add`, `remove`, `gen`, `config`, `patch`, `debug`                                                           |
 | `frameworks` | `phoenix`, `liveview`, `ash`, `astral`, `term_ui`, `mob`, `jido`, `ecto`                                     |
 | `capability` | `auth`, `jobs`, `deploy`, `css`, `testing`, `devtools`, `ai`, `observability`, `database`, `assets`, `icons` |
 | `phase`      | `cleanup`, `setup`, `generate`, `finalize` (advisory)                                                        |

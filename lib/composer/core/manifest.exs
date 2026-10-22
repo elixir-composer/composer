@@ -4,7 +4,9 @@
 %{
   name: "core",
   package: :composer,
-  recipes: [],
+  recipes: [
+    %{id: "debug/echo", shortdoc: "Shows how to print messages with core:echo"}
+  ],
   steps: [
     %{
       action: :gen,
@@ -43,6 +45,19 @@
       requires: [],
       stability: :stable,
       summary: "Adds libcluster for node clustering",
+      tags: []
+    },
+    %{
+      action: :debug,
+      capability: [:devtools],
+      conflicts: [],
+      frameworks: [],
+      id: "echo",
+      phase: nil,
+      provides: [],
+      requires: [],
+      stability: :stable,
+      summary: "Prints a message to stdout",
       tags: []
     },
     %{

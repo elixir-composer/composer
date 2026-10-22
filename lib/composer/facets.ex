@@ -4,7 +4,7 @@ defmodule Composer.Facets do
 
   Facets describe a step instead of encoding meaning in its module path:
 
-    * `action` - what the step does: #{inspect([:add, :remove, :gen, :config, :patch])}
+    * `action` - what the step does: #{inspect([:add, :remove, :gen, :config, :patch, :debug])}
     * `frameworks` - the frameworks it targets
     * `capability` - the capabilities it adds
     * `phase` - an advisory position in a run (list order still decides)
@@ -22,7 +22,7 @@ defmodule Composer.Facets do
       the target app declares
   """
 
-  @action [:add, :remove, :gen, :config, :patch]
+  @action [:add, :remove, :gen, :config, :patch, :debug]
   @frameworks [:phoenix, :liveview, :ash, :astral, :term_ui, :mob, :jido, :ecto]
   @capability [
     :auth,

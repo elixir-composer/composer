@@ -20,7 +20,7 @@ defmodule Mix.Tasks.Composer.Recipe.Show do
          1. core:phx/remove_theme_toggle  [local:phx/clean]
          2. core:setup/credo  [local:dev/env]
          3. core:cluster/gigalixir  [local:deploy/gigalixir] if :gigalixir
-         4. composer_lab:auth/passkeys (as lab)  [local:phx/app]
+         4. cc_lab:auth/passkeys (as lab)  [local:phx/app]
          5. core:setup/sort_deps  [local:phx/finish]
 
   Flags declared by recipes that this one `:use`s are listed after its

@@ -21,7 +21,7 @@ defmodule Composer.LSP.Complete do
 
   @doc """
   The items for `context`, from `entries` (`{kind, id, text}`) and the
-  recipe's `aliases` (`%{"lab" => "composer_lab"}`).
+  recipe's `aliases` (`%{"lab" => "cc_lab"}`).
   """
   @spec items({:steps | :use, String.t(), Composer.Lint.Diagnostic.range()} | nil, list(), map()) ::
           [item()]

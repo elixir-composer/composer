@@ -6,14 +6,14 @@ defmodule Composer.Step do
   directory instead of under `Mix.Tasks`, so it composes into a run's single
   diff but never shows up in `mix help`.
 
-      defmodule Composer.ComposerLab.Steps.Ash.Postgres do   # lib/composer/composer_lab/steps/ash/postgres.ex
+      defmodule Composer.CcLab.Steps.Ash.Postgres do   # lib/composer/cc_lab/steps/ash/postgres.ex
         use Composer.Step,
           summary: "Adds AshPostgres",
           action: :add,
           frameworks: [:ash],
           capability: [:database],
           stability: :stable,
-          requires: ["composer_lab:ash", {:executable, "psql"}]
+          requires: ["cc_lab:ash", {:executable, "psql"}]
 
         @impl Igniter.Mix.Task
         def igniter(igniter), do: ...
@@ -22,8 +22,8 @@ defmodule Composer.Step do
   ## Identity
 
   The step's id is its path under `steps/` (`"ash/postgres"`), and its
-  cookbook is the directory above `steps/` (`composer_lab`). Its reference is
-  `"composer_lab:ash/postgres"`. The module name must match that path —
+  cookbook is the directory above `steps/` (`cc_lab`). Its reference is
+  `"cc_lab:ash/postgres"`. The module name must match that path —
   `Composer.<Cookbook>.Steps.<Path...>` — or compilation fails.
 
   ## Options
@@ -201,8 +201,8 @@ defmodule Composer.Step do
 
   @doc """
   Splits a step source path into `{cookbook, id}`, e.g.
-  `".../lib/composer/composer_lab/steps/ash/postgres.ex"` gives
-  `{"composer_lab", "ash/postgres"}`. Returns `:error` when the file is not under
+  `".../lib/composer/cc_lab/steps/ash/postgres.ex"` gives
+  `{"cc_lab", "ash/postgres"}`. Returns `:error` when the file is not under
   a `lib/composer/<cookbook>/steps/` directory.
   """
   @spec path_id(Path.t()) :: {:ok, {String.t(), String.t()}} | :error
@@ -221,7 +221,7 @@ defmodule Composer.Step do
 
   @doc """
   Returns the module a step at `id` in `cookbook` must be named, e.g.
-  `Composer.ComposerLab.Steps.Ash.Postgres` for `{"composer_lab", "ash/postgres"}`.
+  `Composer.CcLab.Steps.Ash.Postgres` for `{"cc_lab", "ash/postgres"}`.
   """
   @spec module_for(String.t(), String.t()) :: module()
   def module_for(cookbook, id) do

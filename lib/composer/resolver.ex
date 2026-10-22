@@ -9,8 +9,8 @@ defmodule Composer.Resolver do
 
     0. In a recipe, a cookbook part that is one of the recipe's own
        `aliases` is first replaced by the real cookbook name
-       (`"lab:auth/passkeys"` with `lab: "composer_lab"` is
-       `"composer_lab:auth/passkeys"`); errors show the reference as
+       (`"lab:auth/passkeys"` with `lab: "cc_lab"` is
+       `"cc_lab:auth/passkeys"`); errors show the reference as
        written, with the alias noted. Aliases never apply inside an
        included recipe, nor to references given on the command line. An
        alias that is the name of an installed cookbook is an error.

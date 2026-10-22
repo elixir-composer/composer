@@ -146,7 +146,7 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
     #   shortdoc: "..."            one line, shown by mix composer.recipe.list
     #   doc: "..."                 longer help, shown by mix composer.recipe.show
     #   flags: [flag: "..."]       every if: :flag used in steps, described
-    #   aliases: [lab: "composer_lab"]  short cookbook names for this recipe's refs
+    #   aliases: [lab: "cc_lab"]  short cookbook names for this recipe's refs
     #   steps: [...]               run top to bottom, as one diff
     #
     # Step entries:

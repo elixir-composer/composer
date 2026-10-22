@@ -28,7 +28,7 @@ defmodule Composer.LSP.DefinitionTest do
     text = File.read!(@positions)
     buffer = %{text: text, path: @positions, recipe: "auth"}
 
-    assert Definition.target({:alias, "lab", "composer_lab"}, [], buffer) ==
+    assert Definition.target({:alias, "lab", "cc_lab"}, [], buffer) ==
              {@positions, {{2, 12}, {2, 16}}}
   end
 

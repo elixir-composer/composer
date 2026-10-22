@@ -8,11 +8,11 @@ defmodule Mix.Tasks.Composer.Recipe.List do
       $ mix composer.recipe.list
         local:ash/base        Ash core: sourceror, ash and ash_phoenix
         local:ash/auth        Ash with authentication, admin, TUI and accounts
-        composer_lab:lv/base  LiveView base
+        cc_lab:lv/base  LiveView base
 
       mix composer.recipe.list                    # every cookbook
       mix composer.recipe.list local              # one cookbook
-      mix composer.recipe.list local composer_lab # several cookbooks
+      mix composer.recipe.list local cc_lab # several cookbooks
       mix composer.recipe.list local:ash/         # one group (note the slash)
 
   Cookbooks are separate arguments, not a comma-separated list. A group
@@ -112,7 +112,7 @@ defmodule Mix.Tasks.Composer.Recipe.List do
     Enum.each(warnings, &Mix.shell().info([:yellow, "warning: ", &1, :reset]))
   end
 
-  # The shell passes "local, composer_lab" as "local," and "composer_lab".
+  # The shell passes "local, cc_lab" as "local," and "cc_lab".
   defp check_commas!(args) do
     if Enum.any?(args, &String.contains?(&1, ",")) do
       names = Enum.flat_map(args, &String.split(&1, ",", trim: true))

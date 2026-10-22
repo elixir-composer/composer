@@ -41,11 +41,11 @@ defmodule Mix.Tasks.Composer.ListTest do
 
   test "cookbook.list shows each cookbook with its counts", %{config: config} do
     output = run("composer.cookbook.list", ["-c", config])
-    assert output =~ ~r/core\s+composer\s+29 steps\s+0 recipes/
+    assert output =~ ~r/core\s+composer\s+30 steps\s+1 recipes/
     assert output =~ ~r/fake_book\s+fake_book\s+\d+ steps\s+3 recipes\s+A fixture cookbook/
     assert output =~ ~r/local\s+0 steps\s+1 recipes/
 
-    assert %{"cookbooks" => [%{"name" => "core", "steps" => 29} | _]} =
+    assert %{"cookbooks" => [%{"name" => "core", "steps" => 30} | _]} =
              json("composer.cookbook.list", ["-c", config])
   end
 
@@ -144,7 +144,7 @@ defmodule Mix.Tasks.Composer.ListTest do
 
     assert refs.(["fake_book", "local"]) == refs.(["fake_book"]) ++ refs.(["local"])
     assert refs.(["fake_book:main/"]) == ["fake_book:main/base", "fake_book:main/full"]
-    assert run("composer.recipe.list", ["-c", config, "core"]) =~ "No recipes found."
+    assert refs.(["core"]) == ["core:debug/echo"]
   end
 
   test "recipe.list rejects commas, unknown cookbooks and groups", %{config: config} do

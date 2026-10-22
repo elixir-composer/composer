@@ -87,7 +87,7 @@ A recipe is plain data. `mix composer.new` generates one; edit it to taste:
       "core:phx/remove_topbar",
       "core:setup/gitignore",                    # project hygiene
       "core:setup/credo",                        # add a package
-      {"composer_lab:ash/postgres", argv: ["--all"]},  # a step with arguments
+      {"cc_lab:ash/postgres", argv: ["--all"]},  # a step with arguments
       "hex:ash",                                 # a Hex package's own installer
       {"hex:oban", if: :oban},                   # optional, behind --oban
       "my_app:deploy_config",                    # your own step
@@ -185,7 +185,7 @@ mix composer.step.run phx/remove_daisy_ui    # unqualified names work too
 mix composer.step.run hex:oban               # a package's own installer
 mix composer.step.run hex:ash@github:ash-project/ash   # ... from GitHub
 mix composer.step.run hex:my_lib@path:../my_lib        # ... from a local path
-mix composer.step.run composer_lab:foo -- --bar   # arguments after -- go to the step
+mix composer.step.run cc_lab:foo -- --bar   # arguments after -- go to the step
 mix composer.step.run hex:ash_authentication -- --auth-strategy password  # ... or the installer
 ```
 
@@ -304,6 +304,7 @@ as `"core:<id>"`, e.g. `"core:setup/credo"`. `mix composer.step.list
 | `cluster/libcluster`           | add    | Node clustering: dep, supervision child, Gossip topology in dev                                                                            |
 | `tidewave/tidewave_config`     | add    | Creates `.mcp.json` pointing at a local Tidewave MCP server (follows `hex:tidewave`)                                                       |
 | `oban_pro`                     | add    | Oban Pro 1.8: Pro engine, Cron/Lifeline/Pruner/Queues services, migration (requires a license and an Oban 2.24+ setup; follows `hex:oban`) |
+| `echo`                         | debug  | Prints a message to stdout; changes nothing (for debugging recipes)                                                                        |
 
 Steps that pattern-match against `phx.new` output warn loudly when they find
 nothing to change, instead of silently no-oping.
@@ -379,9 +380,9 @@ that include the saved recipe), hover, goto-definition, completion of step
 and recipe ids, and quick fixes. See the
 [Composer LSP guide](guides/composer_lsp.md).
 
-A step entry can carry options: `{"composer_lab:x", argv: ["--all"]}` passes
+A step entry can carry options: `{"cc_lab:x", argv: ["--all"]}` passes
 arguments to the step, as `--` does on `mix composer.step.run`, and combines
-with `if:` (`{"composer_lab:x", argv: ["--all"], if: :x}`). On a `hex:`
+with `if:` (`{"cc_lab:x", argv: ["--all"], if: :x}`). On a `hex:`
 entry, `argv:` goes to the package's installer.
 
 Recipes compose: `{:use, "local:dev/tools"}` includes another recipe's

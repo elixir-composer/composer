@@ -7,7 +7,7 @@ defmodule Composer.Lint.FormatTest do
 
   defp diagnostics do
     [
-      Diagnostic.new(:warning, {:unused_alias, "local:g/a", :lab, "composer_lab"})
+      Diagnostic.new(:warning, {:unused_alias, "local:g/a", :lab, "cc_lab"})
       |> Diagnostic.locate(@file_path, {{1, 12}, {1, 16}}),
       Diagnostic.new(:error, {:missing_step, "core:nope", "local:g/a", []})
       |> Diagnostic.locate(@file_path, {{3, 7}, {3, 18}}),
@@ -19,7 +19,7 @@ defmodule Composer.Lint.FormatTest do
 
   test "compact: one line each, absolute paths, folded messages, a fallback location" do
     assert Format.compact(diagnostics(), "/project/lib/composer/x/manifest.exs") == """
-           #{@file_path}:1:12: warning: local:g/a: alias lab (= composer_lab) is never used. Remove it, or use it. [unused_alias]
+           #{@file_path}:1:12: warning: local:g/a: alias lab (= cc_lab) is never used. Remove it, or use it. [unused_alias]
            #{@file_path}:3:7: error: In recipe local:g/a: no step matches "core:nope". List steps with: mix composer.step.list [missing_step]
            #{@file_path}:5:7: error: Invalid entry in recipe local:g/b: {:nope} Expected one of: [invalid_entry]
            /project/lib/composer/x/manifest.exs:1:1: error: More than one cookbook is named "x": X.One, X.Two. A cookbook is named after its package, so each name must come from one package. Remove one of them from your dependencies, or exclude it with config :composer, cookbooks: [except: [...]]. [duplicate_cookbook]\
@@ -64,7 +64,7 @@ defmodule Composer.Lint.FormatTest do
     [warning, error | _] = diagnostics()
 
     assert Format.github([warning, error]) == """
-           ::warning file=#{@file_path},line=1,col=12,endLine=1,endColumn=16,title=composer lint [unused_alias]::local:g/a: alias lab (= composer_lab) is never used. Remove it, or use it.
+           ::warning file=#{@file_path},line=1,col=12,endLine=1,endColumn=16,title=composer lint [unused_alias]::local:g/a: alias lab (= cc_lab) is never used. Remove it, or use it.
            ::error file=#{@file_path},line=3,col=7,endLine=3,endColumn=18,title=composer lint [missing_step]::In recipe local:g/a: no step matches "core:nope". List steps with: mix composer.step.list\
            """
 

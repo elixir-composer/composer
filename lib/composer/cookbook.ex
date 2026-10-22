@@ -4,26 +4,26 @@ defmodule Composer.Cookbook do
 
   Every cookbook is laid out the same way:
 
-      lib/composer/composer_lab.ex                    # the cookbook module
-      lib/composer/composer_lab/steps/astral/nav1.ex  # a step (use Composer.Step)
-      lib/composer/composer_lab/steps/astral/_nav1/   # its templates
-      lib/composer/composer_lab/recipes/*.exs         # recipe groups (see Composer.Recipe.Group)
-      lib/composer/composer_lab/manifest.exs          # written by mix composer.cookbook.manifest
+      lib/composer/cc_lab.ex                    # the cookbook module
+      lib/composer/cc_lab/steps/astral/nav1.ex  # a step (use Composer.Step)
+      lib/composer/cc_lab/steps/astral/_nav1/   # its templates
+      lib/composer/cc_lab/recipes/*.exs         # recipe groups (see Composer.Recipe.Group)
+      lib/composer/cc_lab/manifest.exs          # written by mix composer.cookbook.manifest
 
   A step's templates live in the directory named after its file (see
   `Composer.Templates`). There is no cookbook-level `templates/` directory.
 
   and declared with:
 
-      defmodule Composer.ComposerLab do
+      defmodule Composer.CcLab do
         use Composer.Cookbook,
           summary: "Andy's composer steps",
-          homepage: "https://github.com/andyl/composer_lab"
+          homepage: "https://github.com/andyl/cc_lab"
       end
 
   ## Naming
 
-  The cookbook name comes from the module (`Composer.ComposerLab` is `composer_lab`)
+  The cookbook name comes from the module (`Composer.CcLab` is `cc_lab`)
   and must equal the package's OTP app name, so one package defines at most
   one cookbook and Hex's package uniqueness keeps cookbook names unique.
   The one exception is composer's own built-in cookbook, `core`.
@@ -157,7 +157,7 @@ defmodule Composer.Cookbook do
 
   @doc """
   Returns the module a cookbook named `name` is defined by, e.g.
-  `Composer.ComposerLab` for `"composer_lab"`.
+  `Composer.CcLab` for `"cc_lab"`.
   """
   @spec module_for(String.t()) :: module()
   def module_for(name), do: Module.concat(["Composer", Macro.camelize(name)])
@@ -425,7 +425,7 @@ defmodule Composer.Cookbook do
         compile_error!(env, """
         #{inspect(env.module)} cannot be a cookbook: a cookbook module is \
         Composer.<App>, one level below Composer, named after the package's \
-        OTP app (Composer.ComposerLab for :composer_lab).
+        OTP app (Composer.CcLab for :cc_lab).
 
         Rename the module, and move its file to lib/composer/<app>.ex.
         """)

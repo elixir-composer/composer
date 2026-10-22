@@ -6,8 +6,8 @@ defmodule Mix.Tasks.Composer.Step.Run do
 
       mix composer.step.run core:setup/credo
       mix composer.step.run setup/credo,phx/remove_topbar,hex:oban
-      mix composer.step.run composer_lab:ash/postgres --dry-run
-      mix composer.step.run composer_lab:foo -- --bar baz
+      mix composer.step.run cc_lab:ash/postgres --dry-run
+      mix composer.step.run cc_lab:foo -- --bar baz
       mix composer.step.run hex:my_lib@path:../my_lib
       mix composer.step.run hex:ash_authentication -- --auth-strategy password
 

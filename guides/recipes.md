@@ -64,7 +64,7 @@ its address, the same as moving a step.
 | `shortdoc` (required) | one line, shown by `mix composer.recipe.list`                |
 | `doc`                 | longer help, shown by `mix composer.recipe.show`             |
 | `flags`               | `[flag: "description"]`, shown by `mix composer.recipe.show` |
-| `aliases`             | `[lab: "composer_lab"]`, short cookbook names (see below)    |
+| `aliases`             | `[lab: "cc_lab"]`, short cookbook names (see below)    |
 | `steps` (required)    | the entries below                                            |
 
 Every `if: :flag` in a recipe's own steps must be declared in its own
@@ -111,14 +111,14 @@ Bindings before the list are fine, and the values can be any expression.
 | `{"hex:mix_test_watch", only: [:dev, :test], runtime: false}` | a package with dependency options |
 | `{"hex:my_lib", path: "../my_lib"}`          | a package from a source: `version:`, `github:`, `git:` or `path:` |
 | `{"core:oban_pro", if: :oban_pro}`           | a step that runs only with `--oban-pro`                        |
-| `{"composer_lab:x", argv: ["--all"]}`              | a step run with options, as after `--` on `composer.step.run`  |
+| `{"cc_lab:x", argv: ["--all"]}`              | a step run with options, as after `--` on `composer.step.run`  |
 | `{:use, "clean"}`                            | the recipe `clean` in the same group, in place                 |
 | `{:use, "local:tools/dev"}`                  | a recipe in another group or cookbook                          |
 | `{:use, "deploy/gigalixir", if: :gigalixir}` | ... only with `--gigalixir`                                    |
 | `{:task, "x.y", ["arg"]}`                    | compose any Igniter-aware Mix task                             |
 | `{:queue, "x.y", ["arg"]}`                   | run a Mix task after the changes apply                         |
 
-A step's `argv:` and `if:` combine: `{"composer_lab:x", argv: ["--all"], if: :x}`.
+A step's `argv:` and `if:` combine: `{"cc_lab:x", argv: ["--all"], if: :x}`.
 On a `hex:` entry, `argv:` goes to the package's installer (`mix
 <pkg>.install`), which always runs with `--yes` added. A package that
 ships no installer has nowhere to send `argv:`, so the run warns.
@@ -250,18 +250,18 @@ including local), with no Hex fallback.
 ## Cookbook aliases
 
 Cookbook names equal their package's OTP app, so qualified references can
-be long: `composer_lab:auth/passkeys`. A recipe can declare short names
+be long: `cc_lab:auth/passkeys`. A recipe can declare short names
 for the cookbooks it refers to:
 
 ```elixir
 passkeys: [
   shortdoc: "Passkey sign-in",
-  aliases: [lab: "composer_lab"],
+  aliases: [lab: "cc_lab"],
   steps: ["lab:auth/passkeys", {:use, "lab:auth/base"}]
 ]
 ```
 
-`lab:auth/passkeys` then resolves exactly as `composer_lab:auth/passkeys`.
+`lab:auth/passkeys` then resolves exactly as `cc_lab:auth/passkeys`.
 An alias is only a lookup shortcut; it never renames a cookbook:
 
   * it applies to the declaring recipe's own step and `{:use, ...}`
@@ -277,15 +277,15 @@ An alias is only a lookup shortcut; it never renames a cookbook:
     names, since a cookbook installed later would collide;
   * listings, `--json` and run commits show the real cookbook name;
     `recipe.show` marks an aliased step with `(as lab)`, and errors quote
-    the reference as written: `lab:auth/passkeys (lab = composer_lab):
-    cookbook composer_lab not found`.
+    the reference as written: `lab:auth/passkeys (lab = cc_lab):
+    cookbook cc_lab not found`.
 
 To share aliases across a group, bind them before the final list (the
 file must still end in a literal keyword list):
 
 ```elixir
 # recipes/auth.exs
-aliases = [lab: "composer_lab"]
+aliases = [lab: "cc_lab"]
 
 [
   passkeys: [shortdoc: "Passkey sign-in", aliases: aliases, steps: ["lab:auth/passkeys"]],
@@ -298,7 +298,7 @@ aliases = [lab: "composer_lab"]
   * **Include-once.** A recipe is expanded at most once per run; later
     includes of it are no-ops. A diamond is not a cycle.
   * **No cycles.** A cycle is an error that prints the whole chain, across
-    groups and cookbooks: `local:ash/a -> composer_lab:lv/b -> local:ash/a`.
+    groups and cookbooks: `local:ash/a -> cc_lab:lv/b -> local:ash/a`.
   * **De-duplication.** A step equal to an earlier one is dropped, first
     occurrence wins — `"setup/credo"` and `"core:setup/credo"` count as the
     same step.
@@ -313,7 +313,7 @@ aliases = [lab: "composer_lab"]
 ```bash
 mix composer.recipe.list                        # every cookbook, local first
 mix composer.recipe.list local                  # one cookbook
-mix composer.recipe.list local composer_lab     # several (separate arguments)
+mix composer.recipe.list local cc_lab     # several (separate arguments)
 mix composer.recipe.list local:phx/             # one group (note the slash)
 mix composer.recipe.show local:phx/app          # docs, flags, resolved steps
 mix composer.recipe.edit local:phx/app          # open its group file in your editor
@@ -386,14 +386,14 @@ point `{:use, "local:old_name"}` at the new address (or at `{:use,
 ```elixir
 # before: recipes/ash_base.exs and recipes/ash_ecto.exs
 # Ash with the Postgres data layer.
-[{:use, "local:ash_base"}, "composer_lab:ash/postgres"]
+[{:use, "local:ash_base"}, "cc_lab:ash/postgres"]
 
 # after: recipes/ash.exs
 [
-  base: [shortdoc: "Ash core", steps: ["composer_lab:ash"]],
+  base: [shortdoc: "Ash core", steps: ["cc_lab:ash"]],
   ecto: [
     shortdoc: "Ash with the Postgres data layer",
-    steps: [{:use, "base"}, "composer_lab:ash/postgres"]
+    steps: [{:use, "base"}, "cc_lab:ash/postgres"]
   ]
 ]
 ```

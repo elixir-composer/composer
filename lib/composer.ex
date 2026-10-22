@@ -31,7 +31,7 @@ defmodule Composer do
       `Composer.Local`.
 
     * **Reference** - the string `"cookbook:path"` that names a step or a
-      recipe, e.g. `"core:setup/credo"` or `"composer_lab:ash/postgres"`. An unqualified
+      recipe, e.g. `"core:setup/credo"` or `"cc_lab:ash/postgres"`. An unqualified
       `"path"` is looked up in the referring recipe's own cookbook first,
       then everywhere; a name that matches no step is a Hex package
       (`"oban"` is `"hex:oban"`). See `Composer.Resolver`.

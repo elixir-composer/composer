@@ -22,7 +22,7 @@ defmodule Composer.LSP.CursorTest do
                  cursor = Cursor.at(text, @fixture, 12, 10)
 
         assert cursor.recipe == "auth"
-        assert cursor.aliases == %{"lab" => "composer_lab"}
+        assert cursor.aliases == %{"lab" => "cc_lab"}
       end
 
       test "a {:use, ...} target", context do
@@ -92,7 +92,7 @@ defmodule Composer.LSP.CursorTest do
 
   test "aliases are scanned from lists and bindings, the nearest first" do
     text = """
-    shared = [lab: "composer_lab"]
+    shared = [lab: "cc_lab"]
     [
       a: [aliases: [lab: "other", x: "y"], steps: []],
       b: [aliases: shared, steps: []]
@@ -100,6 +100,6 @@ defmodule Composer.LSP.CursorTest do
     """
 
     assert Cursor.scan_aliases(text, 3) == %{"lab" => "other", "x" => "y"}
-    assert Cursor.scan_aliases(text, 2) == %{"lab" => "composer_lab", "x" => "y"}
+    assert Cursor.scan_aliases(text, 2) == %{"lab" => "cc_lab", "x" => "y"}
   end
 end

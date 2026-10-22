@@ -6,8 +6,8 @@ defmodule Composer.RefTest do
   doctest Composer.Ref
 
   test "parses qualified and unqualified references, normalizing - to _" do
-    assert {:ok, %Ref{cookbook: "composer_lab", path: "ash/postgres"}} =
-             Ref.parse("composer_lab:ash/postgres")
+    assert {:ok, %Ref{cookbook: "cc_lab", path: "ash/postgres"}} =
+             Ref.parse("cc_lab:ash/postgres")
 
     assert {:ok, %Ref{cookbook: nil, path: "daisy_ui"}} = Ref.parse("daisy-ui")
     assert {:ok, %Ref{cookbook: "hex", path: "oban.oban_pro"}} = Ref.parse("hex:oban.oban_pro")

@@ -24,7 +24,7 @@ defmodule Mix.Tasks.Composer.New do
   Pass `--from` with a recipe reference (from a dependency's cookbook or
   your local one) to copy *that* recipe instead of the built-in cookbook:
 
-      mix composer.new --from composer_lab:lv/base
+      mix composer.new --from cc_lab:lv/base
       mix composer.new --from local:phx/app
 
   The copy becomes `app/default`. Unqualified `{:use, ...}` entries are

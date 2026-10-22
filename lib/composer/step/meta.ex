@@ -3,7 +3,7 @@ defmodule Composer.Step.Meta do
   A step's declared metadata, returned by its `__composer_step__/0`.
 
   `id` is the step's path under its cookbook's `steps/` directory
-  (`"ash/postgres"`), and `ref` the full reference (`"composer_lab:ash/postgres"`).
+  (`"ash/postgres"`), and `ref` the full reference (`"cc_lab:ash/postgres"`).
   """
 
   defstruct [

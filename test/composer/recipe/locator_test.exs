@@ -73,7 +73,7 @@ defmodule Composer.Recipe.LocatorTest do
   end
 
   test "alias targets, literal or through a binding", %{index: index} do
-    assert Locator.recipe(index, "auth").alias_targets == %{lab: "composer_lab"}
+    assert Locator.recipe(index, "auth").alias_targets == %{lab: "cc_lab"}
     assert Locator.recipe(index, "base").alias_targets == %{}
 
     {:ok, index} = Locator.index(~s|[a: [aliases: [x: "one", y: :atom], steps: []]]|, "g.exs")

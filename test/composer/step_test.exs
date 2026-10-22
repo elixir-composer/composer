@@ -41,24 +41,24 @@ defmodule Composer.StepTest do
   end
 
   test "path_id/1 and module_for/2 mirror each other" do
-    assert Step.path_id("/x/lib/composer/composer_lab/steps/ash/postgres.ex") ==
-             {:ok, {"composer_lab", "ash/postgres"}}
+    assert Step.path_id("/x/lib/composer/cc_lab/steps/ash/postgres.ex") ==
+             {:ok, {"cc_lab", "ash/postgres"}}
 
     assert Step.path_id("/x/lib/mix/tasks/foo.ex") == :error
     # A leading underscore marks a template directory, never a step.
-    assert Step.path_id("/x/lib/composer/composer_lab/steps/_ash/postgres.ex") == :error
-    assert Step.path_id("/x/lib/composer/composer_lab/steps/ash/_postgres.ex") == :error
+    assert Step.path_id("/x/lib/composer/cc_lab/steps/_ash/postgres.ex") == :error
+    assert Step.path_id("/x/lib/composer/cc_lab/steps/ash/_postgres.ex") == :error
 
-    assert Step.module_for("composer_lab", "ash/postgres") ==
-             Composer.ComposerLab.Steps.Ash.Postgres
+    assert Step.module_for("cc_lab", "ash/postgres") ==
+             Composer.CcLab.Steps.Ash.Postgres
   end
 
   test "template_dir/1 and dir/1 prefix the step's last segment with an underscore" do
     assert Step.template_dir("ash") == "_ash"
     assert Step.template_dir("ash/postgres") == "ash/_postgres"
 
-    assert Step.dir("/x/lib/composer/composer_lab/steps/ash/postgres.ex") ==
-             "/x/lib/composer/composer_lab/steps/ash/_postgres"
+    assert Step.dir("/x/lib/composer/cc_lab/steps/ash/postgres.ex") ==
+             "/x/lib/composer/cc_lab/steps/ash/_postgres"
   end
 
   defp compile(module, file, opts) do

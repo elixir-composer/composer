@@ -98,7 +98,7 @@ defmodule Composer.Error do
         :doc -> "a string"
         :flags -> ~s(a keyword list of flag descriptions, e.g. [oban_pro: "Add Oban Pro"])
         :steps -> "a list of step entries"
-        :aliases -> ~s(a keyword list of cookbook names, e.g. [lab: "composer_lab"])
+        :aliases -> ~s(a keyword list of cookbook names, e.g. [lab: "cc_lab"])
       end
 
     "Recipe #{ref} has an invalid #{key}: #{inspect(value, limit: 10)}. Expected #{expected}."
@@ -127,7 +127,7 @@ defmodule Composer.Error do
     """
     Recipe #{ref} aliases #{name} to #{inspect(target)}, which is not a \
     package cookbook name. An alias target is the name of an installed \
-    package's cookbook (its OTP app, e.g. "composer_lab"); core, hex, \
+    package's cookbook (its OTP app, e.g. "cc_lab"); core, hex, \
     local and other reserved names cannot be aliased.
     """
   end

@@ -2,8 +2,8 @@ defmodule Composer.Ref do
   @moduledoc """
   A reference to a step or recipe: `"cookbook:path"`.
 
-      iex> Composer.Ref.parse("composer_lab:ash/postgres")
-      {:ok, %Composer.Ref{cookbook: "composer_lab", path: "ash/postgres"}}
+      iex> Composer.Ref.parse("cc_lab:ash/postgres")
+      {:ok, %Composer.Ref{cookbook: "cc_lab", path: "ash/postgres"}}
 
       iex> Composer.Ref.parse("ash/postgres")
       {:ok, %Composer.Ref{cookbook: nil, path: "ash/postgres"}}

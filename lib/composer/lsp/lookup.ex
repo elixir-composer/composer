@@ -120,7 +120,7 @@ defmodule Composer.LSP.Lookup do
 
   @doc """
   Replaces an aliased cookbook part of `written` with the cookbook it
-  names in `aliases` (`%{"lab" => "composer_lab"}`).
+  names in `aliases` (`%{"lab" => "cc_lab"}`).
   """
   @spec expand(String.t(), %{String.t() => String.t()}) :: String.t()
   def expand(written, aliases) do

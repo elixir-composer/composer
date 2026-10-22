@@ -1,5 +1,5 @@
 # Positions in this file are asserted by locator_test.exs: edit with care.
-aliases = [lab: "composer_lab"]
+aliases = [lab: "cc_lab"]
 shared = ["core:setup/gitignore"]
 name = "dynamic"
 

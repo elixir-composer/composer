@@ -4,7 +4,7 @@ A step can ship files to write into apps. They live beside the step, in
 the directory named after its file with a leading underscore:
 
 ```
-lib/composer/composer_lab/steps/phoenix/
+lib/composer/cc_lab/steps/phoenix/
   sidebar_layout.ex                                   # the step
   _sidebar_layout/                                    # its templates
     app_fn.ex.eex
@@ -21,7 +21,7 @@ Steps write them with `Composer.Templates`. Inside a step, `template/1`
 takes a path relative to the step's template directory:
 
 ```elixir
-defmodule Composer.ComposerLab.Steps.Phoenix.SidebarLayout do
+defmodule Composer.CcLab.Steps.Phoenix.SidebarLayout do
   use Composer.Step,
     summary: "Replaces the app layout with a sidebar layout",
     action: :patch,
@@ -49,8 +49,8 @@ compiles. A typo fails `mix compile`, naming the step, the path and where
 it looked:
 
 ```
-** (CompileError) lib/composer/composer_lab/steps/phoenix/sidebar_layout.ex:15:
-Composer.ComposerLab.Steps.Phoenix.SidebarLayout: template "app_fn.eex" does not exist.
+** (CompileError) lib/composer/cc_lab/steps/phoenix/sidebar_layout.ex:15:
+Composer.CcLab.Steps.Phoenix.SidebarLayout: template "app_fn.eex" does not exist.
 ```
 
 The file is also registered as an external resource, so editing a template
@@ -85,8 +85,8 @@ a test — refers to a step's templates with `Composer.Templates.ref/2`,
 naming the step module:
 
 ```elixir
-Composer.Templates.ref(Composer.ComposerLab.Steps.Astral.DaisyComponents, "components/button.astral")
-#=> {"composer_lab", "astral/daisy_components", "components/button.astral"}
+Composer.Templates.ref(Composer.CcLab.Steps.Astral.DaisyComponents, "components/button.astral")
+#=> {"cc_lab", "astral/daisy_components", "components/button.astral"}
 
 Composer.Templates.path(ref)   # the absolute path, raising when it is missing
 ```

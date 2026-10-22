@@ -41,7 +41,7 @@ defmodule Composer.CookbookTest do
     assert "ash/postgres" in ids and "hello" in ids
 
     core = Cookbook.from_module(Composer.Core)
-    assert length(Cookbook.steps(core)) == 29
+    assert length(Cookbook.steps(core)) == 30
 
     assert {:ok, %{ref: "core:cluster/gigalixir/libcluster"}} =
              Cookbook.step(core, "cluster/gigalixir/libcluster")

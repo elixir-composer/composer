@@ -109,12 +109,12 @@ defmodule Composer.ResolverTest do
     end
 
     test "an unknown cookbook suggests adding the package", %{tmp_dir: dir} do
-      books = cookbooks(dir, %{"g/p" => ~s(["composer_lab:ash"])})
+      books = cookbooks(dir, %{"g/p" => ~s(["cc_lab:ash"])})
 
-      assert {:error, {:unknown_cookbook, "composer_lab", _, _, _} = reason} =
+      assert {:error, {:unknown_cookbook, "cc_lab", _, _, _} = reason} =
                resolve(books, "local:g/p")
 
-      assert Composer.Error.message(reason) =~ "{:composer_lab, \"~> x.y\", only: :dev}"
+      assert Composer.Error.message(reason) =~ "{:cc_lab, \"~> x.y\", only: :dev}"
     end
 
     test "resolve_steps/3 resolves command-line refs with own-cookbook context and argv", %{
@@ -649,16 +649,16 @@ defmodule Composer.ResolverTest do
       books =
         aliased(dir, """
         [
-          missing: [shortdoc: "x", aliases: [lab: "composer_lab"], steps: ["lab:auth/passkeys"]],
+          missing: [shortdoc: "x", aliases: [lab: "cc_lab"], steps: ["lab:auth/passkeys"]],
           no_step: [shortdoc: "x", aliases: [fb: "fake_book"], steps: ["fb:nope/nothing"]]
         ]
         """)
 
       assert {:error, reason} = resolve(books, "local:g/missing")
-      assert {:unknown_alias_target, "lab:auth/passkeys", "lab", "composer_lab", _, _} = reason
+      assert {:unknown_alias_target, "lab:auth/passkeys", "lab", "cc_lab", _, _} = reason
 
       assert Composer.Error.message(reason) =~
-               "lab:auth/passkeys (lab = composer_lab): cookbook composer_lab not found"
+               "lab:auth/passkeys (lab = cc_lab): cookbook cc_lab not found"
 
       assert {:error, {:via_alias, _, "fb", "fake_book", {:missing_step, _, _, _}} = reason} =
                resolve(books, "local:g/no_step")

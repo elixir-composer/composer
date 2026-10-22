@@ -8,18 +8,18 @@ defmodule Composer.CompletionTest do
   @script Path.expand("priv/completion/composer.bash")
 
   @index """
-  group\tcomposer_lab:lv/\t1 recipe
+  group\tcc_lab:lv/\t1 recipe
   group\tlocal:ash/\t2 recipes
   group\tlocal:lv/\t1 recipe
-  recipe\tcomposer_lab:lv/base\tLiveView base
+  recipe\tcc_lab:lv/base\tLiveView base
   recipe\tlocal:ash/auth\tAsh with auth
   recipe\tlocal:ash/base\tAsh core
   recipe\tlocal:lv/base\tMy LiveView
-  cookbook\tcomposer_lab\tAndy's steps
+  cookbook\tcc_lab\tAndy's steps
   cookbook\tcore\tBuilt-in steps
   cookbook\tlocal\tYour recipes
-  step\tcomposer_lab:ash\tAdds Ash
-  step\tcomposer_lab:ash/postgres\tAdds AshPostgres
+  step\tcc_lab:ash\tAdds Ash
+  step\tcc_lab:ash/postgres\tAdds AshPostgres
   step\tcore:setup/credo\tAdds Credo
   """
 
@@ -57,28 +57,28 @@ defmodule Composer.CompletionTest do
   defp shell_quote(word), do: "'" <> String.replace(word, "'", ~S('\'')) <> "'"
 
   test "completes ids, trimming what bash already has before the last ':'", %{tmp_dir: dir} do
-    assert complete(dir, "mix composer.step.run composer_lab:a") == ["ash", "ash/postgres"]
+    assert complete(dir, "mix composer.step.run cc_lab:a") == ["ash", "ash/postgres"]
 
-    assert complete(dir, "mix composer.step.edit composer_lab:ash/") == ["ash/postgres"]
-    assert complete(dir, "mix composer.step.help composer_lab:ash/") == ["ash/postgres"]
+    assert complete(dir, "mix composer.step.edit cc_lab:ash/") == ["ash/postgres"]
+    assert complete(dir, "mix composer.step.help cc_lab:ash/") == ["ash/postgres"]
 
-    assert complete(dir, "mix composer.step.show co") == [
-             "composer_lab:ash",
-             "composer_lab:ash/postgres",
+    assert complete(dir, "mix composer.step.show c") == [
+             "cc_lab:ash",
+             "cc_lab:ash/postgres",
              "core:setup/credo"
            ]
 
-    # Together with the "composer_lab:" already on the line, these are full ids.
+    # Together with the "cc_lab:" already on the line, these are full ids.
     assert Enum.map(
-             complete(dir, "mix composer.step.run composer_lab:ash/"),
-             &("composer_lab:" <> &1)
+             complete(dir, "mix composer.step.run cc_lab:ash/"),
+             &("cc_lab:" <> &1)
            ) ==
-             ["composer_lab:ash/postgres"]
+             ["cc_lab:ash/postgres"]
   end
 
   test "completes the last item of a comma-separated list", %{tmp_dir: dir} do
     # Bash replaces the word after the last ":", so "ash/" becomes "ash/postgres".
-    assert complete(dir, "mix composer.step.run core:setup/credo,composer_lab:ash/") == [
+    assert complete(dir, "mix composer.step.run core:setup/credo,cc_lab:ash/") == [
              "ash/postgres"
            ]
   end
@@ -97,8 +97,8 @@ defmodule Composer.CompletionTest do
     assert complete(dir, "mix composer.recipe.list lo") ==
              ["local:ash/", "local:lv/", "local"]
 
-    assert complete(dir, "mix composer.recipe.list local co") ==
-             ["composer_lab:lv/", "composer_lab", "core"]
+    assert complete(dir, "mix composer.recipe.list local c") ==
+             ["cc_lab:lv/", "cc_lab", "core"]
 
     assert complete(dir, "mix composer.recipe.list local:a") == ["ash/"]
   end

@@ -84,8 +84,8 @@ defmodule Composer.Templates do
 
   This is how code outside a step refers to a step's templates:
 
-      Composer.Templates.ref(Composer.ComposerLab.Steps.Astral.DaisyComponents, "components/button.astral")
-      #=> {"composer_lab", "astral/daisy_components", "components/button.astral"}
+      Composer.Templates.ref(Composer.CcLab.Steps.Astral.DaisyComponents, "components/button.astral")
+      #=> {"cc_lab", "astral/daisy_components", "components/button.astral"}
 
   Inside a step, use `template/1`, which is also checked at compile time.
   Raises when `step` is not a step module.

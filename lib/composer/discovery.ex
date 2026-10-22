@@ -23,7 +23,7 @@ defmodule Composer.Discovery do
 
       # config/config.exs
       config :composer, cookbooks: [except: [:some_cookbook]]
-      config :composer, cookbooks: [only: [:composer_lab]]
+      config :composer, cookbooks: [only: [:cc_lab]]
 
   Dependencies must be compiled before discovery, which is why composer's
   tasks run `mix compile` first; an uncompiled dependency's cookbook is not

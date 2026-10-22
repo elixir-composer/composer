@@ -7,7 +7,7 @@ defmodule Mix.Tasks.Composer.Cookbook.List do
 
       $ mix composer.cookbook.list
         core          composer      29 steps  0 recipes  Composer's built-in steps for Phoenix apps
-        composer_lab  composer_lab  41 steps  6 recipes  Andy's composer steps
+        cc_lab  cc_lab  41 steps  6 recipes  Andy's composer steps
         local                        0 steps  3 recipes  Your recipes in ~/.config/composer
 
   A dependency's cookbook is found when the dependency ships

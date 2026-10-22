@@ -28,7 +28,7 @@ task fail.
 
 ```
 /home/me/.config/composer/recipes/auth.exs:15:8: error: In recipe local:auth/passkeys: no step matches "credoo". Did you mean: core:setup/credo? ... [typo]
-/home/me/.config/composer/recipes/auth.exs:13:15: warning: local:auth/magic: alias lab (= composer_lab) is never used. Remove it, or use it. [unused_alias]
+/home/me/.config/composer/recipes/auth.exs:13:15: warning: local:auth/magic: alias lab (= cc_lab) is never used. Remove it, or use it. [unused_alias]
 ```
 
 That is `file:line:col: severity: message [code]`, the shape of GCC and of

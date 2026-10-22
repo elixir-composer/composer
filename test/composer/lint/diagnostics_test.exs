@@ -152,8 +152,7 @@ defmodule Composer.Lint.DiagnosticsTest do
       assert Error.anchor({:typo, "x", "local:a/b", []}) == {:ref, "local:a/b", "x"}
 
       assert Error.anchor(
-               {:via_alias, "lab:x", :lab, "composer_lab",
-                {:missing_step, "composer_lab:x", "local:a/b", []}}
+               {:via_alias, "lab:x", :lab, "cc_lab", {:missing_step, "cc_lab:x", "local:a/b", []}}
              ) ==
                {:ref, "local:a/b", "lab:x"}
     end

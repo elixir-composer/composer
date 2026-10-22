@@ -7,11 +7,11 @@ defmodule Composer.Recipe.Group do
       [
         base: [
           shortdoc: "Ash core: sourceror, ash and ash_phoenix",
-          steps: ["composer_lab:sourceror", "composer_lab:ash", "composer_lab:ash/phoenix"]
+          steps: ["cc_lab:sourceror", "cc_lab:ash", "cc_lab:ash/phoenix"]
         ],
         ecto: [
           shortdoc: "Ash with the Postgres data layer",
-          steps: [{:use, "base"}, "composer_lab:ash/postgres"]
+          steps: [{:use, "base"}, "cc_lab:ash/postgres"]
         ]
       ]
 
@@ -29,7 +29,7 @@ defmodule Composer.Recipe.Group do
   cookbook aliases (see `Composer.Recipe`):
 
       # recipes/auth.exs
-      aliases = [lab: "composer_lab"]
+      aliases = [lab: "cc_lab"]
 
       [
         passkeys: [
