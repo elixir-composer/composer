@@ -9,7 +9,7 @@ aliases = [fb: "fake_book", gone: "not_installed", ob: "other_book"]
       "core:setup/credoo",
       "credoo",
       "nope:x",
-      "local:x",
+      "mine:x",
       "hello",
       {"setup/gitignore", only: :dev},
       "gone:x",
@@ -18,7 +18,7 @@ aliases = [fb: "fake_book", gone: "not_installed", ob: "other_book"]
       "ob:hello"
     ]
   ],
-  uses: [shortdoc: "x", steps: [{:use, "nope"}, {:use, "local:refs/nope"}]],
+  uses: [shortdoc: "x", steps: [{:use, "nope"}, {:use, "mine:refs/nope"}]],
   shadow: [shortdoc: "x", aliases: [other_book: "fake_book"], steps: ["other_book:hello"]],
   unused: [shortdoc: "x", aliases: [fb: "other_book"], steps: []],
   install: [shortdoc: "x", steps: ["hex:oban", {"hex:oban", argv: ["--x"]}]],

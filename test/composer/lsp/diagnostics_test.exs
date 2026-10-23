@@ -1,21 +1,22 @@
 defmodule Composer.LSP.DiagnosticsTest do
   use ExUnit.Case, async: true
 
-  alias Composer.{Discovery, Lint}
+  alias Composer.Lint
+  import Composer.Test.Cookbooks
   alias Composer.LSP.Diagnostics
 
   @moduletag :tmp_dir
 
   setup %{tmp_dir: dir} do
-    {:ok, cookbooks} = Discovery.cookbooks(apps: [:fake_book, :other_book], local: false)
+    cookbooks = discover(dir, [:fake_book, :other_book])
     File.mkdir_p!(Path.join(dir, "recipes"))
 
     write = fn name, source -> File.write!(Path.join([dir, "recipes", name]), source) end
     write.("ash.exs", ~s|[\n  base: [shortdoc: "x", steps: ["credoo"]]\n]\n|)
-    write.("app.exs", ~s|[\n  full: [shortdoc: "x", steps: [{:use, "local:ash/base"}]]\n]\n|)
+    write.("app.exs", ~s|[\n  full: [shortdoc: "x", steps: [{:use, "mine:ash/base"}]]\n]\n|)
     write.("other.exs", ~s|[\n  ok: [shortdoc: "x", steps: ["core:setup/gitignore"]]\n]\n|)
 
-    args = %{cookbooks: cookbooks, local_dir: dir, root: File.cwd!(), known_dependents: []}
+    args = %{cookbooks: cookbooks, root: File.cwd!(), known_dependents: []}
     %{args: args, ash: Path.join(dir, "recipes/ash.exs"), app: Path.join(dir, "recipes/app.exs")}
   end
 
@@ -31,7 +32,7 @@ defmodule Composer.LSP.DiagnosticsTest do
 
     # The saved file's own diagnostics are lint --file's.
     assert results[ash] ==
-             Lint.files(args.cookbooks, [ash], local: args.local_dir, root: args.root)[ash]
+             Lint.files(args.cookbooks, [ash], root: args.root)[ash]
   end
 
   test "known dependents are linted even when no longer found", %{

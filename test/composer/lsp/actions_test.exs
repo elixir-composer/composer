@@ -9,7 +9,7 @@ defmodule Composer.LSP.ActionsTest do
   test "a typo's suggestion replaces the quoted reference" do
     typo =
       :error
-      |> Diagnostic.new({:typo, "credoo", "local:a/x", ["core:setup/credo"]})
+      |> Diagnostic.new({:typo, "credoo", "mine:a/x", ["core:setup/credo"]})
       |> Diagnostic.locate("/r/recipes/a.exs", {{1, 21}, {1, 29}})
       |> Convert.diagnostic(:utf16, fn _, _ -> ~s|[x: [steps: ["a", "credoo"]]]| end)
 

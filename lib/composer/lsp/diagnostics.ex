@@ -5,7 +5,7 @@ defmodule Composer.LSP.Diagnostics do
 
   The file's recipes are read with `Composer.Recipe.Locator` (so even a
   file that does not evaluate names them), their dependents found with
-  `Composer.Lint.dependents/3`, and everything linted in one pass with
+  `Composer.Lint.dependents/2`, and everything linted in one pass with
   `Composer.Lint.files/3`, given what `mix composer.cookbook.lint --file`
   gives it, so the results are the same.
 
@@ -19,7 +19,6 @@ defmodule Composer.LSP.Diagnostics do
 
   @type args :: %{
           cookbooks: [Composer.Cookbook.t()],
-          local_dir: Path.t() | nil,
           root: Path.t() | nil,
           known_dependents: [Path.t()]
         }
@@ -31,9 +30,7 @@ defmodule Composer.LSP.Diagnostics do
   @spec run(Path.t(), args()) ::
           :ignore | {:ok, %{Path.t() => [Composer.Lint.Diagnostic.t()]}, [Path.t()]}
   def run(path, args) do
-    opts = [local: args.local_dir]
-
-    case Lint.owner(args.cookbooks, path, opts) do
+    case Lint.owner(args.cookbooks, path) do
       {:ok, owner} ->
         found =
           case refs(owner, path) do
@@ -41,7 +38,7 @@ defmodule Composer.LSP.Diagnostics do
               []
 
             refs ->
-              for %{path: dependent} <- Lint.dependents(args.cookbooks, refs, opts), do: dependent
+              for %{path: dependent} <- Lint.dependents(args.cookbooks, refs), do: dependent
           end
 
         dependents =
@@ -49,7 +46,7 @@ defmodule Composer.LSP.Diagnostics do
           |> Enum.uniq()
           |> List.delete(path)
 
-        results = Lint.files(args.cookbooks, [path | dependents], opts ++ [root: args.root])
+        results = Lint.files(args.cookbooks, [path | dependents], root: args.root)
         {:ok, results, dependents}
 
       {:error, _not_a_recipe_file} ->

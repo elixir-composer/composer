@@ -10,7 +10,7 @@ defmodule Mix.Tasks.Composer.Completion do
 
   The script completes step ids for `mix composer.step.{run,show,edit}`, recipe
   ids for `mix composer.recipe.{run,show,edit}`, and cookbook and group names
-  (`local`, `local:ash/`) for `mix composer.recipe.list`, from
+  (`cb_lab`, `cb_lab:lv/`) for `mix composer.recipe.list`, from
   `_build/composer/index`
   without starting the BEAM, and hands every other `mix` completion to
   [mix_completions](https://hex.pm/packages/mix_completions) when it is

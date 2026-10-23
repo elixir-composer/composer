@@ -336,43 +336,6 @@ defmodule Composer.Error do
     """
   end
 
-  def message({:local_recipes_only, dir, entry}) do
-    """
-    Local holds recipes only, but #{Path.join(dir, entry)} exists.
-
-    #{dir} holds your recipe groups under recipes/. Put personal steps or \
-    templates in a cookbook package added as a path dependency (see \
-    mix composer.gen.cookbook), and remove #{entry}/.
-    """
-  end
-
-  def message({:local_unrecognized, dir, entry}) do
-    "#{Path.join(dir, entry)} is not recognized. Your config directory holds recipe groups under recipes/ only."
-  end
-
-  def message({:config_dir_not_dir, path}) do
-    """
-    The composer config path #{path} is a file, not a directory.
-
-    The config is a directory holding your recipe groups under recipes/ \
-    (e.g. recipes/ash.exs, holding local:ash/base, local:ash/auth, ...). \
-    A single recipes.exs file is no longer supported; create a recipe with:
-
-        mix composer.gen.recipe my_group/my_recipe --local
-    """
-  end
-
-  def message({:config_dir_missing, path}) do
-    """
-    The composer config directory #{path} does not exist.
-
-    It was given with -c or COMPOSER_CONFIG. Create it, or create a first \
-    recipe in it with:
-
-        mix composer.gen.recipe my_group/my_recipe --local -c #{path}
-    """
-  end
-
   def message({:duplicate_cookbook, name, modules}) do
     """
     More than one cookbook is named #{inspect(name)}: #{Enum.map_join(modules, ", ", &inspect/1)}.
@@ -381,10 +344,6 @@ defmodule Composer.Error do
     package. Remove one of them from your dependencies, or exclude it with \
     config :composer, cookbooks: [except: [...]].
     """
-  end
-
-  def message({:local_step, ref, origin}) do
-    "#{where(origin)}#{inspect(ref)} names a step in local, which holds recipes only. Reference a package cookbook's step instead."
   end
 
   def message({:dep_opts_on_step, written, step_ref, origin, keys}) do
@@ -454,7 +413,7 @@ defmodule Composer.Error do
           if(origin,
             do: "An unqualified name refers to a recipe in the same group.\n\n",
             else:
-              "Recipes are addressed as \"cookbook:group/name\" (e.g. \"local:ash/base\").\n\n"
+              "Recipes are addressed as \"cookbook:group/name\" (e.g. \"cb_lab:lv/base\").\n\n"
           )
 
     "#{where(origin)}no recipe matches #{inspect(ref)}.\n\n" <>
@@ -540,14 +499,9 @@ defmodule Composer.Error do
 
   def message({:lint_file_unknown, path}) do
     """
-    #{path} is not a recipe group of your local config or of an installed \
-    cookbook. --file takes a file under the local config directory's \
-    recipes/, or under a cookbook's lib/composer/<name>/recipes/.
+    #{path} is not a recipe group of an installed cookbook. --file takes a \
+    file under a cookbook's lib/composer/<name>/recipes/.
     """
-  end
-
-  def message({:lint_file_mismatch, path, cookbook}) do
-    "--local was given, but #{path} belongs to the cookbook #{cookbook}. Drop --local; --file finds the cookbook from the path."
   end
 
   def message(other), do: "composer error: #{inspect(other)}"
@@ -656,9 +610,6 @@ defmodule Composer.Error do
       do: {:entry, ref, entry}
 
   def anchor({:bad_entry_option, ref, entry, _key, _value}), do: {:entry, ref, entry}
-  def anchor({:local_recipes_only, dir, entry}), do: {:file, Path.join(dir, entry)}
-  def anchor({:local_unrecognized, dir, entry}), do: {:file, Path.join(dir, entry)}
-  def anchor({:local_step, ref, origin}), do: {:ref, origin, ref}
 
   def anchor({:dep_opts_on_step, written, _step_ref, origin, _keys}),
     do: {:ref, origin, written}
@@ -691,12 +642,9 @@ defmodule Composer.Error do
   def anchor({:unknown_flag, _switch, _root, _declared}), do: nil
   def anchor({:reserved_flag, _flag}), do: nil
   def anchor({:requires_unmet, _failures}), do: nil
-  def anchor({:config_dir_not_dir, _path}), do: nil
-  def anchor({:config_dir_missing, _path}), do: nil
   def anchor({:duplicate_cookbook, _name, _modules}), do: nil
   def anchor({:lint_file_missing, _path}), do: nil
   def anchor({:lint_file_unknown, _path}), do: nil
-  def anchor({:lint_file_mismatch, _path, _cookbook}), do: nil
   def anchor(:not_in_project), do: nil
 
   def anchor(_other), do: :unknown

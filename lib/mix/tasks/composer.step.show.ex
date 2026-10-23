@@ -14,7 +14,6 @@ defmodule Mix.Tasks.Composer.Step.Show do
 
   ## Options
 
-    * `-c`, `--config` - the local config directory (see `Composer.Local`)
     * `--json` - print JSON instead of text
   """
 
@@ -33,7 +32,7 @@ defmodule Mix.Tasks.Composer.Step.Show do
         _ -> Mix.raise("Usage: mix composer.step.show REF")
       end
 
-    cookbooks = CLI.cookbooks!(opts[:config])
+    cookbooks = CLI.cookbooks!()
 
     case CLI.ok!(Resolver.find_step(cookbooks, ref, CLI.context(cookbooks))) do
       {:step, meta} ->

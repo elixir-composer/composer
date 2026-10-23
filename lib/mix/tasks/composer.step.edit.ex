@@ -24,7 +24,6 @@ defmodule Mix.Tasks.Composer.Step.Edit do
 
   ## Options
 
-    * `-c`, `--config` - the local config directory (see `Composer.Local`)
     * `--print` - print `path:line` instead of opening an editor
   """
 
@@ -43,7 +42,7 @@ defmodule Mix.Tasks.Composer.Step.Edit do
         _ -> Mix.raise("Usage: mix composer.step.edit STEP")
       end
 
-    cookbooks = CLI.cookbooks!(opts[:config])
+    cookbooks = CLI.cookbooks!()
 
     meta =
       case CLI.ok!(Resolver.find_step(cookbooks, ref, CLI.context(cookbooks))) do

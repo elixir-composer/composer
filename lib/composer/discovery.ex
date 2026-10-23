@@ -12,14 +12,13 @@ defmodule Composer.Discovery do
     * `core`, composer's built-in cookbook, always
     * the current project's own cookbook, if it defines one
     * every dependency's cookbook
-    * `local`, the user's config directory (see `Composer.Local`)
 
   The virtual `hex` cookbook is not listed; `Composer.Resolver` knows it.
 
   ## Limiting cookbooks
 
-  The host app can allow or deny package cookbooks by name. `core` and
-  `local` are always available.
+  The host app can allow or deny package cookbooks by name. `core` is
+  always available.
 
       # config/config.exs
       config :composer, cookbooks: [except: [:some_cookbook]]
@@ -37,10 +36,9 @@ defmodule Composer.Discovery do
 
   ## Options
 
-    * `:config` - the local config directory (`-c`)
-    * `:local` - include the `local` cookbook (default `true`)
     * `:apps` - the apps to look in, instead of the project and its deps
     * `:modules` - extra cookbook modules to include, for tests
+    * `:cookbooks` - extra `Composer.Cookbook` structs to include, for tests
     * `:filter` - `[only: names, except: names]`, instead of the app config
   """
   @spec cookbooks(keyword()) :: {:ok, [Cookbook.t()]} | {:error, term()}
@@ -54,14 +52,15 @@ defmodule Composer.Discovery do
       |> Enum.uniq()
       |> Enum.filter(&Cookbook.cookbook_module?/1)
 
-    code = Enum.map([Composer.Core | modules], &Cookbook.from_module/1)
+    code =
+      Enum.map([Composer.Core | modules], &Cookbook.from_module/1) ++
+        Keyword.get(opts, :cookbooks, [])
 
-    with :ok <- check_duplicates(code),
-         {:ok, local} <- local(opts) do
+    with :ok <- check_duplicates(code) do
       filter =
         Keyword.get_lazy(opts, :filter, fn -> Application.get_env(:composer, :cookbooks) end)
 
-      {:ok, apply_filter(code, filter) ++ local}
+      {:ok, apply_filter(code, filter)}
     end
   end
 
@@ -83,14 +82,6 @@ defmodule Composer.Discovery do
       own ++ Map.keys(Mix.Project.deps_paths())
     else
       []
-    end
-  end
-
-  defp local(opts) do
-    if Keyword.get(opts, :local, true) do
-      with {:ok, cookbook} <- Composer.Local.cookbook(opts[:config]), do: {:ok, [cookbook]}
-    else
-      {:ok, []}
     end
   end
 

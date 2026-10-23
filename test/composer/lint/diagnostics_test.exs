@@ -3,13 +3,14 @@ defmodule Composer.Lint.DiagnosticsTest do
 
   alias Composer.{Discovery, Error, Lint}
   alias Composer.Lint.Diagnostic
+  import Composer.Test.Cookbooks
 
   @moduletag :tmp_dir
 
   @anchors "test/support/fixtures/anchors"
 
   setup do
-    {:ok, cookbooks} = Discovery.cookbooks(apps: [:fake_book, :other_book], local: false)
+    {:ok, cookbooks} = Discovery.cookbooks(apps: [:fake_book, :other_book])
     %{cookbooks: cookbooks}
   end
 
@@ -25,7 +26,7 @@ defmodule Composer.Lint.DiagnosticsTest do
     for file <- Path.wildcard(Path.join(@anchors, "*.exs")),
         do: File.cp!(file, Path.join([dir, "recipes", Path.basename(file)]))
 
-    Lint.local(dir, cookbooks).diagnostics
+    lint_recipes(dir, cookbooks).diagnostics
   end
 
   defp at(diagnostic), do: {Path.basename(diagnostic.file), diagnostic.line, diagnostic.column}
@@ -49,7 +50,7 @@ defmodule Composer.Lint.DiagnosticsTest do
            reserved_alias duplicate_alias alias_atom_target invalid_alias_target legacy_form
            invalid_entry unknown_entry_option bad_entry_option hex_only_option multiple_sources
            git_option_without_git multiple_git_refs source_conflict repo_source invalid_ref
-           recipe_eval inconsistent_alias missing_step typo unknown_cookbook local_step
+           recipe_eval inconsistent_alias missing_step typo unknown_cookbook
            ambiguous dep_opts_on_step unknown_alias_target via_alias missing_recipe
            alias_shadows_cookbook unused_alias conflicting_install cycle group_recipe_clash)a
 
@@ -105,11 +106,11 @@ defmodule Composer.Lint.DiagnosticsTest do
 
     test "a cycle across files relates every hop", %{tmp_dir: dir, cookbooks: cookbooks} do
       config(dir, %{
-        "a.exs" => ~s|[one: [shortdoc: "x", steps: [{:use, "local:b/two"}]]]\n|,
-        "b.exs" => ~s|[two: [shortdoc: "x", steps: [{:use, "local:a/one"}]]]\n|
+        "a.exs" => ~s|[one: [shortdoc: "x", steps: [{:use, "mine:b/two"}]]]\n|,
+        "b.exs" => ~s|[two: [shortdoc: "x", steps: [{:use, "mine:a/one"}]]]\n|
       })
 
-      cycles = Enum.filter(Lint.local(dir, cookbooks).diagnostics, &(&1.code == :cycle))
+      cycles = Enum.filter(lint_recipes(dir, cookbooks).diagnostics, &(&1.code == :cycle))
       assert length(cycles) == 2
 
       for cycle <- cycles do
@@ -119,7 +120,7 @@ defmodule Composer.Lint.DiagnosticsTest do
     end
 
     test "a step's problems are placed in its source", %{tmp_dir: dir} do
-      {:ok, cookbooks} = Discovery.cookbooks(apps: [:fake_book], local: false)
+      {:ok, cookbooks} = Discovery.cookbooks(apps: [:fake_book])
       cookbook = Composer.Cookbook.from_module(Composer.FakeBook)
       diagnostics = Lint.run(cookbook, cookbooks, dir).diagnostics
 
@@ -149,12 +150,12 @@ defmodule Composer.Lint.DiagnosticsTest do
 
     test "anchor/1 is :unknown only for what it does not know" do
       assert Error.anchor({:no_such_reason, 1}) == :unknown
-      assert Error.anchor({:typo, "x", "local:a/b", []}) == {:ref, "local:a/b", "x"}
+      assert Error.anchor({:typo, "x", "mine:a/b", []}) == {:ref, "mine:a/b", "x"}
 
       assert Error.anchor(
-               {:via_alias, "lab:x", :lab, "cc_lab", {:missing_step, "cc_lab:x", "local:a/b", []}}
+               {:via_alias, "lab:x", :lab, "cc_lab", {:missing_step, "cc_lab:x", "mine:a/b", []}}
              ) ==
-               {:ref, "local:a/b", "lab:x"}
+               {:ref, "mine:a/b", "lab:x"}
     end
 
     defp clause_tags(ast, name) do
@@ -193,7 +194,7 @@ defmodule Composer.Lint.DiagnosticsTest do
         "g.exs" => ~s|[a: [shortdoc: "x", steps: ["credoo", "core:nope", "gitignor"]]]\n|
       })
 
-      diagnostics = Lint.local(dir, cookbooks).diagnostics
+      diagnostics = lint_recipes(dir, cookbooks).diagnostics
 
       assert Enum.map(diagnostics, &{&1.code, &1.column}) == [
                {:typo, 29},
@@ -209,25 +210,29 @@ defmodule Composer.Lint.DiagnosticsTest do
       config(dir, %{
         "ash.exs" => ~s|[\n  base: [shortdoc: "x", steps: ["credoo"]]\n]\n|,
         "app.exs" =>
-          ~s|[\n  full: [shortdoc: "x", steps: [{:use, "local:ash/base"}]],\n  more: [shortdoc: "x", steps: [{:use, "local:ash/base"}]]\n]\n|
+          ~s|[\n  full: [shortdoc: "x", steps: [{:use, "mine:ash/base"}]],\n  more: [shortdoc: "x", steps: [{:use, "mine:ash/base"}]]\n]\n|
       })
 
-      assert [typo] = Lint.local(dir, cookbooks).diagnostics
+      assert [typo] = lint_recipes(dir, cookbooks).diagnostics
       assert at(typo) == {"ash.exs", 2, 33}
     end
   end
 
   describe "files/3" do
-    setup %{tmp_dir: dir} do
+    setup %{tmp_dir: dir, cookbooks: cookbooks} do
       config(dir, %{
         "ash.exs" =>
           ~s|[\n  base: [shortdoc: "x", steps: ["credoo", "core:nope"]],\n  mid: [shortdoc: "x", steps: [{:use, "base"}]]\n]\n|,
         "app.exs" =>
-          ~s|[\n  full: [shortdoc: "x", steps: [{:use, "local:ash/mid"}, "core:setup/gitignore"]]\n]\n|,
+          ~s|[\n  full: [shortdoc: "x", steps: [{:use, "mine:ash/mid"}, "core:setup/gitignore"]]\n]\n|,
         "clean.exs" => ~s|[\n  ok: [shortdoc: "x", steps: ["core:setup/gitignore"]]\n]\n|
       })
 
-      %{app: Path.join(dir, "recipes/app.exs"), ash: Path.join(dir, "recipes/ash.exs")}
+      %{
+        app: Path.join(dir, "recipes/app.exs"),
+        ash: Path.join(dir, "recipes/ash.exs"),
+        cookbooks: cookbooks ++ [code_cookbook(dir)]
+      }
     end
 
     test "reports a file's own problems, and a summary at each broken include", %{
@@ -237,7 +242,7 @@ defmodule Composer.Lint.DiagnosticsTest do
       ash: ash
     } do
       clean = Path.join(dir, "recipes/clean.exs")
-      results = Lint.files(cookbooks, [app, ash, clean], local: dir)
+      results = Lint.files(cookbooks, [app, ash, clean])
 
       assert results[clean] == []
       assert Enum.map(results[ash], & &1.code) == [:typo, :missing_step, :include_problems]
@@ -246,7 +251,7 @@ defmodule Composer.Lint.DiagnosticsTest do
       assert [summary] = results[app]
       assert %Diagnostic{code: :include_problems, severity: :error, file: ^app} = summary
       assert {summary.line, summary.column} == {2, 40}
-      assert summary.message == "local:ash/mid has 2 problems."
+      assert summary.message == "mine:ash/mid has 2 problems."
 
       assert Enum.map(summary.related, &{Path.basename(&1.file), elem(elem(&1.range, 0), 0)}) == [
                {"ash.exs", 2},
@@ -255,17 +260,16 @@ defmodule Composer.Lint.DiagnosticsTest do
     end
 
     test "dependents are found through other includes", %{
-      tmp_dir: dir,
       cookbooks: cookbooks,
       app: app,
       ash: ash
     } do
-      assert Lint.dependents(cookbooks, "local:ash/base", local: dir) == [
-               %{ref: "local:app/full", path: app},
-               %{ref: "local:ash/mid", path: ash}
+      assert Lint.dependents(cookbooks, "mine:ash/base") == [
+               %{ref: "mine:app/full", path: app},
+               %{ref: "mine:ash/mid", path: ash}
              ]
 
-      assert Lint.dependents(cookbooks, "local:app/full", local: dir) == []
+      assert Lint.dependents(cookbooks, "mine:app/full") == []
     end
 
     test "the cookbook of a file is found from its path", %{
@@ -273,7 +277,7 @@ defmodule Composer.Lint.DiagnosticsTest do
       cookbooks: cookbooks,
       app: app
     } do
-      assert {:ok, %{kind: :local}} = Lint.owner(cookbooks, app, local: dir)
+      assert {:ok, %{name: "mine"}} = Lint.owner(cookbooks, app)
 
       fake =
         Path.join(
@@ -281,12 +285,12 @@ defmodule Composer.Lint.DiagnosticsTest do
           "recipes/main.exs"
         )
 
-      assert {:ok, %{name: "fake_book"}} = Lint.owner(cookbooks, fake, local: dir)
+      assert {:ok, %{name: "fake_book"}} = Lint.owner(cookbooks, fake)
 
-      assert {:error, {:lint_file_unknown, _}} = Lint.owner(cookbooks, "mix.exs", local: dir)
+      assert {:error, {:lint_file_unknown, _}} = Lint.owner(cookbooks, "mix.exs")
 
       assert {:error, {:lint_file_missing, _}} =
-               Lint.owner(cookbooks, Path.join(dir, "nope.exs"), local: dir)
+               Lint.owner(cookbooks, Path.join(dir, "nope.exs"))
     end
 
     test "a file reached through a symbolic link is matched", %{
@@ -298,8 +302,8 @@ defmodule Composer.Lint.DiagnosticsTest do
       on_exit(fn -> File.rm(link) end)
 
       path = Path.join(link, "recipes/ash.exs")
-      assert {:ok, %{kind: :local}} = Lint.owner(cookbooks, path, local: dir)
-      assert [_ | _] = Lint.files(cookbooks, [path], local: dir)[path]
+      assert {:ok, %{name: "mine"}} = Lint.owner(cookbooks, path)
+      assert [_ | _] = Lint.files(cookbooks, [path])[path]
     end
   end
 end

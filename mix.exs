@@ -76,7 +76,6 @@ defmodule Composer.MixProject do
           Composer.Recipe.Group,
           Composer.Ref,
           Composer.Resolver,
-          Composer.Local,
           Composer.Discovery
         ],
         "Writing steps": [Composer.Templates, Composer.Helpers, Composer.Versions],

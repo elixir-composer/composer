@@ -2,17 +2,18 @@ defmodule Composer.LintTest do
   use ExUnit.Case, async: true
 
   alias Composer.{Cookbook, Discovery, Lint}
+  import Composer.Test.Cookbooks
 
   @moduletag :tmp_dir
 
   @fixtures "test/support/fixtures/groups"
 
   setup do
-    {:ok, cookbooks} = Discovery.cookbooks(apps: [], local: false)
+    {:ok, cookbooks} = Discovery.cookbooks(apps: [])
     %{cookbooks: cookbooks}
   end
 
-  # Lints a local dir holding the given fixture groups.
+  # Lints a cookbook dir holding the given fixture groups.
   defp lint(dir, cookbooks, fixtures) do
     File.mkdir_p!(Path.join(dir, "recipes"))
 
@@ -20,7 +21,7 @@ defmodule Composer.LintTest do
       File.cp!(Path.join(@fixtures, name <> ".exs"), Path.join([dir, "recipes", name <> ".exs"]))
     end
 
-    Lint.local(dir, cookbooks)
+    lint_recipes(dir, cookbooks)
   end
 
   defp errors(result), do: for(%{severity: :error} = d <- result.diagnostics, do: d.message)
@@ -44,14 +45,14 @@ defmodule Composer.LintTest do
       {"old_format", ~r/old_format.exs must evaluate to a keyword list of recipes/},
       {"not_keyword", ~r/not_keyword.exs must evaluate to a keyword list/},
       {"not_literal", ~r/not_literal.exs must end in a literal keyword list/},
-      {"missing_shortdoc", ~r/Recipe local:missing_shortdoc\/base has no shortdoc:/},
-      {"unknown_key", ~r/Recipe local:unknown_key\/base has an unknown key :help/},
-      {"bad_value", ~r/Recipe local:bad_value\/base has an invalid flags:/},
-      {"undeclared_flag", ~r/Recipe local:undeclared_flag\/base uses if: :credo/},
+      {"missing_shortdoc", ~r/Recipe mine:missing_shortdoc\/base has no shortdoc:/},
+      {"unknown_key", ~r/Recipe mine:unknown_key\/base has an unknown key :help/},
+      {"bad_value", ~r/Recipe mine:bad_value\/base has an invalid flags:/},
+      {"undeclared_flag", ~r/Recipe mine:undeclared_flag\/base uses if: :credo/},
       {"duplicate", ~r/duplicate.exs defines the recipe base more than once/},
-      {"raises", ~r/Could not evaluate recipe group local:raises\/.*boom/s},
+      {"raises", ~r/Could not evaluate recipe group mine:raises\/.*boom/s},
       {"BadName", ~r/BadName.exs has an invalid name/},
-      {"multiline", ~r/local:multiline\/base has a shortdoc on more than one line/}
+      {"multiline", ~r/mine:multiline\/base has a shortdoc on more than one line/}
     ]
 
     for {fixture, pattern} <- cases do
@@ -72,40 +73,12 @@ defmodule Composer.LintTest do
     File.write!(Path.join(dir, "recipes/ash.exs"), ~s([base: [shortdoc: "B", steps: []]]))
     File.write!(Path.join(dir, "recipes/lv.exs"), ~s([ash: [shortdoc: "A", steps: []]]))
 
-    assert_error(Lint.local(dir, cookbooks), ~r/a recipe group ash and a recipe named ash/)
+    assert_error(lint_recipes(dir, cookbooks), ~r/a recipe group ash and a recipe named ash/)
   end
 
   test "a subdirectory under recipes/ is an error", %{tmp_dir: dir, cookbooks: cookbooks} do
     File.mkdir_p!(Path.join(dir, "recipes/nested"))
-    assert_error(Lint.local(dir, cookbooks), ~r/recipes\/nested is a directory/)
-  end
-
-  test "unrecognized entries in local are reported", %{tmp_dir: dir, cookbooks: cookbooks} do
-    File.mkdir_p!(Path.join(dir, "steps"))
-    File.mkdir_p!(Path.join(dir, "templates"))
-    File.write!(Path.join(dir, "settings.exs"), "[]")
-    File.mkdir_p!(Path.join(dir, ".hidden"))
-
-    report = Lint.local(dir, cookbooks)
-    assert length(errors(report)) == 3
-    assert_error(report, ~r/Local holds recipes only, but .*steps exists/)
-    assert_error(report, ~r/Local holds recipes only, but .*templates exists/)
-    assert_error(report, ~r/settings.exs is not recognized/)
-  end
-
-  test "a leftover profiles/ directory in local is reported", %{
-    tmp_dir: dir,
-    cookbooks: cookbooks
-  } do
-    File.mkdir_p!(Path.join(dir, "profiles"))
-
-    report = Lint.local(dir, cookbooks)
-
-    assert errors(report) == [
-             Composer.Error.message({:legacy_recipes_dir, Path.join(dir, "profiles")})
-           ]
-
-    assert_error(report, ~r/profiles is no longer read.*recipes\//)
+    assert_error(lint_recipes(dir, cookbooks), ~r/recipes\/nested is a directory/)
   end
 
   test "a leftover profiles/ directory in a package cookbook is an error", %{
@@ -130,8 +103,8 @@ defmodule Composer.LintTest do
     File.write!(Path.join(dir, "recipes/g.exs"), ~s([a: [shortdoc: "A", steps: ["core:nope"]]]))
 
     assert_error(
-      Lint.local(dir, cookbooks),
-      ~r/In recipe local:g\/a: no step matches "core:nope"/
+      lint_recipes(dir, cookbooks),
+      ~r/In recipe mine:g\/a: no step matches "core:nope"/
     )
   end
 
@@ -231,7 +204,7 @@ defmodule Composer.LintTest do
     end
 
     test "fake_book: child-step directories pass; unreferenced templates warn", %{tmp_dir: dir} do
-      {:ok, cookbooks} = Discovery.cookbooks(apps: [:fake_book], local: false)
+      {:ok, cookbooks} = Discovery.cookbooks(apps: [:fake_book])
       report = Lint.run(Cookbook.from_module(Composer.FakeBook), cookbooks, dir)
 
       # steps/ash/ holds only the child step postgres.ex, with no ash.ex.
@@ -259,8 +232,8 @@ defmodule Composer.LintTest do
     defp lint_group(dir, source) do
       File.mkdir_p!(Path.join(dir, "recipes"))
       File.write!(Path.join([dir, "recipes", "g.exs"]), source)
-      {:ok, cookbooks} = Discovery.cookbooks(apps: [:fake_book, :other_book], local: false)
-      Lint.local(dir, cookbooks)
+      {:ok, cookbooks} = Discovery.cookbooks(apps: [:fake_book, :other_book])
+      lint_recipes(dir, cookbooks)
     end
 
     test "a used, consistent alias is clean", %{tmp_dir: dir} do
@@ -279,7 +252,7 @@ defmodule Composer.LintTest do
       assert errors(report) == []
 
       assert [inconsistent, unused] = report.diagnostics
-      assert unused.message =~ "local:g/a: alias ob (= other_book) is never used"
+      assert unused.message =~ "mine:g/a: alias ob (= other_book) is never used"
       # Both at the alias they are about: line 2, `fb:` then `ob:`.
       assert {unused.code, unused.line, unused.column} == {:unused_alias, 2, 49}
 
@@ -298,7 +271,7 @@ defmodule Composer.LintTest do
 
       assert_error(
         shadowing,
-        ~r/local:g\/a declares the alias other_book:, but other_book is an installed cookbook/
+        ~r/mine:g\/a declares the alias other_book:, but other_book is an installed cookbook/
       )
 
       reserved =
@@ -306,7 +279,7 @@ defmodule Composer.LintTest do
         [b: [shortdoc: "x", aliases: [core: "fake_book"], steps: []]]
         """)
 
-      assert_error(reserved, ~r/local:g\/b declares the alias core:, but core is a reserved/)
+      assert_error(reserved, ~r/mine:g\/b declares the alias core:, but core is a reserved/)
     end
   end
 end

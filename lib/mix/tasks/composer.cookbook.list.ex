@@ -8,14 +8,13 @@ defmodule Mix.Tasks.Composer.Cookbook.List do
       $ mix composer.cookbook.list
         core          composer      29 steps  0 recipes  Composer's built-in steps for Phoenix apps
         cc_lab  cc_lab  41 steps  6 recipes  Andy's composer steps
-        local                        0 steps  3 recipes  Your recipes in ~/.config/composer
+        cb_mine       cb_mine        0 steps  3 recipes  Composer steps and recipes for cb_mine
 
   A dependency's cookbook is found when the dependency ships
   `lib/composer/<package>.ex`. See `Composer.Discovery`.
 
   ## Options
 
-    * `-c`, `--config` - the local config directory (see `Composer.Local`)
     * `--json` - print JSON instead of text
   """
 
@@ -26,7 +25,7 @@ defmodule Mix.Tasks.Composer.Cookbook.List do
   @impl Mix.Task
   def run(argv) do
     {opts, _args} = CLI.parse!(argv)
-    cookbooks = CLI.cookbooks!(opts[:config])
+    cookbooks = CLI.cookbooks!()
     data = Enum.map(cookbooks, &data/1)
 
     if opts[:json] do

@@ -3,6 +3,7 @@ defmodule Mix.Tasks.Composer.Cookbook.LintTest do
   use ExUnit.Case, async: false
 
   import ExUnit.CaptureIO
+  import Composer.Test.Cookbooks
 
   @moduletag :tmp_dir
 
@@ -13,9 +14,13 @@ defmodule Mix.Tasks.Composer.Cookbook.LintTest do
     File.write!(broken, ~s|[\n  a: [shortdoc: "x", steps: ["credoo", "core:nope"]]\n]\n|)
     File.write!(clean, ~s|[\n  b: [shortdoc: "x", steps: ["core:setup/gitignore"]]\n]\n|)
 
-    Application.put_env(:composer, :discovery, modules: [Composer.FakeBook])
+    Application.put_env(:composer, :discovery,
+      modules: [Composer.FakeBook],
+      cookbooks: [code_cookbook(dir)]
+    )
+
     on_exit(fn -> Application.delete_env(:composer, :discovery) end)
-    %{config: dir, broken: broken, clean: clean}
+    %{broken: broken, clean: clean}
   end
 
   # Runs the task, returning its stdout and :ok or the exit reason.
@@ -40,11 +45,8 @@ defmodule Mix.Tasks.Composer.Cookbook.LintTest do
     {output, result}
   end
 
-  test "json: stdout is only the payload, and errors exit with status 1", %{
-    config: config,
-    broken: broken
-  } do
-    {output, result} = lint(["--local", "-c", config, "--format", "json"])
+  test "json: stdout is only the payload, and errors exit with status 1", %{broken: broken} do
+    {output, result} = lint(["--file", broken, "--format", "json"])
 
     assert result == {:exit, {:shutdown, 1}}
     assert [typo, missing] = Jason.decode!(output)
@@ -54,69 +56,60 @@ defmodule Mix.Tasks.Composer.Cookbook.LintTest do
     assert Mix.shell() == Mix.Shell.IO
   end
 
-  test "compact: one parseable line per diagnostic", %{config: config, broken: broken} do
-    {output, {:exit, {:shutdown, 1}}} = lint(["--local", "-c", config, "--format", "compact"])
+  test "compact: one parseable line per diagnostic", %{broken: broken} do
+    {output, {:exit, {:shutdown, 1}}} = lint(["--file", broken, "--format", "compact"])
 
     assert [first, second] = String.split(output, "\n", trim: true)
 
     assert first =~
-             ~r/^#{Regex.escape(broken)}:2:30: error: In recipe local:broken\/a: .* \[typo\]$/
+             ~r/^#{Regex.escape(broken)}:2:30: error: In recipe mine:broken\/a: .* \[typo\]$/
 
     assert second =~ ~r/^#{Regex.escape(broken)}:2:40: error: .* \[missing_step\]$/
   end
 
-  test "github: annotations", %{config: config} do
-    {output, {:exit, {:shutdown, 1}}} = lint(["--local", "-c", config, "--format", "github"])
+  test "github: annotations", %{broken: broken} do
+    {output, {:exit, {:shutdown, 1}}} = lint(["--file", broken, "--format", "github"])
 
     assert output =~
              ~r/^::error file=.*broken.exs,line=2,col=30,endLine=2,endColumn=38,title=composer lint \[typo\]::/m
   end
 
-  test "text: located problems, raising on errors", %{config: config} do
+  test "text: located problems, raising on errors", %{broken: broken} do
     error =
       assert_raise Mix.Error, fn ->
-        capture_io(fn -> Mix.Tasks.Composer.Cookbook.Lint.run(["--local", "-c", config]) end)
+        capture_io(fn -> Mix.Tasks.Composer.Cookbook.Lint.run(["--file", broken]) end)
       end
 
-    assert error.message =~ "have 2 problem(s)"
+    assert error.message =~ "has 2 problem(s)"
 
     assert error.message =~
-             ~r/\* \S*broken.exs:2:30: In recipe local:broken\/a: no step matches "credoo"/
+             ~r/\* \S*broken.exs:2:30: In recipe mine:broken\/a: no step matches "credoo"/
   end
 
   test "--file: only that file, even when another one is broken", %{
-    config: config,
     broken: broken,
     clean: clean
   } do
-    assert {"", :ok} = lint(["-c", config, "--format", "compact", "--file", clean])
+    assert {"", :ok} = lint(["--format", "compact", "--file", clean])
 
     {output, {:exit, {:shutdown, 1}}} =
-      lint(["-c", config, "--format", "compact", "--file", broken])
+      lint(["--format", "compact", "--file", broken])
 
     assert length(String.split(output, "\n", trim: true)) == 2
 
-    {output, :ok} = lint(["-c", config, "--file", clean])
+    {output, :ok} = lint(["--file", clean])
     assert output =~ "clean.exs is valid."
   end
 
-  test "--file: a file of no cookbook, or --local on a cookbook's file, is an error", %{
-    config: config
-  } do
-    assert_raise Mix.Error, ~r/is not a recipe group of your local config/, fn ->
-      lint(["-c", config, "--format", "compact", "--file", "mix.exs"])
-    end
-
-    fake = Composer.Cookbook.source_dir(Composer.Cookbook.from_module(Composer.FakeBook))
-
-    assert_raise Mix.Error, ~r/belongs to the cookbook fake_book/, fn ->
-      lint(["-c", config, "--local", "--file", Path.join(fake, "recipes/main.exs")])
+  test "--file: a file of no cookbook is an error" do
+    assert_raise Mix.Error, ~r/is not a recipe group of an installed cookbook/, fn ->
+      lint(["--format", "compact", "--file", "mix.exs"])
     end
   end
 
-  test "an unknown format is an error", %{config: config} do
+  test "an unknown format is an error", %{broken: broken} do
     assert_raise Mix.Error, ~r/Unknown --format yaml/, fn ->
-      lint(["--local", "-c", config, "--format", "yaml"])
+      lint(["--file", broken, "--format", "yaml"])
     end
   end
 end

@@ -30,14 +30,14 @@ defmodule Composer.Git do
   @doc """
   Builds the commit message for a run of `recipe`.
 
-  `info` carries `:config` (the local config directory) and `:flags` (the
-  flag names that were passed). The subject stays under 72 characters; the body is
-  plain lines, numbered steps, no bullets.
+  `info` carries `:flags` (the flag names that were passed). The subject
+  stays under 72 characters; the body is plain lines, numbered steps, no
+  bullets.
   """
-  @spec message(String.t(), %{config: Path.t(), flags: [atom()]}, [
+  @spec message(String.t(), %{flags: [atom()]}, [
           Composer.Resolver.entry()
         ]) :: String.t()
-  def message(recipe, %{config: config, flags: flags}, entries) do
+  def message(recipe, %{flags: flags}, entries) do
     flags =
       case flags do
         [] -> "(none)"
@@ -60,7 +60,6 @@ defmodule Composer.Git do
     """
     #{subject(recipe)}
 
-    Config: #{config}
     Flags: #{flags}
 
     Steps:

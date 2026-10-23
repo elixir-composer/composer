@@ -15,7 +15,6 @@ defmodule Composer.Integration.HostAppTest do
   setup %{tmp_dir: dir} do
     app = Path.join(dir, "host_app")
     File.mkdir_p!(Path.join(app, "lib"))
-    File.mkdir_p!(Path.join(dir, "config"))
     File.cp!(Path.join(@root, "mix.lock"), Path.join(app, "mix.lock"))
 
     File.write!(Path.join(app, "mix.exs"), """
@@ -42,95 +41,80 @@ defmodule Composer.Integration.HostAppTest do
     """)
 
     File.write!(Path.join(app, "lib/host_app.ex"), "defmodule HostApp do\nend\n")
-    %{app: app, config: Path.join(dir, "config")}
+    %{app: app}
   end
 
-  defp mix(app, config, args) do
-    System.cmd("mix", args,
-      cd: app,
-      stderr_to_stdout: true,
-      env: [{"MIX_ENV", "dev"}, {"COMPOSER_CONFIG", config}]
-    )
+  defp mix(app, args) do
+    System.cmd("mix", args, cd: app, stderr_to_stdout: true, env: [{"MIX_ENV", "dev"}])
   end
 
-  defp mix!(app, config, args) do
-    {output, status} = mix(app, config, args)
+  defp mix!(app, args) do
+    {output, status} = mix(app, args)
     assert status == 0, "mix #{Enum.join(args, " ")} failed:\n\n#{output}"
     output
   end
 
   test "a dependency's cookbook is discovered and runs; generated files pass lint",
-       %{app: app, config: config} do
+       %{app: app} do
     # The dep's cookbook compiles inside its own project, so its name is
     # checked against :fake_dep.
-    mix!(app, config, ["compile"])
+    mix!(app, ["compile"])
 
-    cookbooks = mix!(app, config, ["composer.cookbook.list", "--json"])
+    cookbooks = mix!(app, ["composer.cookbook.list", "--json"])
     assert cookbooks =~ ~s("name": "fake_dep")
 
-    help = mix!(app, config, ["help"])
+    help = mix!(app, ["help"])
     refute help =~ "steps."
     refute help =~ "fake_dep"
     assert help =~ "mix composer.step.run"
 
-    mix!(app, config, ["composer.step.run", "fake_dep:hi", "--yes"])
+    mix!(app, ["composer.step.run", "fake_dep:hi", "--yes"])
     assert File.read!(Path.join(app, "hi.txt")) == "hi from host_app\n"
 
-    mix!(app, config, ["composer.gen.cookbook", "--yes"])
+    mix!(app, ["composer.gen.cookbook", "--yes"])
 
     # Re-running a generator leaves existing files alone, including ones it
     # has not read yet.
     recipe = Path.join(app, "lib/composer/host_app/recipes/app.exs")
     mine = ~s([default: [shortdoc: "Mine", steps: ["fake_dep:hi"]]]\n)
     File.write!(recipe, mine)
-    mix!(app, config, ["composer.gen.cookbook", "--yes"])
+    mix!(app, ["composer.gen.cookbook", "--yes"])
     assert File.read!(recipe) == mine
-    mix!(app, config, ["composer.gen.step", "tools/thing", "--yes"])
-    mix!(app, config, ["composer.gen.recipe", "tools/extra", "--yes"])
-    mix!(app, config, ["composer.gen.recipe", "tools/more", "--yes"])
-    mix!(app, config, ["composer.cookbook.manifest"])
-    assert mix!(app, config, ["composer.cookbook.lint"]) =~ "Cookbook host_app is valid."
+    mix!(app, ["composer.gen.step", "tools/thing", "--yes"])
+    mix!(app, ["composer.gen.recipe", "tools/extra", "--yes"])
+    mix!(app, ["composer.gen.recipe", "tools/more", "--yes"])
+    mix!(app, ["composer.cookbook.manifest"])
+    assert mix!(app, ["composer.cookbook.lint"]) =~ "Cookbook host_app is valid."
 
-    steps = mix!(app, config, ["composer.step.list", "--cookbook", "host_app"])
+    steps = mix!(app, ["composer.step.list", "--cookbook", "host_app"])
     assert steps =~ "host_app:tools/thing"
 
-    list = mix!(app, config, ["composer.recipe.list", "host_app"])
+    list = mix!(app, ["composer.recipe.list", "host_app"])
     assert list =~ ~r/host_app:app\/default\s+Mine/
     assert list =~ "host_app:tools/more"
 
     # An unqualified recipe reference prefers the project's own cookbook.
-    mix!(app, config, ["composer.recipe.run", "app/default", "--yes", "--no-commit"])
+    mix!(app, ["composer.recipe.run", "app/default", "--yes", "--no-commit"])
   end
 
-  test "composer compiles cleanly in a host", %{app: app, config: config} do
-    mix!(app, config, ["compile"])
-    output = mix!(app, config, ["deps.compile", "composer", "--force"])
+  test "composer compiles cleanly in a host", %{app: app} do
+    mix!(app, ["compile"])
+    output = mix!(app, ["deps.compile", "composer", "--force"])
     refute output =~ "warning"
   end
 
-  test "a local grouped recipe uses a sibling and takes a declared flag",
-       %{app: app, config: config} do
-    File.mkdir_p!(Path.join(config, "recipes"))
-
-    File.write!(Path.join(config, "recipes/mine.exs"), """
-    [
-      base: [shortdoc: "Says hi", steps: ["fake_dep:hi"]],
-      app: [
-        shortdoc: "Base, plus a .gitignore with --ignore",
-        flags: [ignore: "Add macOS files to .gitignore"],
-        steps: [{:use, "base"}, {"core:setup/gitignore", if: :ignore}]
-      ]
-    ]
-    """)
+  test "a grouped recipe in a path-dep cookbook uses a sibling and takes a declared flag",
+       %{app: app} do
+    group = Path.join(@root, "test/fixtures/fake_dep/lib/composer/fake_dep/recipes/mine.exs")
 
     # Compiling has work to do, yet stdout holds nothing but the JSON:
     # MIX_QUIET silences the dependencies Mix compiles before the task can
     # start; the task compiles the project quietly itself.
     lint_json = fn env ->
       {json, 0} =
-        System.cmd("mix", ["composer.cookbook.lint", "--local", "--format", "json"],
+        System.cmd("mix", ["composer.cookbook.lint", "--format", "json", "--file", group],
           cd: app,
-          env: [{"MIX_ENV", "dev"}, {"COMPOSER_CONFIG", config}] ++ env
+          env: [{"MIX_ENV", "dev"} | env]
         )
 
       Jason.decode!(json)
@@ -140,29 +124,29 @@ defmodule Composer.Integration.HostAppTest do
     File.write!(Path.join(app, "lib/host_app.ex"), "defmodule HostApp do\n  def x, do: 1\nend\n")
     assert lint_json.([]) == []
 
-    mix!(app, config, ["compile"])
-    assert mix!(app, config, ["composer.cookbook.lint", "--local"]) =~ "are valid"
+    mix!(app, ["compile"])
+    assert mix!(app, ["composer.cookbook.lint", "--file", group]) =~ "mine.exs is valid."
 
-    show = mix!(app, config, ["composer.recipe.show", "local:mine/app"])
+    show = mix!(app, ["composer.recipe.show", "fake_dep:mine/app"])
     assert show =~ ~r/--ignore\s+Add macOS files/
-    assert show =~ "fake_dep:hi  [local:mine/base]"
+    assert show =~ "fake_dep:hi  [fake_dep:mine/base]"
 
-    {output, status} = mix(app, config, ["composer.recipe.run", "local:mine/app", "--nope"])
+    {output, status} = mix(app, ["composer.recipe.run", "fake_dep:mine/app", "--nope"])
     assert status != 0
     assert output =~ "Unknown flag --nope"
 
-    mix!(app, config, ["composer.recipe.run", "local:mine/app", "--ignore", "--yes", "--no-commit"])
+    mix!(app, ["composer.recipe.run", "fake_dep:mine/app", "--ignore", "--yes", "--no-commit"])
     assert File.read!(Path.join(app, "hi.txt")) == "hi from host_app\n"
     assert File.exists?(Path.join(app, ".gitignore"))
   end
 
   test "a hex: path source is added to mix.exs and its installer gets the argv",
-       %{app: app, config: config} do
+       %{app: app} do
     installer = Path.join(@root, "test/fixtures/fake_installer")
-    mix!(app, config, ["compile"])
+    mix!(app, ["compile"])
 
     output =
-      mix!(app, config, [
+      mix!(app, [
         "composer.step.run",
         "hex:fake_installer@path:#{installer}",
         "--yes",

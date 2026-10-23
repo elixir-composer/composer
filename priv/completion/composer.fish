@@ -2,7 +2,7 @@
 #
 # Completes step ids for `mix composer.step.{run,show,edit}`, recipe ids for
 # `mix composer.recipe.{run,show,edit}`, and cookbook and group names
-# (`local`, `local:ash/`) for `mix composer.recipe.list`, from
+# (`cb_lab`, `cb_lab:lv/`) for `mix composer.recipe.list`, from
 # _build/composer/index, without starting the BEAM. Fish completions
 # add up, so other `mix` completions are untouched. Save it as
 # ~/.config/fish/completions/mix.fish, or source it from there.

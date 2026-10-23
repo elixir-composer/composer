@@ -35,28 +35,27 @@ defmodule Composer.GitTest do
 
   describe "message/3" do
     @entries [
-      %{label: "core:phx/remove_daisy_ui", origin: "local:phoenix_cleanup"},
-      %{label: "core:oban_pro", origin: "local:jobs"},
+      %{label: "core:phx/remove_daisy_ui", origin: "mine:phoenix_cleanup"},
+      %{label: "core:oban_pro", origin: "mine:jobs"},
       %{label: "core:phx/remove_topbar", origin: nil}
     ]
 
     test "builds the subject and plain-line body" do
       message =
         Git.message(
-          "local:standard_app",
-          %{config: "/c/composer", flags: [:oban_pro]},
+          "mine:standard_app",
+          %{flags: [:oban_pro]},
           @entries
         )
 
       assert message == """
-             composer: apply recipe local:standard_app
+             composer: apply recipe mine:standard_app
 
-             Config: /c/composer
              Flags: --oban-pro
 
              Steps:
-             1. core:phx/remove_daisy_ui [local:phoenix_cleanup]
-             2. core:oban_pro [local:jobs]
+             1. core:phx/remove_daisy_ui [mine:phoenix_cleanup]
+             2. core:oban_pro [mine:jobs]
              3. core:phx/remove_topbar [command line]
              """
 
@@ -65,14 +64,14 @@ defmodule Composer.GitTest do
 
     test "keeps the subject under 72 characters" do
       long = String.duplicate("very_long_recipe_name_", 5)
-      [subject | _] = String.split(Git.message(long, %{config: "c", flags: []}, []), "\n")
+      [subject | _] = String.split(Git.message(long, %{flags: []}, []), "\n")
 
       assert String.length(subject) < 72
       assert String.ends_with?(subject, "...")
     end
 
     test "shows (none) for no flags and no steps" do
-      message = Git.message("local:empty", %{config: "c", flags: []}, [])
+      message = Git.message("mine:empty", %{flags: []}, [])
       assert message =~ "Flags: (none)"
       assert message =~ "Steps:\n(none)"
     end

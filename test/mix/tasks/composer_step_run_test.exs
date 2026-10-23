@@ -13,10 +13,7 @@ defmodule Mix.Tasks.Composer.Step.RunTest do
   end
 
   setup do
-    Application.put_env(:composer, :discovery,
-      modules: [Composer.FakeBook, Composer.OtherBook],
-      local: false
-    )
+    Application.put_env(:composer, :discovery, modules: [Composer.FakeBook, Composer.OtherBook])
 
     on_exit(fn ->
       Application.delete_env(:composer, :discovery)

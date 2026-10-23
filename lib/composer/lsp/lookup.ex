@@ -17,7 +17,7 @@ defmodule Composer.LSP.Lookup do
     * `nil` - nothing to resolve (a recipe key)
   """
 
-  alias Composer.{Cookbook, Lint, Local, Recipe, Ref, Resolver}
+  alias Composer.{Cookbook, Lint, Recipe, Ref, Resolver}
 
   @type result ::
           {:step, Composer.Step.Meta.t()}
@@ -36,7 +36,7 @@ defmodule Composer.LSP.Lookup do
 
   def resolve(cursor, path, snapshot) do
     cookbooks = cookbooks(snapshot)
-    owner = owner(cookbooks, path, snapshot)
+    owner = owner(cookbooks, path)
     resolve(cursor, cookbooks, owner, Path.basename(path, ".exs"))
   end
 
@@ -78,17 +78,13 @@ defmodule Composer.LSP.Lookup do
   defp resolve(_cursor, _cookbooks, _owner, _group), do: nil
 
   @doc """
-  The cookbooks a lookup resolves against: the snapshot's code cookbooks
-  and local, built from its directory (which may not exist).
+  The cookbooks a lookup resolves against: the snapshot's.
   """
   @spec cookbooks(map()) :: [Cookbook.t()]
-  def cookbooks(%{cookbooks: cookbooks, local_dir: nil}), do: cookbooks
+  def cookbooks(%{cookbooks: cookbooks}), do: cookbooks
 
-  def cookbooks(%{cookbooks: cookbooks, local_dir: dir}),
-    do: Enum.reject(cookbooks, &(&1.kind == :local)) ++ [Local.build(Path.expand(dir))]
-
-  defp owner(cookbooks, path, snapshot) do
-    case Lint.owner(cookbooks, path, local: snapshot.local_dir) do
+  defp owner(cookbooks, path) do
+    case Lint.owner(cookbooks, path) do
       {:ok, owner} -> owner
       {:error, _} -> nil
     end

@@ -1,6 +1,6 @@
 defmodule Composer.Test.LSPFixtures do
   @moduledoc false
-  # A local config directory and a workspace snapshot for the language
+  # A cookbook of recipes in a tmp dir and a workspace snapshot for the language
   # server's tests, against the fake cookbooks.
 
   @app """
@@ -27,18 +27,16 @@ defmodule Composer.Test.LSPFixtures do
   @doc "The text of `recipes/app.exs`; positions in it are asserted by tests."
   def app_source, do: @app
 
-  @doc "Writes the local config in `dir`; returns the snapshot and the group's path."
-  def local(dir) do
+  @doc "Writes the cookbook `mine` in `dir`; returns the snapshot and the group's path."
+  def workspace(dir) do
     File.mkdir_p!(Path.join(dir, "recipes"))
     path = Path.join(dir, "recipes/app.exs")
     File.write!(path, @app)
 
-    {:ok, cookbooks} =
-      Composer.Discovery.cookbooks(apps: [:fake_book, :other_book], local: false)
+    cookbooks = Composer.Test.Cookbooks.discover(dir, [:fake_book, :other_book])
 
     snapshot = %{
       cookbooks: cookbooks,
-      local_dir: dir,
       root: File.cwd!(),
       project: "host_app",
       encoding: :utf16,

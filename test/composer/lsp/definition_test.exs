@@ -8,7 +8,7 @@ defmodule Composer.LSP.DefinitionTest do
 
   @tag :tmp_dir
   test "a step: its source, at use Composer.Step", %{tmp_dir: dir} do
-    {snapshot, path} = LSPFixtures.local(dir)
+    {snapshot, path} = LSPFixtures.workspace(dir)
     result = LSPFixtures.app_source() |> Cursor.at(path, 8, 8) |> Lookup.resolve(path, snapshot)
 
     assert {source, {{2, 3}, {2, 20}}} = Definition.target(result, snapshot.cookbooks, %{})
@@ -17,7 +17,7 @@ defmodule Composer.LSP.DefinitionTest do
 
   @tag :tmp_dir
   test "a recipe: its key in its group file", %{tmp_dir: dir} do
-    {snapshot, path} = LSPFixtures.local(dir)
+    {snapshot, path} = LSPFixtures.workspace(dir)
     result = LSPFixtures.app_source() |> Cursor.at(path, 13, 15) |> Lookup.resolve(path, snapshot)
 
     assert {group, {{8, 3}, {8, 8}}} = Definition.target(result, snapshot.cookbooks, %{})

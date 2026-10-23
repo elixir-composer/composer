@@ -40,7 +40,7 @@ defmodule Composer.Resolver do
   name without a `/` (`{:use, "base"}`) is the recipe of that name in the
   same group as the referring recipe; nothing outside the group can match
   it. Any other reference is resolved like a step reference, except that
-  `local` is searched too and there is no Hex fallback.
+  there is no Hex fallback.
 
   ## Entries
 
@@ -48,7 +48,7 @@ defmodule Composer.Resolver do
 
       %{ref: "core:setup/credo", label: "core:setup/credo",
         step: {:module, Composer.Core.Steps.Setup.Credo},
-        origin: "local:phx/app", gates: [:dev_tools], if: nil, meta: %Composer.Step.Meta{}}
+        origin: "my_app:phx/app", gates: [:dev_tools], if: nil, meta: %Composer.Step.Meta{}}
 
   `origin` is the recipe the step came from, `gates` the `if:` flags of the
   includes it was reached through, and `if` its own flag. `step` is the
@@ -387,9 +387,6 @@ defmodule Composer.Resolver do
       case ref do
         %Ref{cookbook: "hex", path: package, source: source} ->
           {:ok, {:install, package, source}}
-
-        %Ref{cookbook: "local"} ->
-          {:error, {:local_step, string, origin}}
 
         %Ref{cookbook: nil} ->
           find_unqualified_step(index, ref, string, context, origin)

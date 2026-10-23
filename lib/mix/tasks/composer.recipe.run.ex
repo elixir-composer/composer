@@ -6,13 +6,13 @@ defmodule Mix.Tasks.Composer.Recipe.Run do
   records the run as one git commit.
 
       mix composer.recipe.run app/default
-      mix composer.recipe.run local:phx/app --gigalixir --oban-pro
+      mix composer.recipe.run my_app:phx/app --gigalixir --oban-pro
       mix composer.recipe.run app/default --dry-run
       mix composer.recipe.run app/default --no-commit
 
   The recipe reference is `"cookbook:group/name"` or an unqualified
   `"group/name"`, which is looked up in the current project's cookbook
-  first, then in every cookbook including `local`.
+  first, then in every cookbook.
   `mix composer.recipe.list` lists them.
 
   Every flag declared in the `flags:` of the recipe, or of a recipe it
@@ -31,8 +31,8 @@ defmodule Mix.Tasks.Composer.Recipe.Run do
        tree has uncommitted, unstaged or untracked changes. This is checked
        before anything is written, including the dependency fetch;
     2. applies the steps as one diff, without asking (see below);
-    3. commits everything with `git add -A` and a message listing the config
-       directory, the flags, and every step with the recipe it came from.
+    3. commits everything with `git add -A` and a message listing the
+       flags and every step with the recipe it came from.
 
   The commit is a queued task, so it runs last, after any `{:queue, ...}`
   steps, and only if the diff is applied. `--dry-run` commits nothing.
@@ -46,7 +46,6 @@ defmodule Mix.Tasks.Composer.Recipe.Run do
 
   ## Options
 
-    * `-c`, `--config` - the local config directory (see `Composer.Local`)
     * `--no-commit` - skip the git checks and the commit
     * `--dry-run` - as for any Igniter task
     * `--yes` - implied unless `--dry-run` is given
@@ -54,9 +53,9 @@ defmodule Mix.Tasks.Composer.Recipe.Run do
 
   use Igniter.Mix.Task
 
-  alias Composer.{CLI, Error, Git, Local, Preflight, Resolver}
+  alias Composer.{CLI, Error, Git, Preflight, Resolver}
 
-  @base_schema [config: :string, no_commit: :boolean]
+  @base_schema [no_commit: :boolean]
 
   @reserved Keyword.keys(@base_schema) ++
               Keyword.keys(Igniter.Mix.Task.Info.global_options()[:switches])
@@ -65,8 +64,8 @@ defmodule Mix.Tasks.Composer.Recipe.Run do
   def info(argv, _composing_task) do
     flag_schema =
       case CLI.prescan(argv) do
-        {config, [recipe | _]} ->
-          cookbooks = CLI.cookbooks!(config)
+        [recipe | _] ->
+          cookbooks = CLI.cookbooks!()
           result = CLI.resolve_recipe!(cookbooks, recipe, :all)
           flags = result |> Resolver.declared_flags() |> Keyword.keys()
 
@@ -75,17 +74,16 @@ defmodule Mix.Tasks.Composer.Recipe.Run do
           end
 
           schema = Enum.map(flags, &{&1, :boolean})
-          CLI.check_switches!(argv, @base_schema ++ schema, [c: :config], result.root, flags)
+          CLI.check_switches!(argv, @base_schema ++ schema, [], result.root, flags)
           schema
 
-        {_config, []} ->
+        [] ->
           []
       end
 
     %Igniter.Mix.Task.Info{
       positional: [:recipe],
       schema: @base_schema ++ flag_schema,
-      aliases: [c: :config],
       example: "mix composer.recipe.run app/default --gigalixir"
     }
   end
@@ -106,7 +104,7 @@ defmodule Mix.Tasks.Composer.Recipe.Run do
   def igniter(igniter) do
     opts = igniter.args.options
     commit? = not Keyword.get(opts, :no_commit, false)
-    cookbooks = CLI.cookbooks!(opts[:config])
+    cookbooks = CLI.cookbooks!()
 
     # Validate every include, gated or not, before anything runs.
     all = CLI.resolve_recipe!(cookbooks, igniter.args.positional.recipe, :all)
@@ -126,8 +124,7 @@ defmodule Mix.Tasks.Composer.Recipe.Run do
 
     if commit? do
       flags = Enum.filter(Resolver.flags(all), &(Keyword.get(opts, &1) == true))
-      {config, _how} = Local.dir(opts[:config])
-      message = Git.message(result.root, %{config: config, flags: flags}, active)
+      message = Git.message(result.root, %{flags: flags}, active)
 
       file = write_message!(message, Keyword.get(opts, :dry_run, false))
       Igniter.add_task(igniter, "composer.git.commit", ["--message-file", file])

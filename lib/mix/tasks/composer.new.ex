@@ -21,11 +21,10 @@ defmodule Mix.Tasks.Composer.New do
 
   ## Starting from a shared recipe
 
-  Pass `--from` with a recipe reference (from a dependency's cookbook or
-  your local one) to copy *that* recipe instead of the built-in cookbook:
+  Pass `--from` with a recipe reference (from any installed cookbook) to
+  copy *that* recipe instead of the built-in cookbook:
 
-      mix composer.new --from cc_lab:lv/base
-      mix composer.new --from local:phx/app
+      mix composer.new --from cb_lab:lv/base
 
   The copy becomes `app/default`. Unqualified `{:use, ...}` entries are
   qualified, so they still name the recipes they did in the source group.
@@ -35,7 +34,6 @@ defmodule Mix.Tasks.Composer.New do
   ## Options
 
     * `--from REF` - copy this recipe instead of the built-in cookbook
-    * `-c`, `--config` - the local config directory, for `--from local:...`
   """
 
   use Igniter.Mix.Task
@@ -113,10 +111,9 @@ defmodule Mix.Tasks.Composer.New do
   @impl Igniter.Mix.Task
   def info(_argv, _composing_task) do
     %Igniter.Mix.Task.Info{
-      schema: [from: :string, config: :string],
-      aliases: [c: :config],
+      schema: [from: :string],
       composes: ["composer.gen.cookbook"],
-      example: "mix composer.new --from local:phx/app"
+      example: "mix composer.new --from cb_lab:lv/base"
     }
   end
 
@@ -130,7 +127,7 @@ defmodule Mix.Tasks.Composer.New do
     source =
       case opts[:from] do
         nil -> cookbook_source()
-        from -> from_source(from, opts[:config])
+        from -> from_source(from)
       end
 
     igniter
@@ -184,7 +181,7 @@ defmodule Mix.Tasks.Composer.New do
     #   "core:setup/credo"        a step, as "cookbook:path"
     #   "hex:oban"                a Hex package and its own installer
     #   {:use, "other"}           another recipe in this group, in place
-    #   {:use, "local:ash/base"}  a recipe in another group or cookbook
+    #   {:use, "cb_lab:lv/base"}  a recipe in another group or cookbook
     #   {:task, "x.y", []}        compose any Igniter task
     #
     # Write your own steps with `mix composer.gen.step NAME`, and browse the
@@ -253,8 +250,8 @@ defmodule Mix.Tasks.Composer.New do
     end
   end
 
-  defp from_source(from, config) do
-    cookbooks = CLI.cookbooks!(config)
+  defp from_source(from) do
+    cookbooks = CLI.cookbooks!()
     id = CLI.ok!(Composer.Resolver.find_recipe(cookbooks, from, nil))
     %Ref{cookbook: name, path: path} = Ref.parse!(id)
     cookbook = Enum.find(cookbooks, &(&1.name == name))

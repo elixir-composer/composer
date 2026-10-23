@@ -10,7 +10,6 @@ defmodule Mix.Tasks.Composer.Step.Find do
 
   ## Options
 
-    * `-c`, `--config` - the local config directory (see `Composer.Local`)
     * `--json` - print JSON instead of text
   """
 
@@ -28,8 +27,7 @@ defmodule Mix.Tasks.Composer.Step.Find do
         words -> words |> Enum.join(" ") |> String.downcase()
       end
 
-    opts[:config]
-    |> CLI.cookbooks!()
+    CLI.cookbooks!()
     |> Enum.flat_map(&Cookbook.steps/1)
     |> search(query)
     |> Mix.Tasks.Composer.Step.List.print(opts[:json])

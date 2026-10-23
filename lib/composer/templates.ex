@@ -284,12 +284,6 @@ defmodule Composer.Templates do
     end)
   end
 
-  defp step_dir("local", _id) do
-    raise ArgumentError,
-          "local holds recipes only and has no templates; put templates beside a " <>
-            "step in a cookbook package (see mix composer.gen.cookbook)"
-  end
-
   defp step_dir(name, id) do
     module = Cookbook.module_for(name)
 

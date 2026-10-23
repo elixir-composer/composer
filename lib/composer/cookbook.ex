@@ -53,9 +53,8 @@ defmodule Composer.Cookbook do
   ## Runtime
 
   A cookbook is described at run time by a `%Composer.Cookbook{}` struct.
-  `kind` is `:code` for a package's cookbook, `:local` for your recipes
-  (see `Composer.Local`) and `:virtual` for `hex`. Recipes and
-  templates are read from `source_dir/1`, the cookbook's tree in the
+  `kind` is `:code` for a package's cookbook and `:virtual` for `hex`.
+  Recipes and templates are read from `source_dir/1`, the cookbook's tree in the
   dependency's source, so composer is a development tool: running from a
   release is not supported.
   """
@@ -64,7 +63,7 @@ defmodule Composer.Cookbook do
 
   defstruct [:name, :app, :module, :kind, :summary, :homepage, :source_dir]
 
-  @type kind :: :code | :local | :virtual
+  @type kind :: :code | :virtual
 
   @type t :: %__MODULE__{
           name: String.t(),
@@ -80,7 +79,7 @@ defmodule Composer.Cookbook do
   # top-level module composer ships is listed here.
   @module_names ~w(
     runner step cookbook templates helpers versions resolver ref recipe
-    discovery local manifest index completion facets error git cli preflight
+    discovery manifest index completion facets error git cli preflight
     lint lsp editor
   )
 

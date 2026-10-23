@@ -3,6 +3,7 @@ defmodule Mix.Tasks.Composer.RecipeEditTest do
   use ExUnit.Case, async: false
 
   import ExUnit.CaptureIO
+  import Composer.Test.Cookbooks
 
   @moduletag :tmp_dir
 
@@ -20,14 +21,17 @@ defmodule Mix.Tasks.Composer.RecipeEditTest do
     ]
     """)
 
-    Application.put_env(:composer, :discovery, modules: [Composer.FakeBook])
+    Application.put_env(:composer, :discovery,
+      modules: [Composer.FakeBook],
+      cookbooks: [code_cookbook(dir)]
+    )
 
     on_exit(fn ->
       Application.delete_env(:composer, :discovery)
       System.delete_env("COMPOSER_EDITOR")
     end)
 
-    %{config: dir, group: Path.join(dir, "recipes/phx.exs")}
+    %{group: Path.join(dir, "recipes/phx.exs")}
   end
 
   defp run(argv) do
@@ -36,27 +40,27 @@ defmodule Mix.Tasks.Composer.RecipeEditTest do
   end
 
   test "--print shows the group file and the recipe's line, even if it fails to load",
-       %{config: config, group: group} do
-    assert run(["-c", config, "--print", "local:phx/first"]) == "#{group}:2\n"
-    assert run(["-c", config, "--print", "phx/second"]) == "#{group}:4\n"
+       %{group: group} do
+    assert run(["--print", "mine:phx/first"]) == "#{group}:2\n"
+    assert run(["--print", "phx/second"]) == "#{group}:4\n"
   end
 
-  test "opens the editor from COMPOSER_EDITOR", %{config: config, group: group, tmp_dir: dir} do
+  test "opens the editor from COMPOSER_EDITOR", %{group: group, tmp_dir: dir} do
     out = Path.join(dir, "opened")
     System.put_env("COMPOSER_EDITOR", "echo __FILE__:__LINE__ > '#{out}'")
-    run(["-c", config, "phx/second"])
+    run(["phx/second"])
     assert File.read!(out) == "#{group}:4\n"
   end
 
-  test "raises on a failing editor", %{config: config} do
+  test "raises on a failing editor" do
     System.put_env("COMPOSER_EDITOR", "false")
 
     assert_raise Mix.Error, ~r/Editor exited with status 1/, fn ->
-      run(["-c", config, "phx/first"])
+      run(["phx/first"])
     end
   end
 
-  test "raises on an unknown recipe", %{config: config} do
-    assert_raise Mix.Error, fn -> run(["-c", config, "--print", "phx/nope"]) end
+  test "raises on an unknown recipe" do
+    assert_raise Mix.Error, fn -> run(["--print", "phx/nope"]) end
   end
 end

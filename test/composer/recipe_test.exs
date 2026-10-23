@@ -16,7 +16,7 @@ defmodule Composer.RecipeTest do
       {:queue, "ecto.setup", [], if: :db}
     ]
 
-    assert {:ok, ^entries} = Recipe.validate(entries, "local:g/p")
+    assert {:ok, ^entries} = Recipe.validate(entries, "mine:g/p")
     assert Recipe.if_flags(entries) == [:oban_pro, :args, :gigalixir, :db]
   end
 
@@ -35,8 +35,8 @@ defmodule Composer.RecipeTest do
     ]
 
     for {entry, suggestion} <- cases do
-      assert {:error, {:legacy_form, "local:x", ^entry, ^suggestion}} =
-               Recipe.validate([entry], "local:x")
+      assert {:error, {:legacy_form, "mine:x", ^entry, ^suggestion}} =
+               Recipe.validate([entry], "mine:x")
     end
 
     assert {:error, {:legacy_form, _, {:composer, Foo}, _}} =
@@ -44,7 +44,7 @@ defmodule Composer.RecipeTest do
 
     assert {:error, {:legacy_form, _, MyApp.Step, _}} = Recipe.validate([MyApp.Step], "x")
 
-    message = Composer.Error.message({:legacy_form, "local:x", {:add, :credo}, ~s("credo")})
+    message = Composer.Error.message({:legacy_form, "mine:x", {:add, :credo}, ~s("credo")})
     assert message =~ "Write it as \"credo\" instead"
   end
 

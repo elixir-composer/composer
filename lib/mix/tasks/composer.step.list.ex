@@ -15,7 +15,6 @@ defmodule Mix.Tasks.Composer.Step.List do
     * `--framework NAME` - only steps targeting this framework
     * `--action NAME` - only steps with this action (add, remove, gen, ...)
     * `--tag NAME` - only steps with this tag
-    * `-c`, `--config` - the local config directory (see `Composer.Local`)
     * `--json` - print JSON instead of text
   """
 
@@ -31,8 +30,7 @@ defmodule Mix.Tasks.Composer.Step.List do
     {opts, _args} = CLI.parse!(argv, @filters)
 
     steps =
-      opts[:config]
-      |> CLI.cookbooks!()
+      CLI.cookbooks!()
       |> Enum.flat_map(&Cookbook.steps/1)
       |> Enum.filter(&keep?(&1, opts))
 

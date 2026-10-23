@@ -7,15 +7,15 @@ defmodule Composer.Recipe.GroupTest do
   @fixtures "test/support/fixtures/groups"
 
   defp fixture(name), do: Path.join(@fixtures, name <> ".exs")
-  defp load(name), do: Group.load(fixture(name), "local")
+  defp load(name), do: Group.load(fixture(name), "mine")
 
   test "loads every recipe of a group, with its metadata" do
     assert {:ok, [base, app]} = load("clean")
 
     assert %Recipe{
              id: "clean/base",
-             ref: "local:clean/base",
-             cookbook: "local",
+             ref: "mine:clean/base",
+             cookbook: "mine",
              group: "clean",
              name: "base",
              shortdoc: "The base",
@@ -67,18 +67,18 @@ defmodule Composer.Recipe.GroupTest do
     path = fixture("not_keyword")
     assert {:error, {:group_shape, ^path, %{}}} = load("not_keyword")
 
-    assert {:error, {:recipe_missing_key, "local:missing_shortdoc/base", :shortdoc}} =
+    assert {:error, {:recipe_missing_key, "mine:missing_shortdoc/base", :shortdoc}} =
              load("missing_shortdoc")
 
-    assert {:error, {:unknown_recipe_key, "local:unknown_key/base", :help} = reason} =
+    assert {:error, {:unknown_recipe_key, "mine:unknown_key/base", :help} = reason} =
              load("unknown_key")
 
-    assert Error.message(reason) =~ "local:unknown_key/base has an unknown key :help"
+    assert Error.message(reason) =~ "mine:unknown_key/base has an unknown key :help"
 
-    assert {:error, {:bad_recipe_value, "local:bad_value/base", :shortdoc, ""}} =
+    assert {:error, {:bad_recipe_value, "mine:bad_value/base", :shortdoc, ""}} =
              load("bad_value")
 
-    assert {:error, {:undeclared_flag, "local:undeclared_flag/base", :credo} = reason} =
+    assert {:error, {:undeclared_flag, "mine:undeclared_flag/base", :credo} = reason} =
              load("undeclared_flag")
 
     assert Error.message(reason) =~ ~s(flags: [credo: "What --credo does"])
@@ -86,10 +86,10 @@ defmodule Composer.Recipe.GroupTest do
 
   test "check/3 reports every problem" do
     {term, _} = Code.eval_file(fixture("bad_value"))
-    {[], errors} = Group.check(term, fixture("bad_value"), "local")
+    {[], errors} = Group.check(term, fixture("bad_value"), "mine")
 
-    assert {:bad_recipe_value, "local:bad_value/base", :shortdoc, ""} in errors
-    assert {:bad_recipe_value, "local:bad_value/base", :flags, [credo: 1]} in errors
+    assert {:bad_recipe_value, "mine:bad_value/base", :shortdoc, ""} in errors
+    assert {:bad_recipe_value, "mine:bad_value/base", :flags, [credo: 1]} in errors
   end
 
   test "duplicate recipe names are an error" do
@@ -102,11 +102,11 @@ defmodule Composer.Recipe.GroupTest do
 
   test "a raising file and a syntax error are reported" do
     # The line of the failure in the file is kept, for lint.
-    assert {:error, {:recipe_eval, "local:raises/", _, %RuntimeError{}, 1}} = load("raises")
+    assert {:error, {:recipe_eval, "mine:raises/", _, %RuntimeError{}, 1}} = load("raises")
 
     path = "test/support/fixtures/syntax_error.exs"
     assert {:error, {:group_parse, ^path, _, 1}} = Group.ids(path)
-    assert {:error, {:recipe_eval, _, ^path, _, 1}} = Group.load(path, "local")
+    assert {:error, {:recipe_eval, _, ^path, _, 1}} = Group.load(path, "mine")
   end
 
   test "group names are lowercase segments" do
@@ -121,7 +121,7 @@ defmodule Composer.Recipe.GroupTest do
       assert {:ok, [base, app]} = load("aliases")
       assert base.aliases == [fb: "fake_book"]
       assert app.aliases == [fb: "fake_book"]
-      assert {:ok, %{aliases: []}} = Recipe.load(fixture("clean"), "local", "base")
+      assert {:ok, %{aliases: []}} = Recipe.load(fixture("clean"), "mine", "base")
 
       assert Group.names(fixture("aliases")) == {:ok, ["base", "app"]}
       assert Group.ids(fixture("aliases")) == {:ok, ["app", "base"]}
@@ -129,20 +129,20 @@ defmodule Composer.Recipe.GroupTest do
 
     test "invalid aliases are per-recipe errors; siblings still load" do
       path = fixture("bad_aliases")
-      assert {:ok, {[good], errors}} = Group.load_all(path, "local")
+      assert {:ok, {[good], errors}} = Group.load_all(path, "mine")
       assert good.name == "good"
 
-      assert {:reserved_alias, "local:bad_aliases/reserved", :core} in errors
-      assert {:invalid_alias, "local:bad_aliases/malformed", :Lab} in errors
-      assert {:duplicate_alias, "local:bad_aliases/duplicate", :fb} in errors
-      assert {:alias_atom_target, "local:bad_aliases/atom", :fb, :fake_book} in errors
+      assert {:reserved_alias, "mine:bad_aliases/reserved", :core} in errors
+      assert {:invalid_alias, "mine:bad_aliases/malformed", :Lab} in errors
+      assert {:duplicate_alias, "mine:bad_aliases/duplicate", :fb} in errors
+      assert {:alias_atom_target, "mine:bad_aliases/atom", :fb, :fake_book} in errors
 
       for {name, target} <- [h: "hex", c: "core", l: "local"] do
-        assert {:invalid_alias_target, "local:bad_aliases/virtual", name, target} in errors
+        assert {:invalid_alias_target, "mine:bad_aliases/virtual", name, target} in errors
       end
 
       assert {:error, {:alias_atom_target, _, _, _} = reason} =
-               Group.pick({[good], errors}, path, "local", "atom")
+               Group.pick({[good], errors}, path, "mine", "atom")
 
       assert Error.message(reason) =~ ~s(aliases: [fb: "fake_book"])
       assert Error.message({:reserved_alias, "r", :core}) =~ "reserved"
@@ -150,9 +150,9 @@ defmodule Composer.Recipe.GroupTest do
   end
 
   test "Recipe.load/3 picks one recipe by name" do
-    assert {:ok, %{ref: "local:clean/app"}} = Recipe.load(fixture("clean"), "local", "app")
+    assert {:ok, %{ref: "mine:clean/app"}} = Recipe.load(fixture("clean"), "mine", "app")
 
-    assert {:error, {:missing_recipe, "local:clean/nope", nil, []}} =
-             Recipe.load(fixture("clean"), "local", "nope")
+    assert {:error, {:missing_recipe, "mine:clean/nope", nil, []}} =
+             Recipe.load(fixture("clean"), "mine", "nope")
   end
 end

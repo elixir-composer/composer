@@ -5,16 +5,15 @@ defmodule Composer.Index do
   A plain-text file of tab-separated lines that the completion script reads
   without starting the BEAM:
 
-      cookbook	local	Your recipes in /home/you/.config/composer
-      group	local:ash/	3 recipes
-      recipe	local:ash/base	Ash core: sourceror, ash and ash_phoenix
+      cookbook	cb_lab	Andy's composer steps
+      group	cb_lab:base/	1 recipe
+      recipe	cb_lab:base/completions	CbLab's base recipe
       step	core:setup/credo	Adds Credo for static code analysis
 
-  Package cookbooks are read from their committed manifests (falling back
-  to runtime metadata when a cookbook has none). Local group files are
-  evaluated to read their shortdocs (they are evaluated on every run
-  anyway); a group that fails to load lists its recipes with no shortdoc
-  and never fails the refresh.
+  Cookbooks are read from their committed manifests. A cookbook with no
+  manifest, or one that fails to read, falls back to runtime metadata: its
+  group files are evaluated to read their shortdocs, and a group that fails
+  to load lists its recipes with no shortdoc and never fails the refresh.
 
   Every composer task refreshes the index as a side effect, and
   `mix composer.index` rebuilds it explicitly.

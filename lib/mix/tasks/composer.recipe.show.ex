@@ -6,8 +6,8 @@ defmodule Mix.Tasks.Composer.Recipe.Show do
   expanded, numbered step list, with the recipe each step came from and
   the include flags that gate it.
 
-      $ mix composer.recipe.show local:phx/app
-      Recipe local:phx/app (/home/you/.config/composer/recipes/phx.exs)
+      $ mix composer.recipe.show my_app:phx/app
+      Recipe my_app:phx/app (/home/you/src/my_app/lib/composer/my_app/recipes/phx.exs)
 
       Standard Phoenix app
 
@@ -17,11 +17,11 @@ defmodule Mix.Tasks.Composer.Recipe.Show do
         --gigalixir  Add Gigalixir deployment
 
       Steps:
-         1. core:phx/remove_theme_toggle  [local:phx/clean]
-         2. core:setup/credo  [local:dev/env]
-         3. core:cluster/gigalixir  [local:deploy/gigalixir] if :gigalixir
-         4. cc_lab:auth/passkeys (as lab)  [local:phx/app]
-         5. core:setup/sort_deps  [local:phx/finish]
+         1. core:phx/remove_theme_toggle  [my_app:phx/clean]
+         2. core:setup/credo  [my_app:dev/env]
+         3. core:cluster/gigalixir  [my_app:deploy/gigalixir] if :gigalixir
+         4. cc_lab:auth/passkeys (as lab)  [my_app:phx/app]
+         5. core:setup/sort_deps  [my_app:phx/finish]
 
   Flags declared by recipes that this one `:use`s are listed after its
   own; `mix composer.recipe.run` accepts all of them.
@@ -40,7 +40,6 @@ defmodule Mix.Tasks.Composer.Recipe.Show do
 
   ## Options
 
-    * `-c`, `--config` - the local config directory (see `Composer.Local`)
     * `--json` - print JSON instead of text
   """
 
@@ -58,7 +57,7 @@ defmodule Mix.Tasks.Composer.Recipe.Show do
         _ -> Mix.raise("Usage: mix composer.recipe.show RECIPE")
       end
 
-    cookbooks = CLI.cookbooks!(opts[:config])
+    cookbooks = CLI.cookbooks!()
     result = CLI.resolve_recipe!(cookbooks, ref, :all)
     [recipe | _] = result.recipes
     declared = Resolver.declared_flags(result)

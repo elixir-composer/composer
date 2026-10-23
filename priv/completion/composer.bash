@@ -2,7 +2,7 @@
 #
 # Completes step ids for `mix composer.step.{run,show,edit}`, recipe ids for
 # `mix composer.recipe.{run,show,edit}`, and cookbook and group names
-# (`local`, `local:ash/`) for `mix composer.recipe.list`, from
+# (`cb_lab`, `cb_lab:lv/`) for `mix composer.recipe.list`, from
 # _build/composer/index, without starting the BEAM, and hands every
 # other `mix` completion to mix_completions (https://hex.pm/packages/mix_completions)
 # when it is loaded. Source this file after mix_completions' script.
@@ -47,7 +47,7 @@ __composer_complete_ids() {
     [[ $kinds == *" $k "* && $id == "$item"* ]] && COMPREPLY+=("$before$id")
   done <"$index"
 
-  # A group ("local:ash/") is completed further, so no space after it.
+  # A group ("cb_lab:lv/") is completed further, so no space after it.
   if [[ ${#COMPREPLY[@]} -eq 1 && ${COMPREPLY[0]} == */ ]]; then
     compopt -o nospace 2>/dev/null
   fi

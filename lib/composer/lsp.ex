@@ -20,7 +20,7 @@ defmodule Composer.LSP do
   for protocol messages (`Composer.LSP.Server.run/1`). The call blocks.
   """
 
-  alias Composer.{CLI, Discovery, Local}
+  alias Composer.{CLI, Discovery}
 
   @doc "Starts the language server on stdio and blocks."
   @spec start(keyword()) :: no_return()
@@ -42,13 +42,11 @@ defmodule Composer.LSP do
   @doc false
   # The workspace options of a server for the current project.
   def server_opts(cookbooks) do
-    {local_dir, _how} = Local.dir(nil)
     root = Path.dirname(Mix.Project.project_file())
 
     [
       cookbooks: cookbooks,
       entries: entries(cookbooks),
-      local_dir: local_dir,
       root: root,
       project: to_string(Mix.Project.config()[:app])
     ]
@@ -58,14 +56,11 @@ defmodule Composer.LSP do
   @spec entries([Composer.Cookbook.t()]) :: [{String.t(), String.t(), String.t() | nil}]
   def entries(cookbooks), do: Enum.flat_map(cookbooks, &Composer.Index.entries/1)
 
-  @doc """
-  The code cookbooks, without local: the language server builds local
-  from its directory, as `mix composer.cookbook.lint --file` does.
-  """
+  @doc "The cookbooks of the current project."
   @spec discover() :: {:ok, [Composer.Cookbook.t()]} | {:error, term()}
   def discover do
     discovery = Application.get_env(:composer, :discovery, [])
-    Discovery.cookbooks(Keyword.merge(discovery, local: false))
+    Discovery.cookbooks(discovery)
   end
 
   @doc """

@@ -5,38 +5,32 @@ defmodule Composer.CLI do
 
   alias Composer.{Discovery, Error, Resolver}
 
-  @config_switches [config: :string, json: :boolean]
-  @config_aliases [c: :config]
+  @switches [json: :boolean]
 
   # Options of mix composer.recipe.run and Igniter's global switches that
   # take a value; every other --switch is a boolean.
-  @value_switches ["--config", "-c", "--scribe", "--only"]
+  @value_switches ["--scribe", "--only"]
 
-  @doc "Parses argv strictly with `-c/--config`, `--json` and `extra` switches."
+  @doc "Parses argv strictly with `--json` and `extra` switches."
   def parse!(argv, extra \\ []) do
-    OptionParser.parse!(argv, strict: @config_switches ++ extra, aliases: @config_aliases)
+    OptionParser.parse!(argv, strict: @switches ++ extra)
   end
 
   @doc """
-  Pre-scans argv for `--config` and the positional arguments without knowing
-  the recipe's flags yet. `OptionParser` would take a positional following
-  an unknown `--flag` as that flag's value.
+  Pre-scans argv for the positional arguments without knowing the recipe's
+  flags yet. `OptionParser` would take a positional following an unknown
+  `--flag` as that flag's value.
   """
-  def prescan(argv), do: prescan(argv, nil, [])
+  def prescan(argv), do: prescan(argv, [])
 
-  defp prescan([], config, positional), do: {config, Enum.reverse(positional)}
-  defp prescan(["--" | _rest], config, positional), do: {config, Enum.reverse(positional)}
+  defp prescan([], positional), do: Enum.reverse(positional)
+  defp prescan(["--" | _rest], positional), do: Enum.reverse(positional)
 
-  defp prescan([switch, value | rest], config, positional) when switch in @value_switches do
-    config = if switch in ["--config", "-c"], do: value, else: config
-    prescan(rest, config, positional)
-  end
+  defp prescan([switch, _value | rest], positional) when switch in @value_switches,
+    do: prescan(rest, positional)
 
-  defp prescan(["--config=" <> value | rest], _config, positional),
-    do: prescan(rest, value, positional)
-
-  defp prescan(["-" <> _ | rest], config, positional), do: prescan(rest, config, positional)
-  defp prescan([arg | rest], config, positional), do: prescan(rest, config, [arg | positional])
+  defp prescan(["-" <> _ | rest], positional), do: prescan(rest, positional)
+  defp prescan([arg | rest], positional), do: prescan(rest, [arg | positional])
 
   @doc """
   Raises `{:unknown_flag, ...}` for the first `--switch` in `argv` that is
@@ -71,14 +65,14 @@ defmodule Composer.CLI do
   result is memoized per process, so `info/2` and `igniter/1` of one task
   run discover once, and the completion index is refreshed as a side effect.
   """
-  def cookbooks!(config \\ nil) do
-    opts = Keyword.merge(Application.get_env(:composer, :discovery, []), config: config)
-    key = {__MODULE__, :cookbooks, opts}
+  def cookbooks! do
+    discovery = Application.get_env(:composer, :discovery, [])
+    key = {__MODULE__, :cookbooks, discovery}
 
     case Process.get(key) do
       nil ->
         compile()
-        cookbooks = ok!(Discovery.cookbooks(opts))
+        cookbooks = ok!(Discovery.cookbooks(discovery))
         Composer.Index.refresh(cookbooks)
         Process.put(key, cookbooks)
         cookbooks
@@ -154,7 +148,7 @@ defmodule Composer.CLI do
   end
 
   @doc """
-  Renders numbered entries: `   4. core:setup/credo  [local:tooling] if :dev`.
+  Renders numbered entries: `   4. core:setup/credo  [cb_lab:dev/tooling] if :dev`.
 
   With `aliases: true`, a step referenced through a cookbook alias is
   followed by the alias: `cc_lab:auth/passkeys (as lab)`.

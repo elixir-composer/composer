@@ -20,8 +20,8 @@ defmodule Mix.Tasks.Composer.Cookbook.Manifest do
   @impl Mix.Task
   def run(argv) do
     CLI.require_project!()
-    {opts, _args} = CLI.parse!(argv)
-    cookbooks = CLI.cookbooks!(opts[:config])
+    {_opts, _args} = CLI.parse!(argv)
+    cookbooks = CLI.cookbooks!()
 
     cookbook =
       Discovery.own(cookbooks) ||

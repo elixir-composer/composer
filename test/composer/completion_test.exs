@@ -9,15 +9,15 @@ defmodule Composer.CompletionTest do
 
   @index """
   group\tcc_lab:lv/\t1 recipe
-  group\tlocal:ash/\t2 recipes
-  group\tlocal:lv/\t1 recipe
+  group\tmine:ash/\t2 recipes
+  group\tmine:lv/\t1 recipe
   recipe\tcc_lab:lv/base\tLiveView base
-  recipe\tlocal:ash/auth\tAsh with auth
-  recipe\tlocal:ash/base\tAsh core
-  recipe\tlocal:lv/base\tMy LiveView
+  recipe\tmine:ash/auth\tAsh with auth
+  recipe\tmine:ash/base\tAsh core
+  recipe\tmine:lv/base\tMy LiveView
   cookbook\tcc_lab\tAndy's steps
   cookbook\tcore\tBuilt-in steps
-  cookbook\tlocal\tYour recipes
+  cookbook\tmine\tYour recipes
   step\tcc_lab:ash\tAdds Ash
   step\tcc_lab:ash/postgres\tAdds AshPostgres
   step\tcore:setup/credo\tAdds Credo
@@ -84,23 +84,23 @@ defmodule Composer.CompletionTest do
   end
 
   test "recipe tasks complete recipe ids, group by group", %{tmp_dir: dir} do
-    assert complete(dir, "mix composer.recipe.run lo") ==
-             ["local:ash/auth", "local:ash/base", "local:lv/base"]
+    assert complete(dir, "mix composer.recipe.run mi") ==
+             ["mine:ash/auth", "mine:ash/base", "mine:lv/base"]
 
-    # Together with "local:" on the line: the recipes in the ash group.
-    assert complete(dir, "mix composer.recipe.show local:ash/") == ["ash/auth", "ash/base"]
-    assert complete(dir, "mix composer.recipe.edit local:lv/") == ["lv/base"]
-    assert complete(dir, "mix composer.recipe.help local:lv/") == ["lv/base"]
+    # Together with "mine:" on the line: the recipes in the ash group.
+    assert complete(dir, "mix composer.recipe.show mine:ash/") == ["ash/auth", "ash/base"]
+    assert complete(dir, "mix composer.recipe.edit mine:lv/") == ["lv/base"]
+    assert complete(dir, "mix composer.recipe.help mine:lv/") == ["lv/base"]
   end
 
   test "recipe.list completes cookbooks and groups, in every position", %{tmp_dir: dir} do
-    assert complete(dir, "mix composer.recipe.list lo") ==
-             ["local:ash/", "local:lv/", "local"]
+    assert complete(dir, "mix composer.recipe.list mi") ==
+             ["mine:ash/", "mine:lv/", "mine"]
 
-    assert complete(dir, "mix composer.recipe.list local c") ==
+    assert complete(dir, "mix composer.recipe.list mine c") ==
              ["cc_lab:lv/", "cc_lab", "core"]
 
-    assert complete(dir, "mix composer.recipe.list local:a") == ["ash/"]
+    assert complete(dir, "mix composer.recipe.list mine:a") == ["ash/"]
   end
 
   test "offers nothing when the index is older than mix.lock", %{tmp_dir: dir} do

@@ -12,7 +12,7 @@ defmodule Mix.Tasks.Composer.StepEditTest do
          )
 
   setup do
-    Application.put_env(:composer, :discovery, modules: [Composer.FakeBook], local: false)
+    Application.put_env(:composer, :discovery, modules: [Composer.FakeBook])
 
     on_exit(fn ->
       Application.delete_env(:composer, :discovery)

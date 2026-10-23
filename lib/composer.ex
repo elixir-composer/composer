@@ -26,10 +26,6 @@ defmodule Composer do
       recipes `<cookbook>:<group>/<name>`. See `Composer.Recipe` and
       `Composer.Recipe.Group`.
 
-    * **Local** - just your recipes: recipe groups in
-      `~/.config/composer/recipes/`, outside any project. See
-      `Composer.Local`.
-
     * **Reference** - the string `"cookbook:path"` that names a step or a
       recipe, e.g. `"core:setup/credo"` or `"cc_lab:ash/postgres"`. An unqualified
       `"path"` is looked up in the referring recipe's own cookbook first,
@@ -57,7 +53,7 @@ defmodule Composer do
             "hex:oban",                                  # a Hex package and its installer
             {"core:oban_pro", if: :oban_pro},            # only with --oban-pro
             {:use, "base"},                              # a recipe in this group, in place
-            {:use, "local:deploy/gigalixir", if: :gigalixir},  # ... only with --gigalixir
+            {:use, "cb_lab:deploy/gigalixir", if: :gigalixir},  # ... only with --gigalixir
             {:task, "ash.codegen", ["init"]},            # compose any Igniter task
             {:queue, "ecto.setup", []}                   # run a Mix task after changes apply
           ]

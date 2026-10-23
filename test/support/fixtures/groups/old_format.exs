@@ -1,1 +1,1 @@
-["core:setup/credo", {:use, "local:base"}]
+["core:setup/credo", {:use, "mine:base"}]

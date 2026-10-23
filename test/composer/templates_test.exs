@@ -187,10 +187,4 @@ defmodule Composer.TemplatesTest do
              "the heroicons dependency is missing, but the sidebar uses heroicons. Add it first."
            ]
   end
-
-  test "local has no templates" do
-    assert_raise ArgumentError, ~r/local holds recipes only/, fn ->
-      Composer.Templates.path({"local", "x", "x.txt"})
-    end
-  end
 end

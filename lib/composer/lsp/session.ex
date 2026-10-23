@@ -16,7 +16,7 @@ defmodule Composer.LSP.Session do
   ## Options
 
     * `:server` - the pid messages are sent to (required)
-    * `:cookbooks`, `:local_dir`, `:root`, `:project`, `:entries` - the
+    * `:cookbooks`, `:root`, `:project`, `:entries` - the
       workspace's (see `Composer.LSP.Workspace`)
     * `:lint` - `fn path, args -> result end`, by default
       `Composer.LSP.Diagnostics.run/2`
@@ -65,7 +65,7 @@ defmodule Composer.LSP.Session do
 
     ws =
       Workspace.new(
-        Keyword.take(opts, [:cookbooks, :local_dir, :root, :project, :entries])
+        Keyword.take(opts, [:cookbooks, :root, :project, :entries])
         |> Enum.reject(fn {_key, value} -> value == nil end)
       )
 

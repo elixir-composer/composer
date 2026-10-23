@@ -3,8 +3,7 @@ defmodule Composer.LSP.Workspace do
   The language server's state, as a struct and pure transitions;
   `Composer.LSP.Session` holds it in a process.
 
-    * `cookbooks` - the code cookbooks, discovered without local
-    * `local_dir` - the local config directory
+    * `cookbooks` - the discovered cookbooks
     * `root`, `project` - the host project's directory and app name
     * `encoding` - the negotiated position encoding
     * `entries` - the code cookbooks' completion entries
@@ -23,7 +22,6 @@ defmodule Composer.LSP.Workspace do
   alias Composer.LSP.Convert
 
   defstruct cookbooks: [],
-            local_dir: nil,
             root: nil,
             project: nil,
             encoding: :utf16,
@@ -41,7 +39,7 @@ defmodule Composer.LSP.Workspace do
   @typedoc "What to publish: the URI, path and diagnostics of each file."
   @type publish :: [{String.t(), Path.t(), [Composer.Lint.Diagnostic.t()]}]
 
-  @doc "A workspace from `cookbooks`, `local_dir`, `root`, `project` and `entries`."
+  @doc "A workspace from `cookbooks`, `root`, `project` and `entries`."
   @spec new(keyword()) :: t()
   def new(opts), do: struct!(__MODULE__, opts)
 
@@ -92,7 +90,6 @@ defmodule Composer.LSP.Workspace do
 
     args = %{
       cookbooks: ws.cookbooks,
-      local_dir: ws.local_dir,
       root: ws.root,
       known_dependents: Map.get(ws.dependents, path, [])
     }
@@ -154,10 +151,10 @@ defmodule Composer.LSP.Workspace do
 
   @doc """
   What a request needs, read without waiting on lints: the cookbooks,
-  local dir, host, encoding, completion entries and open buffers.
+  host, encoding, completion entries and open buffers.
   """
   @spec snapshot(t()) :: map()
   def snapshot(ws) do
-    Map.take(ws, [:cookbooks, :local_dir, :root, :project, :encoding, :entries, :buffers])
+    Map.take(ws, [:cookbooks, :root, :project, :encoding, :entries, :buffers])
   end
 end

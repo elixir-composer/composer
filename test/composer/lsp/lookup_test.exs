@@ -7,7 +7,7 @@ defmodule Composer.LSP.LookupTest do
   @moduletag :tmp_dir
 
   setup %{tmp_dir: dir} do
-    {snapshot, path} = LSPFixtures.local(dir)
+    {snapshot, path} = LSPFixtures.workspace(dir)
     %{snapshot: snapshot, path: path}
   end
 
@@ -29,12 +29,12 @@ defmodule Composer.LSP.LookupTest do
   end
 
   test "{:use, ...} targets, in the same group and qualified", context do
-    assert {:recipe, %{ref: "local:app/base", doc: "The base."}} = lookup(context, 12, 15)
+    assert {:recipe, %{ref: "mine:app/base", doc: "The base."}} = lookup(context, 12, 15)
     assert {:recipe, %{ref: "fake_book:main/full"}} = lookup(context, 13, 15)
   end
 
   test "a recipe's name key", context do
-    assert {:recipe, %{ref: "local:app/app"}} = lookup(context, 4, 3)
+    assert {:recipe, %{ref: "mine:app/app"}} = lookup(context, 4, 3)
   end
 
   test "an alias name", context do

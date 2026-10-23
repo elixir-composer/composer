@@ -2,6 +2,7 @@ defmodule Composer.ManifestTest do
   use ExUnit.Case, async: true
 
   alias Composer.{Discovery, Index, Lint, Manifest, Cookbook}
+  import Composer.Test.Cookbooks
 
   @moduletag :tmp_dir
 
@@ -26,7 +27,7 @@ defmodule Composer.ManifestTest do
   end
 
   test "lint passes on core" do
-    {:ok, cookbooks} = Discovery.cookbooks(apps: [], local: false)
+    {:ok, cookbooks} = Discovery.cookbooks(apps: [])
     core = Cookbook.from_module(Composer.Core)
 
     assert %{diagnostics: []} = Lint.run(core, cookbooks, File.cwd!())
@@ -35,7 +36,7 @@ defmodule Composer.ManifestTest do
   test "lint fails on a stale or missing manifest, missing tests and bad requires", %{
     tmp_dir: dir
   } do
-    {:ok, cookbooks} = Discovery.cookbooks(apps: [:fake_book], local: false)
+    {:ok, cookbooks} = Discovery.cookbooks(apps: [:fake_book])
     fake = Cookbook.from_module(Composer.FakeBook)
 
     errors = messages(Lint.run(fake, cookbooks, dir))
@@ -62,7 +63,7 @@ defmodule Composer.ManifestTest do
     # other_book's shared recipe uses fake_book:base, which only resolves when
     # fake_book is installed.
     other = Cookbook.from_module(Composer.OtherBook)
-    {:ok, without_fake} = Discovery.cookbooks(apps: [:other_book], local: false)
+    {:ok, without_fake} = Discovery.cookbooks(apps: [:other_book])
     errors = messages(Lint.run(other, without_fake, dir))
     assert Enum.any?(errors, &(&1 =~ "names the cookbook \"fake_book\", which is not installed"))
   end
@@ -80,17 +81,17 @@ defmodule Composer.ManifestTest do
     # A group that fails to load still lists its ids, with no shortdoc.
     File.write!(Path.join(dir, "recipes/broken.exs"), "[x: raise(\"boom\")]\n")
 
-    {:ok, cookbooks} = Discovery.cookbooks(apps: [:fake_book], config: dir)
+    cookbooks = discover(dir, [:fake_book])
 
     lines = Index.lines(cookbooks)
     assert "step\tcore:setup/credo\tAdds Credo for static code analysis" in lines
     assert "step\tfake_book:ash/postgres\tAdds AshPostgres" in lines
     assert "recipe\tfake_book:nested/extra\tExtra steps" in lines
-    assert "recipe\tlocal:mine/a\tMy recipe" in lines
-    assert "recipe\tlocal:broken/x\t" in lines
-    assert "group\tlocal:mine/\t2 recipes" in lines
+    assert "recipe\tmine:mine/a\tMy recipe" in lines
+    assert "recipe\tmine:broken/x\t" in lines
+    assert "group\tmine:mine/\t2 recipes" in lines
     assert "group\tfake_book:main/\t2 recipes" in lines
-    assert "cookbook\tlocal\tYour recipes in #{dir}" in lines
+    assert "cookbook\tmine\tTest recipes in #{dir}" in lines
     assert Enum.any?(lines, &String.starts_with?(&1, "cookbook\tfake_book\t"))
 
     path = Path.join(dir, "_build/composer/index")

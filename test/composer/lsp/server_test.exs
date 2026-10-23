@@ -8,8 +8,8 @@ defmodule Composer.LSP.ServerTest do
   @moduletag :capture_log
 
   setup %{tmp_dir: dir} do
-    {snapshot, app} = LSPFixtures.local(dir)
-    opts = Map.to_list(Map.take(snapshot, [:cookbooks, :local_dir, :root, :project, :entries]))
+    {snapshot, app} = LSPFixtures.workspace(dir)
+    opts = Map.to_list(Map.take(snapshot, [:cookbooks, :root, :project, :entries]))
     %{opts: opts, app: app, dir: dir}
   end
 
@@ -50,7 +50,7 @@ defmodule Composer.LSP.ServerTest do
     ash = Path.join(dir, "recipes/ash.exs")
     use = Path.join(dir, "recipes/use.exs")
     File.write!(ash, ~s|[\n  base: [shortdoc: "x", steps: ["credoo"]]\n]\n|)
-    File.write!(use, ~s|[\n  full: [shortdoc: "x", steps: [{:use, "local:ash/base"}]]\n]\n|)
+    File.write!(use, ~s|[\n  full: [shortdoc: "x", steps: [{:use, "mine:ash/base"}]]\n]\n|)
 
     {client, _} = start_server(opts)
     save(client, ash)

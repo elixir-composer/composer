@@ -10,7 +10,7 @@ defmodule Composer.LSP.HoverTest do
   @footer "_composer-ls · host: host_app (/src/host_app)_"
 
   setup %{tmp_dir: dir} do
-    {snapshot, path} = LSPFixtures.local(dir)
+    {snapshot, path} = LSPFixtures.workspace(dir)
 
     hover = fn line, column ->
       LSPFixtures.app_source()
@@ -32,7 +32,7 @@ defmodule Composer.LSP.HoverTest do
 
   test "a recipe: shortdoc, doc, flags and entries", %{hover: hover} do
     text = hover.(12, 15)
-    assert text =~ "**local:app/base** - Base"
+    assert text =~ "**mine:app/base** - Base"
     assert text =~ "The base."
     assert text =~ "- `--x` - An x"
     assert text =~ "1. core:setup/gitignore"

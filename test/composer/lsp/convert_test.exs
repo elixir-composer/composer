@@ -13,7 +13,7 @@ defmodule Composer.LSP.ConvertTest do
 
   defp typo do
     :error
-    |> Diagnostic.new({:typo, "credoo", "local:a/x", ["core:setup/credo"]})
+    |> Diagnostic.new({:typo, "credoo", "mine:a/x", ["core:setup/credo"]})
     |> Diagnostic.locate("/r/a.exs", {{1, 21}, {1, 29}}, [
       %{file: "/r/b.exs", range: {{1, 6}, {1, 9}}, message: "here"},
       %{file: "/r/c.exs", range: nil, message: "no range"},

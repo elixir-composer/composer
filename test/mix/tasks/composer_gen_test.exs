@@ -81,25 +81,13 @@ defmodule Mix.Tasks.Composer.GenTest do
     end
   end
 
-  @tag :tmp_dir
-  test "gen.recipe creates a group, in the cookbook or locally", %{tmp_dir: dir} do
+  test "gen.recipe creates a group in the cookbook" do
     igniter = Igniter.compose_task(test_project(), "composer.gen.recipe", ["phoenix/base"])
     source = parses!(igniter, "lib/composer/test/recipes/phoenix.exs")
     assert source =~ "mix composer.recipe.run test:phoenix/base"
 
     assert {[base: [shortdoc: "TODO: describe this recipe in one line", steps: []]], _} =
              Code.eval_string(source)
-
-    local =
-      Igniter.compose_task(test_project(), "composer.gen.recipe", [
-        "g/mine",
-        "--local",
-        "-c",
-        dir
-      ])
-
-    assert_creates(local, Path.relative_to_cwd(Path.join([dir, "recipes", "g.exs"])))
-    assert Enum.any?(local.notices, &(&1 =~ "mix composer.recipe.show local:g/mine"))
   end
 
   test "gen.recipe appends to an existing group, keeping it valid" do

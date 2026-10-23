@@ -7,12 +7,11 @@ defmodule Mix.Tasks.Composer.Index do
       mix composer.index
 
   Every composer task refreshes the index as a side effect, so this is only
-  needed after adding a dependency or a local recipe. See `Composer.Index`
+  needed after adding a dependency or a recipe. See `Composer.Index`
   and `mix composer.completion`.
 
   ## Options
 
-    * `-c`, `--config` - the local config directory (see `Composer.Local`)
   """
 
   use Mix.Task
@@ -22,8 +21,8 @@ defmodule Mix.Tasks.Composer.Index do
   @impl Mix.Task
   def run(argv) do
     CLI.require_project!()
-    {opts, _args} = CLI.parse!(argv)
-    cookbooks = CLI.cookbooks!(opts[:config])
+    {_opts, _args} = CLI.parse!(argv)
+    cookbooks = CLI.cookbooks!()
     path = Composer.Index.path()
     Composer.Index.write(cookbooks, path)
     Mix.shell().info("Wrote #{Path.relative_to_cwd(path)}")

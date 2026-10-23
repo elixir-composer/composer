@@ -11,8 +11,8 @@ defmodule Composer.LSP.Server do
 
   ## Options
 
-  The `Composer.LSP.Session` options (`:cookbooks`, `:local_dir`,
-  `:root`, `:project`, `:entries`, `:lint`, `:discover`), GenLSP's
+  The `Composer.LSP.Session` options (`:cookbooks`, `:root`,
+  `:project`, `:entries`, `:lint`, `:discover`), GenLSP's
   (`:buffer`, `:assigns`, `:task_supervisor`, `:name`), and
   `:halt_on_exit`, which halts the VM on the `exit` notification.
   """
@@ -63,7 +63,7 @@ defmodule Composer.LSP.Server do
 
   alias GenLSP.Structures, as: S
 
-  @session_opts [:cookbooks, :local_dir, :root, :project, :entries, :lint, :discover]
+  @session_opts [:cookbooks, :root, :project, :entries, :lint, :discover]
   @lsp_opts [:buffer, :assigns, :task_supervisor, :name]
 
   @doc """
@@ -187,7 +187,7 @@ defmodule Composer.LSP.Server do
     reply =
       with %{} = at <- at(lsp, params.text_document.uri, params.position),
            {_kind, _prefix, _range} = context <- Cursor.context(at.text, at.line, at.column) do
-        entries = at.snapshot.entries ++ local_entries(at.snapshot)
+        entries = at.snapshot.entries
         aliases = Cursor.scan_aliases(at.text, at.line)
 
         items =
@@ -406,14 +406,6 @@ defmodule Composer.LSP.Server do
           }
         end
     }
-  end
-
-  defp local_entries(%{local_dir: nil}), do: []
-
-  defp local_entries(%{local_dir: dir}) do
-    Composer.Index.entries(Composer.Local.build(Path.expand(dir)))
-  rescue
-    _ -> []
   end
 
   defp completion_kind(:step), do: CompletionItemKind.function()

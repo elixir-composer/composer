@@ -1,7 +1,6 @@
 defmodule Composer.Lint do
   @moduledoc """
-  Checks a cookbook, or your local recipes, for
-  `mix composer.cookbook.lint`.
+  Checks a cookbook for `mix composer.cookbook.lint`.
 
   Lint is a set of plain functions: it takes discovered cookbooks, prints
   nothing and never raises. Every problem is a `Composer.Lint.Diagnostic`,
@@ -28,13 +27,6 @@ defmodule Composer.Lint do
     * a `template/1` path that does not exist
 
   Files under `steps/` that git ignores are skipped.
-
-  Errors, for local (`local/2`):
-
-    * a `steps/` or `templates/` directory (local holds recipes only)
-    * any other entry besides `recipes/` that composer does not recognize
-    * the recipe group rules below
-    * every recipe resolves
 
   Recipe group rules:
 
@@ -66,7 +58,7 @@ defmodule Composer.Lint do
   only ever holds child steps.
   """
 
-  alias Composer.{Error, Local, Manifest, Ref, Cookbook, Resolver}
+  alias Composer.{Error, Manifest, Ref, Cookbook, Resolver}
   alias Composer.Lint.{Diagnostic, Locate}
   alias Composer.Recipe.Group
 
@@ -103,32 +95,6 @@ defmodule Composer.Lint do
   end
 
   @doc """
-  Lints the local config directory `dir`, resolving references against
-  `cookbooks` (which need not include local).
-  """
-  @spec local(Path.t(), [Cookbook.t()]) :: result()
-  def local(dir, cookbooks) do
-    entries =
-      for entry <- Local.entries(dir) do
-        reason =
-          cond do
-            Local.recipes_only?(entry) -> {:local_recipes_only, dir, entry}
-            entry == "profiles" -> {:legacy_recipes_dir, Path.join(dir, entry)}
-            true -> {:local_unrecognized, dir, entry}
-          end
-
-        {:error, reason, nil}
-      end
-
-    cookbooks = with_local(cookbooks, dir)
-    cookbook = Enum.find(cookbooks, &(&1.kind == :local))
-    recipes = recipes(cookbook, Resolver.index(cookbooks))
-    problems = entries ++ recipes.problems ++ deep(cookbook, cookbooks, recipes.loaded, recipes)
-
-    %{diagnostics: build(problems, Locate.new(cookbooks, recipes.loaded))}
-  end
-
-  @doc """
   Lints recipe group files: for each of `paths`, the diagnostics located
   in it.
 
@@ -143,13 +109,10 @@ defmodule Composer.Lint do
 
   ## Options
 
-    * `:local` - the local config directory; its recipes are linted as
-      the `local` cookbook, in place of any in `cookbooks`
     * `:root` - the project root
   """
   @spec files([Cookbook.t()], [Path.t()], keyword()) :: %{Path.t() => [Diagnostic.t()]}
   def files(cookbooks, paths, opts \\ []) do
-    cookbooks = with_local(cookbooks, opts[:local])
     index = Resolver.index(cookbooks)
     checked = for book <- cookbooks, book.kind != :virtual, do: {book, recipes(book, index)}
     loaded = Enum.flat_map(checked, fn {_book, recipes} -> recipes.loaded end)
@@ -181,13 +144,12 @@ defmodule Composer.Lint do
   Returns the recipes that include recipe `ref` (or any of a list of
   refs), directly or through other includes, as
   `%{ref: ref, path: group_file}`, sorted by ref. The given refs are left
-  out. Takes the `:local` option of `files/3`.
+  out.
   """
-  @spec dependents([Cookbook.t()], String.t() | [String.t()], keyword()) ::
+  @spec dependents([Cookbook.t()], String.t() | [String.t()]) ::
           [%{ref: String.t(), path: Path.t()}]
-  def dependents(cookbooks, ref, opts \\ []) do
+  def dependents(cookbooks, ref) do
     refs = List.wrap(ref)
-    cookbooks = with_local(cookbooks, opts[:local])
     index = Resolver.index(cookbooks)
 
     loaded =
@@ -212,21 +174,16 @@ defmodule Composer.Lint do
   end
 
   @doc """
-  Finds the cookbook a recipe group file belongs to: local when it is
-  under the local config directory's `recipes/` (the `:local` option),
-  otherwise the cookbook in `cookbooks` whose `recipes/` holds it.
+  Finds the cookbook a recipe group file belongs to: the one in
+  `cookbooks` whose `recipes/` holds it.
   """
-  @spec owner([Cookbook.t()], Path.t(), keyword()) :: {:ok, Cookbook.t()} | {:error, term()}
-  def owner(cookbooks, path, opts \\ []) do
+  @spec owner([Cookbook.t()], Path.t()) :: {:ok, Cookbook.t()} | {:error, term()}
+  def owner(cookbooks, path) do
     path = Path.expand(path)
-    dir = opts[:local]
 
     cond do
       not File.regular?(path) ->
         {:error, {:lint_file_missing, path}}
-
-      dir && in_recipes?(path, dir) ->
-        {:ok, Local.build(Path.expand(dir))}
 
       book =
           Enum.find(cookbooks, &(&1.kind == :code and in_recipes?(path, Cookbook.source_dir(&1)))) ->
@@ -241,11 +198,6 @@ defmodule Composer.Lint do
 
   defp in_recipes?(path, dir),
     do: same_file?(Path.dirname(path), Path.join(dir, "recipes"))
-
-  defp with_local(cookbooks, nil), do: cookbooks
-
-  defp with_local(cookbooks, dir),
-    do: Enum.reject(cookbooks, &(&1.kind == :local)) ++ [Local.build(Path.expand(dir))]
 
   # -- building diagnostics -------------------------------------------------
 
@@ -412,7 +364,6 @@ defmodule Composer.Lint do
   end
 
   # Recipe groups used to live under profiles/, which is no longer read.
-  # Local reports it among its config entries instead.
   defp legacy_dir(%Cookbook{kind: :code} = cookbook) do
     with dir when is_binary(dir) <- Cookbook.source_dir(cookbook),
          path = Path.join(dir, "profiles"),

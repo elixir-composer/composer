@@ -24,9 +24,8 @@ defmodule Composer.Integration.LspStdioTest do
 
   setup %{tmp_dir: dir} do
     app = Path.join(dir, "host_app")
-    config = Path.join(dir, "config")
-    File.mkdir_p!(Path.join(app, "lib"))
-    File.mkdir_p!(Path.join(config, "recipes"))
+    book = Path.join(app, "lib/composer/host_app")
+    File.mkdir_p!(Path.join(book, "recipes"))
     File.cp!(Path.join(@root, "mix.lock"), Path.join(app, "mix.lock"))
 
     File.write!(Path.join(app, "mix.exs"), """
@@ -48,12 +47,23 @@ defmodule Composer.Integration.LspStdioTest do
     """)
 
     File.write!(Path.join(app, "lib/host_app.ex"), "defmodule HostApp do\nend\n")
-    recipe = Path.join(config, "recipes/mine.exs")
+
+    File.write!(
+      Path.join(app, "lib/composer/host_app.ex"),
+      "defmodule Composer.HostApp do\n  use Composer.Cookbook\nend\n"
+    )
+
+    recipe = Path.join(book, "recipes/mine.exs")
     File.write!(recipe, @recipe)
 
-    env = [{"MIX_ENV", "dev"}, {"COMPOSER_CONFIG", config}]
-    {output, status} = System.cmd("mix", ["compile"], cd: app, env: env, stderr_to_stdout: true)
-    assert status == 0, output
+    # The manifest gives the server its completion entries without
+    # evaluating the group, which prints.
+    env = [{"MIX_ENV", "dev"}]
+
+    for args <- [["compile"], ["composer.cookbook.manifest"]] do
+      {output, status} = System.cmd("mix", args, cd: app, env: env, stderr_to_stdout: true)
+      assert status == 0, output
+    end
 
     # Give the server's own compile some work.
     File.write!(Path.join(app, "lib/host_app.ex"), "defmodule HostApp do\n  def x, do: 1\nend\n")

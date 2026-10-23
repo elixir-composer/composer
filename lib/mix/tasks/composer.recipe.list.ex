@@ -2,25 +2,22 @@ defmodule Mix.Tasks.Composer.Recipe.List do
   @shortdoc "Lists recipes, by cookbook or group"
 
   @moduledoc """
-  Lists recipes with their shortdocs: your `local:` recipes first, then
-  every cookbook's.
+  Lists every cookbook's recipes with their shortdocs, in discovery order.
 
       $ mix composer.recipe.list
-        local:ash/base        Ash core: sourceror, ash and ash_phoenix
-        local:ash/auth        Ash with authentication, admin, TUI and accounts
-        cc_lab:lv/base  LiveView base
+        cb_lab:base/completions  CbLab's base recipe
+        cb_lab:ui/test           Scratch recipe for trying out UI steps
 
-      mix composer.recipe.list                    # every cookbook
-      mix composer.recipe.list local              # one cookbook
-      mix composer.recipe.list local cc_lab # several cookbooks
-      mix composer.recipe.list local:ash/         # one group (note the slash)
+      mix composer.recipe.list                 # every cookbook
+      mix composer.recipe.list cb_lab          # one cookbook
+      mix composer.recipe.list cb_lab cb_mine  # several cookbooks
+      mix composer.recipe.list cb_lab:base/    # one group (note the slash)
 
   Cookbooks are separate arguments, not a comma-separated list. A group
   file that cannot be loaded is reported as a warning, with its path.
 
   ## Options
 
-    * `-c`, `--config` - the local config directory (see `Composer.Local`)
     * `--json` - print JSON instead of text
   """
 
@@ -32,21 +29,15 @@ defmodule Mix.Tasks.Composer.Recipe.List do
   @impl Mix.Task
   def run(argv) do
     {opts, args} = CLI.parse!(argv)
-    cookbooks = CLI.cookbooks!(opts[:config])
+    cookbooks = CLI.cookbooks!()
 
     check_commas!(args)
     selected = Enum.map(args, &select!(&1, cookbooks))
 
-    # Local first: those are your own.
     selected =
       case selected do
         [] ->
-          {local, others} =
-            cookbooks
-            |> Enum.reject(&(&1.kind == :virtual))
-            |> Enum.split_with(&(&1.kind == :local))
-
-          Enum.map(local ++ others, &{&1, nil})
+          for cookbook <- cookbooks, cookbook.kind != :virtual, do: {cookbook, nil}
 
         selected ->
           Enum.uniq(selected)
@@ -72,12 +63,10 @@ defmodule Mix.Tasks.Composer.Recipe.List do
         CLI.json(%{"recipes" => recipes, "warnings" => warnings})
 
       recipes == [] and args == [] ->
-        {dir, _how} = Composer.Local.dir(opts[:config])
-
         Mix.shell().info("""
-        No recipes found. Create one in #{dir} with:
+        No recipes found. Create one in this project's cookbook with:
 
-            mix composer.gen.recipe my_group/my_recipe --local
+            mix composer.gen.recipe my_group/my_recipe
         """)
 
         print_warnings(warnings)
@@ -112,7 +101,7 @@ defmodule Mix.Tasks.Composer.Recipe.List do
     Enum.each(warnings, &Mix.shell().info([:yellow, "warning: ", &1, :reset]))
   end
 
-  # The shell passes "local, cc_lab" as "local," and "cc_lab".
+  # The shell passes "cb_lab, cb_mine" as "cb_lab," and "cb_mine".
   defp check_commas!(args) do
     if Enum.any?(args, &String.contains?(&1, ",")) do
       names = Enum.flat_map(args, &String.split(&1, ",", trim: true))
@@ -141,7 +130,7 @@ defmodule Mix.Tasks.Composer.Recipe.List do
         unless group && Group.valid_name?(group) do
           Mix.raise("""
           Invalid argument #{inspect(arg)}. List a group as "cookbook:group/", with a \
-          trailing slash (e.g. local:ash/), or a whole cookbook by name.
+          trailing slash (e.g. cb_lab:base/), or a whole cookbook by name.
           """)
         end
 

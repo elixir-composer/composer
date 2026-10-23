@@ -5,7 +5,7 @@ defmodule Mix.Tasks.Composer.Recipe.Edit do
   Opens the group file that holds a recipe in your editor, at the line
   where the recipe starts.
 
-      $ mix composer.recipe.edit local:phx/app
+      $ mix composer.recipe.edit my_app:phx/app
 
   The editor command comes from `COMPOSER_EDITOR`, then `VISUAL`, then
   `EDITOR`; `__FILE__` and `__LINE__` in it are replaced with the file and
@@ -25,7 +25,6 @@ defmodule Mix.Tasks.Composer.Recipe.Edit do
 
   ## Options
 
-    * `-c`, `--config` - the local config directory (see `Composer.Local`)
     * `--print` - print `path:line` instead of opening an editor
   """
 
@@ -44,7 +43,7 @@ defmodule Mix.Tasks.Composer.Recipe.Edit do
         _ -> Mix.raise("Usage: mix composer.recipe.edit RECIPE")
       end
 
-    cookbooks = CLI.cookbooks!(opts[:config])
+    cookbooks = CLI.cookbooks!()
     id = CLI.ok!(Resolver.find_recipe(cookbooks, ref, CLI.context(cookbooks)))
     %Ref{cookbook: name, path: recipe} = Ref.parse!(id)
     cookbook = Enum.find(cookbooks, &(&1.name == name))

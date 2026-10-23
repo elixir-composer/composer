@@ -26,7 +26,6 @@ defmodule Mix.Tasks.Composer.Step.Run do
 
   ## Options
 
-    * `-c`, `--config` - the local config directory (see `Composer.Local`)
     * `--dry-run`, `--yes` - as for any Igniter task
   """
 
@@ -38,8 +37,6 @@ defmodule Mix.Tasks.Composer.Step.Run do
   def info(_argv, _composing_task) do
     %Igniter.Mix.Task.Info{
       positional: [{:refs, optional: true}],
-      schema: [config: :string],
-      aliases: [c: :config],
       example: "mix composer.step.run core:setup/credo,core:setup/quokka"
     }
   end
@@ -73,7 +70,7 @@ defmodule Mix.Tasks.Composer.Step.Run do
       end
 
     {_own, passthrough} = CLI.split_passthrough(igniter.args.argv)
-    cookbooks = CLI.cookbooks!(igniter.args.options[:config])
+    cookbooks = CLI.cookbooks!()
 
     entries =
       CLI.ok!(

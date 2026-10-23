@@ -6,21 +6,13 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
   does not exist.
 
       mix composer.gen.recipe ash/base
-      mix composer.gen.recipe lv/auth --local
 
   adds the recipe `base` to `lib/composer/<app>/recipes/ash.exs` in the
-  current project's cookbook, or, with `--local`, `auth` to
-  `<config dir>/recipes/lv.exs` in your local recipes (see
-  `Composer.Local`). The argument is always `group/name`.
+  current project's cookbook. The argument is always `group/name`.
 
   A new group file starts with a comment listing the entry forms. Adding
   to an existing group appends to its keyword list; a recipe of the same
   name is an error.
-
-  ## Options
-
-    * `--local` - write to the local config directory
-    * `-c`, `--config` - the local config directory, with `--local`
   """
 
   use Igniter.Mix.Task
@@ -32,9 +24,7 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
   def info(_argv, _composing_task) do
     %Igniter.Mix.Task.Info{
       positional: [:path],
-      schema: [local: :boolean, config: :string],
-      aliases: [c: :config],
-      example: "mix composer.gen.recipe ash/base --local"
+      example: "mix composer.gen.recipe ash/base"
     }
   end
 
@@ -53,19 +43,8 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
           invalid!(arg)
       end
 
-    opts = igniter.args.options
-
-    {file, cookbook} =
-      if opts[:local] do
-        {dir, _how} = Composer.Local.dir(opts[:config])
-        {Path.join([dir, "recipes", group <> ".exs"]), "local"}
-      else
-        cookbook =
-          igniter |> Igniter.Project.Application.app_name() |> GenCookbook.cookbook_name()
-
-        {"lib/composer/#{cookbook}/recipes/#{group}.exs", cookbook}
-      end
-
+    cookbook = igniter |> Igniter.Project.Application.app_name() |> GenCookbook.cookbook_name()
+    file = "lib/composer/#{cookbook}/recipes/#{group}.exs"
     ref = "#{cookbook}:#{group}/#{name}"
 
     igniter =
@@ -155,7 +134,7 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
     #   "hex:oban"                     a Hex package and its own installer
     #   {"core:oban_pro", if: :flag}   only with --flag
     #   {:use, "other"}                another recipe in this group, in place
-    #   {:use, "local:tools/dev"}      a recipe in another group or cookbook
+    #   {:use, "cb_lab:lv/base"}       a recipe in another group or cookbook
     #   {:task, "x.y", ["arg"]}        compose an Igniter-aware Mix task
     #   {:queue, "x.y", ["arg"]}       run a Mix task after changes apply
     #

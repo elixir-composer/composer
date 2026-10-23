@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.Composer.Cookbook.Lint do
-  @shortdoc "Checks this project's cookbook, or your local recipes"
+  @shortdoc "Checks this project's cookbook"
 
   @moduledoc """
   Checks the current project's cookbook (in composer itself, `core`):
@@ -12,12 +12,8 @@ defmodule Mix.Tasks.Composer.Cookbook.Lint do
     * every reference in every recipe resolves, and every recipe resolves
       as a whole
 
-  With `--local`, checks your local recipes instead: the config directory
-  holds only `recipes/`, every group is well formed and every recipe
-  resolves against the project's cookbooks.
-
-  With `--file`, checks one recipe group file, local or a cookbook's (found
-  from its path), and reports only the problems in that file, plus one at
+  With `--file`, checks one recipe group file of any installed cookbook
+  (found from its path), and reports only the problems in that file, plus one at
   each `{:use, ...}` of a recipe that has problems of its own. This is
   what an editor runs on save; see the lint guide.
 
@@ -25,8 +21,7 @@ defmodule Mix.Tasks.Composer.Cookbook.Lint do
   CI.
 
       mix composer.cookbook.lint
-      mix composer.cookbook.lint --local
-      mix composer.cookbook.lint --format compact --file ~/.config/composer/recipes/ash.exs
+      mix composer.cookbook.lint --format compact --file lib/composer/my_app/recipes/ash.exs
       mix composer.cookbook.lint --format github
 
   ## Formats
@@ -45,15 +40,13 @@ defmodule Mix.Tasks.Composer.Cookbook.Lint do
 
   ## Options
 
-    * `--local` - lint your local recipes instead of the project's cookbook
     * `--file PATH` - lint one recipe group file
     * `--format FORMAT` - `text`, `compact`, `json` or `github`
-    * `-c`, `--config` - the local config directory (see `Composer.Local`)
   """
 
   use Mix.Task
 
-  alias Composer.{CLI, Discovery, Lint, Local, Manifest}
+  alias Composer.{CLI, Discovery, Lint, Manifest}
   alias Composer.Lint.{Diagnostic, Format}
 
   @formats ~w(text compact json github)
@@ -61,17 +54,14 @@ defmodule Mix.Tasks.Composer.Cookbook.Lint do
   @impl Mix.Task
   def run(argv) do
     CLI.require_project!()
-    {opts, _args} = CLI.parse!(argv, local: :boolean, format: :string, file: :string)
+    {opts, _args} = CLI.parse!(argv, format: :string, file: :string)
     format = format!(opts[:format])
+    cookbooks = CLI.quietly(format != :text, &CLI.cookbooks!/0)
 
     result =
-      CLI.quietly(format != :text, fn ->
-        cond do
-          opts[:file] -> lint_file(opts[:file], opts)
-          opts[:local] -> lint_local(opts[:config])
-          true -> lint_cookbook(opts[:config])
-        end
-      end)
+      if opts[:file],
+        do: lint_file(opts[:file], cookbooks),
+        else: lint_cookbook(cookbooks)
 
     report(format, result)
   end
@@ -82,17 +72,13 @@ defmodule Mix.Tasks.Composer.Cookbook.Lint do
   defp format!(format),
     do: Mix.raise("Unknown --format #{format}. The formats are: #{Enum.join(@formats, ", ")}.")
 
-  defp lint_cookbook(config) do
-    cookbooks = CLI.cookbooks!(config)
-
+  defp lint_cookbook(cookbooks) do
     cookbook =
       Discovery.own(cookbooks) ||
         Mix.raise("""
         This project has no cookbook to lint. Create one with:
 
             mix composer.gen.cookbook
-
-        or lint your local recipes with: mix composer.cookbook.lint --local
         """)
 
     %{
@@ -103,66 +89,20 @@ defmodule Mix.Tasks.Composer.Cookbook.Lint do
     }
   end
 
-  # Local is linted from the directory itself, so a steps/ directory (which
-  # stops local from loading) is reported rather than raised.
-  defp lint_local(config) do
-    dir = local_dir!(config)
-
-    %{
-      diagnostics: Lint.local(dir, cookbooks()).diagnostics,
-      valid: "Local recipes in #{dir} are valid.",
-      problems: "Local recipes in #{dir} have",
-      fallback: local_fallback(dir)
-    }
-  end
-
-  defp lint_file(file, opts) do
+  defp lint_file(file, cookbooks) do
     path = Path.expand(file)
-    dir = local_dir!(opts[:config], false)
-    cookbooks = cookbooks()
-    cookbook = CLI.ok!(Lint.owner(cookbooks, path, local: dir))
-
-    if opts[:local] && cookbook.kind != :local do
-      Mix.raise(Composer.Error.message({:lint_file_mismatch, path, cookbook.name}))
-    end
-
+    CLI.ok!(Lint.owner(cookbooks, path))
     shown = Path.relative_to_cwd(path)
 
     %{
-      diagnostics: Map.fetch!(Lint.files(cookbooks, [path], local: dir, root: root()), path),
+      diagnostics: Map.fetch!(Lint.files(cookbooks, [path], root: root()), path),
       valid: "#{shown} is valid.",
       problems: "#{shown} has",
       fallback: path
     }
   end
 
-  defp local_dir!(config, check? \\ true) do
-    {dir, how} = Local.dir(config)
-
-    if check? and how == :explicit and not File.dir?(dir) do
-      Mix.raise(Composer.Error.message({:config_dir_missing, dir}))
-    end
-
-    dir
-  end
-
-  # Without local, which lint builds from the directory itself.
-  defp cookbooks do
-    Mix.Task.run("compile", [])
-    discovery = Application.get_env(:composer, :discovery, [])
-    CLI.ok!(Discovery.cookbooks(Keyword.merge(discovery, local: false)))
-  end
-
   defp root, do: Path.dirname(Mix.Project.project_file())
-
-  # Where compact output puts a local problem that has no location: the
-  # first group file, else the config directory.
-  defp local_fallback(dir) do
-    case dir |> Path.join("recipes/*.exs") |> Path.wildcard() |> Enum.sort() do
-      [first | _] -> first
-      [] -> dir
-    end
-  end
 
   defp report(:text, %{diagnostics: diagnostics} = result) do
     %{errors: errors, warnings: warnings} = Format.text(diagnostics)
