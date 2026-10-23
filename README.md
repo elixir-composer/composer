@@ -57,13 +57,13 @@ steps make changes and can render templates.
 - A **cookbook** is a self-contained collection of steps (with their
   templates) and recipes, shipped by a framework, a standalone package, or your own app.
   Composer ships a built-in `core` cookbook; your personal recipes live in
-  the `local` cookbook (`~/.config/composer/recipes/`).
+  a cookbook of your own, added to apps as a path dependency.
 
 ### Mix tasks
 
 | Task                                      | Purpose                                          |
 |-------------------------------------------|--------------------------------------------------|
-| `composer.new`                            | Make your app a cookbook and generate its recipe |
+| `composer.init`                           | Make your app a cookbook and generate its recipe |
 | `composer.recipe.{list,show,run,edit}`    | List, inspect, run and edit recipes              |
 | `composer.step.{list,find,help,run,edit}` | List, search, inspect, run and edit steps        |
 | `composer.cookbook.list`                  | List discovered cookbooks                        |
@@ -74,7 +74,7 @@ steps make changes and can render templates.
 
 ### Recipes
 
-A recipe is plain data. `mix composer.new` generates one; edit it to taste:
+A recipe is plain data. `mix composer.init` generates one; edit it to taste:
 
 ```elixir
 # lib/composer/my_app/recipes/app.exs
@@ -91,7 +91,7 @@ A recipe is plain data. `mix composer.new` generates one; edit it to taste:
       "hex:ash",                                 # a Hex package's own installer
       {"hex:oban", if: :oban},                   # optional, behind --oban
       "my_app:deploy_config",                    # your own step
-      {:use, "local:dev/tools"}                  # include another recipe
+      {:use, "cb_mine:dev/tools"}                # include another recipe
     ]
   ]
 ]
@@ -130,7 +130,7 @@ mix deps.get
 ### 2. Generate your recipe
 
 ```bash
-mix composer.new
+mix composer.init
 ```
 
 This makes your app a cookbook and writes
@@ -209,7 +209,7 @@ Runs are interactive by default (diff, then confirm), except
 pass Igniter's standard `--yes` flag to auto-accept:
 
 ```bash
-mix composer.new --yes && mix composer.recipe.run default --no-commit
+mix composer.init --yes && mix composer.recipe.run default --no-commit
 ```
 
 ## Why not just…
@@ -359,14 +359,16 @@ mix composer.cookbook.lint          # in CI (--format github for annotations)
 See the [cookbooks guide](guides/cookbooks.md) for the layout, naming
 rules and bundling a cookbook with a framework.
 
-Your personal recipes live outside any project, in the `local` cookbook:
+Your personal recipes live in a cookbook of your own (`cb_mine` here): an
+ordinary Mix project in git, added to each app as a path dependency. See
+[Personal cookbook](guides/cookbooks.md#personal-cookbook) for setting
+one up.
 
 ```bash
-mix composer.gen.recipe dev/tools --local    # adds tools to ~/.config/composer/recipes/dev.exs
-mix composer.recipe.list local               # every local recipe, with its shortdoc
-mix composer.recipe.run local:dev/tools
-mix composer.new --from local:phx/app        # start a new app from one
-mix composer.cookbook.lint --local           # check them
+mix igniter.install cb_mine@path:../cb_mine --only dev,test
+mix composer.recipe.list cb_mine              # every recipe in it, with its shortdoc
+mix composer.recipe.run cb_mine:dev/tools
+mix composer.init --from cb_lab:lv/base       # start a new app from a shared recipe
 ```
 
 Lint reports every problem at its place in the file, and speaks the
@@ -385,7 +387,7 @@ arguments to the step, as `--` does on `mix composer.step.run`, and combines
 with `if:` (`{"cc_lab:x", argv: ["--all"], if: :x}`). On a `hex:`
 entry, `argv:` goes to the package's installer.
 
-Recipes compose: `{:use, "local:dev/tools"}` includes another recipe's
+Recipes compose: `{:use, "cb_mine:dev/tools"}` includes another recipe's
 steps in place, to any depth, optionally behind a flag (`{:use,
 "deploy/gigalixir", if: :gigalixir}`); `{:use, "base"}` names a recipe in
 the same group. At run time the tree is flattened into one ordered step

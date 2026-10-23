@@ -63,7 +63,7 @@ These names are reserved, and a cookbook using one fails to compile:
   * `core` (outside composer), `hex` and `local`
   * every top-level `Composer.*` module name: `runner`, `step`, `cookbook`,
     `templates`, `helpers`, `versions`, `resolver`, `ref`, `recipe`,
-    `discovery`, `local`, `manifest`, `index`, `completion`, `facets`,
+    `discovery`, `manifest`, `index`, `completion`, `facets`,
     `error`, `git`, `cli`, `preflight` and `lint`
 
 ### Discovery
@@ -71,8 +71,8 @@ These names are reserved, and a cookbook using one fails to compile:
 Discovery is a convention lookup: for each dependency, composer checks
 whether `Composer.<App>` is loaded and defines a cookbook. Nothing is
 scanned, and no configuration is needed. The current project's own cookbook
-and composer's `core` are always included, and your `local` cookbook comes
-last.
+and composer's `core` are always included. Cookbooks are listed in
+discovery order: `core`, the current project's, then each dependency's.
 
 The host app can limit package cookbooks:
 
@@ -221,11 +221,74 @@ exits non-zero on failure so it can run in CI:
 It warns about a template file that no `template/1` call refers to (steps
 whose path is computed at run time are not checked).
 
-`mix composer.cookbook.lint --local` runs the same recipe checks on your
-local recipes. Every problem is reported at its file, line and column;
+`mix composer.cookbook.lint --file PATH` checks one group file of any
+installed cookbook, which is what an editor runs on save. Every problem is reported at its file, line and column;
 `--format github` turns them into pull request annotations. See the
 [lint guide](lint.md) for the formats, the diagnostic codes and editor
 setups.
+
+## Personal cookbook
+
+Recipes you reuse across apps (your usual Phoenix setup, your dev
+tooling) belong in a cookbook of your own: an ordinary Mix project that
+you keep in git and add to each app as a path dependency. Composer treats
+it like any other cookbook. Call it what you like; `cb_mine` here.
+
+```bash
+mix new cb_mine
+cd cb_mine
+# add {:composer, path: "../composer"} (or a hex version) to deps, then:
+mix deps.get
+mix composer.gen.cookbook
+rm lib/composer/cb_mine/recipes/app.exs   # the generated sample recipe
+```
+
+Add your groups under `lib/composer/cb_mine/recipes/` (or with
+`mix composer.gen.recipe lv/base`), then refresh the manifest and lint:
+
+```bash
+mix composer.cookbook.manifest
+mix composer.cookbook.lint
+```
+
+List every cookbook your recipes refer to as a dependency, **without
+`only:`**:
+
+```elixir
+defp deps do
+  [
+    {:composer, path: "../composer"},
+    {:cb_lab, path: "../cb_lab"}
+  ]
+end
+```
+
+The cookbook is compiled wherever it is used, and its cross-cookbook
+references (`cb_lab:lv/base`) need those cookbooks at lint and run time.
+Mix leaves a dependency's own `only:` dependencies out of the app that
+uses it, so with `only: :dev` an app installing `cb_mine` would not get
+`cb_lab`, and every `cb_lab:` reference would name an unknown cookbook.
+An unqualified `group/name` in your groups resolves against your own
+cookbook first.
+
+Install it into an app as a dev and test dependency:
+
+```bash
+mix igniter.install cb_mine@path:../cb_mine --only dev,test
+mix composer.recipe.run cb_mine:lv/base
+```
+
+Keep the cookbook in git and sync it between machines with `git pull`;
+every app that has it as a path dependency sees the change on its next
+run.
+
+When an app also gets one of your cookbook's dependencies from Hex (say
+`cb_lab`), Mix sees two sources for it. Mark the app's own dependency with
+`override: true`:
+
+```elixir
+{:cb_lab, "~> 0.1", only: [:dev, :test], override: true}
+```
 
 ## Bundling a cookbook with a framework
 
@@ -244,7 +307,7 @@ mix composer.gen.cookbook --bundled
 writes later) in `if Code.ensure_loaded?(Composer) do ... end`, so the tree
 compiles to nothing — and costs nothing — where composer is absent. An app
 whose composer dependency is dev-only needs the same guard, which is why
-`mix composer.new` writes it.
+`mix composer.init` writes it.
 
 ## Files your tools will see
 

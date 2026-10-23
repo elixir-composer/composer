@@ -27,7 +27,7 @@ recipes, keyed by name.
       "core:setup/quokka",
       "hex:oban",
       {"core:oban_pro", if: :oban_pro},
-      {:use, "local:deploy/gigalixir", if: :gigalixir},
+      {:use, "my_app:deploy/gigalixir", if: :gigalixir},
       {:task, "ash.codegen", ["initial"]},
       "core:setup/sort_deps"
     ]
@@ -43,7 +43,6 @@ The terms:
     name, so the file above holds `phx/clean` and `phx/app`.
   * A **cookbook** is a package that ships steps (with their templates) and recipe
     groups.
-  * **Local** is just your recipes: recipe groups, nothing else.
 
 ## Addressing
 
@@ -52,8 +51,8 @@ Every recipe lives in a group and is addressed as
 
     recipes/<group>.exs  →  <cookbook>:<group>/<name>
 
-so `recipes/phx.exs` in your local recipes holds `local:phx/clean` and
-`local:phx/app`. Give groups logical names (`ash.exs`, `lv.exs`) rather
+so `recipes/phx.exs` in the cookbook `my_app` holds `my_app:phx/clean` and
+`my_app:phx/app`. Give groups logical names (`ash.exs`, `lv.exs`) rather
 than a catch-all `recipes.exs`. Moving a recipe to another group changes
 its address, the same as moving a step.
 
@@ -73,21 +72,18 @@ Every `if: :flag` in a recipe's own steps must be declared in its own
 ## Where groups live
 
   * **In a cookbook**, at `lib/composer/<package>/recipes/<group>.exs`.
-    Your app's own `app/default` recipe, written by `mix composer.new`, is
+    Your app's own `app/default` recipe, written by `mix composer.init`, is
     one.
-  * **In your local recipes**, at `~/.config/composer/recipes/<group>.exs`,
-    outside any project. Point composer elsewhere with `-c <dir>` or the
-    `COMPOSER_CONFIG` environment variable (see `Composer.Local`). Local
-    holds recipe groups only: no steps, no templates. Personal steps or
-    templates belong in a small cookbook package added as a path
-    dependency.
+  * **In a personal cookbook**, a small cookbook package of your own,
+    added to each app as a path dependency. It holds the recipes you reuse
+    across apps, and any personal steps and templates. See
+    [Personal cookbook](cookbooks.md#personal-cookbook).
 
 A group has the same relative path, file format and addressing rule
-wherever it lives. Groups are files: a subdirectory under `recipes/` is
+in every cookbook. Groups are files: a subdirectory under `recipes/` is
 not a group. Add a recipe to a group (creating the file if needed) with:
 
 ```bash
-mix composer.gen.recipe deploy/gigalixir --local
 mix composer.gen.recipe ash/base                  # in this project's cookbook
 ```
 
@@ -113,7 +109,7 @@ Bindings before the list are fine, and the values can be any expression.
 | `{"core:oban_pro", if: :oban_pro}`           | a step that runs only with `--oban-pro`                        |
 | `{"cc_lab:x", argv: ["--all"]}`              | a step run with options, as after `--` on `composer.step.run`  |
 | `{:use, "clean"}`                            | the recipe `clean` in the same group, in place                 |
-| `{:use, "local:tools/dev"}`                  | a recipe in another group or cookbook                          |
+| `{:use, "cb_lab:lv/base"}`                   | a recipe in another group or cookbook                          |
 | `{:use, "deploy/gigalixir", if: :gigalixir}` | ... only with `--gigalixir`                                    |
 | `{:task, "x.y", ["arg"]}`                    | compose any Igniter-aware Mix task                             |
 | `{:queue, "x.y", ["arg"]}`                   | run a Mix task after the changes apply                         |
@@ -244,8 +240,8 @@ A step in a cookbook wins over a Hex package of the same name.
 
 `{:use, "name"}` without a `/` is the recipe of that name **in the same
 group**; nothing outside the group can match it. `{:use, "group/name"}`
-resolves like an unqualified step (own cookbook first, then every cookbook
-including local), with no Hex fallback.
+resolves like an unqualified step (own cookbook first, then every
+cookbook), with no Hex fallback.
 
 ## Cookbook aliases
 
@@ -298,7 +294,7 @@ aliases = [lab: "cc_lab"]
   * **Include-once.** A recipe is expanded at most once per run; later
     includes of it are no-ops. A diamond is not a cycle.
   * **No cycles.** A cycle is an error that prints the whole chain, across
-    groups and cookbooks: `local:ash/a -> cc_lab:lv/b -> local:ash/a`.
+    groups and cookbooks: `my_app:ash/a -> cc_lab:lv/b -> my_app:ash/a`.
   * **De-duplication.** A step equal to an earlier one is dropped, first
     occurrence wins — `"setup/credo"` and `"core:setup/credo"` count as the
     same step.
@@ -311,14 +307,14 @@ aliases = [lab: "cc_lab"]
 ## Listing, showing and running
 
 ```bash
-mix composer.recipe.list                        # every cookbook, local first
-mix composer.recipe.list local                  # one cookbook
-mix composer.recipe.list local cc_lab     # several (separate arguments)
-mix composer.recipe.list local:phx/             # one group (note the slash)
-mix composer.recipe.show local:phx/app          # docs, flags, resolved steps
-mix composer.recipe.edit local:phx/app          # open its group file in your editor
-mix composer.recipe.run local:phx/app --oban-pro
-mix composer.recipe.run local:phx/app --dry-run
+mix composer.recipe.list                         # every cookbook, in discovery order
+mix composer.recipe.list my_app                  # one cookbook
+mix composer.recipe.list my_app cb_lab           # several (separate arguments)
+mix composer.recipe.list my_app:phx/             # one group (note the slash)
+mix composer.recipe.show my_app:phx/app          # docs, flags, resolved steps
+mix composer.recipe.edit my_app:phx/app          # open its group file in your editor
+mix composer.recipe.run my_app:phx/app --oban-pro
+mix composer.recipe.run my_app:phx/app --dry-run
 ```
 
 `recipe.show` follows every gated include, so it shows everything the
@@ -345,17 +341,14 @@ Pass `--print` to print `path:line` instead.
 ## Checking recipes
 
 ```bash
-mix composer.cookbook.lint --local     # your local recipes
 mix composer.cookbook.lint             # this project's cookbook, recipes included
-mix composer.cookbook.lint --format compact --file ~/.config/composer/recipes/ash.exs
+mix composer.cookbook.lint --format compact --file lib/composer/my_app/recipes/ash.exs
 ```
 
 To see problems in your editor as you save a group file, see the
 [lint guide](lint.md).
 
-Lint reports a stray entry in `~/.config/composer/` (anything but
-`recipes/`; `steps/` and `templates/` with a note that local holds
-recipes only), a subdirectory under `recipes/`, a group file that is not
+Lint reports a subdirectory under `recipes/`, a group file that is not
 a keyword list of recipes, a duplicate recipe name, a missing `shortdoc`
 or `steps`, an unknown key, an undeclared `if:` flag, an invalid,
 reserved, duplicate or shadowing alias, a recipe named like a group, and
@@ -366,11 +359,11 @@ cookbooks in two recipes of one group.
 ## Starting a new app from a recipe
 
 ```bash
-mix composer.new --from local:phx/app
+mix composer.init --from cb_lab:lv/base
 ```
 
 copies the recipe into the new app as `app/default`, so the app owns and
-can edit its setup while your recipe stays the template. Same-group
+can edit its setup while the shared recipe stays the template. Same-group
 `{:use, ...}` entries are qualified so they still resolve; comments are not
 copied.
 
@@ -380,13 +373,13 @@ Recipes used to be one file each, with help text in a leading `#`
 comment. That format is gone, and loading such a file is an error pointing
 at the group format. Convert by hand: gather related files into one group,
 key each recipe by its old name, move the comment into `shortdoc:`, and
-point `{:use, "local:old_name"}` at the new address (or at `{:use,
+point `{:use, "my_app:old_name"}` at the new address (or at `{:use,
 "name"}` within the same group).
 
 ```elixir
 # before: recipes/ash_base.exs and recipes/ash_ecto.exs
 # Ash with the Postgres data layer.
-[{:use, "local:ash_base"}, "cc_lab:ash/postgres"]
+[{:use, "my_app:ash_base"}, "cc_lab:ash/postgres"]
 
 # after: recipes/ash.exs
 [

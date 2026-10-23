@@ -147,11 +147,11 @@ what the step expects: a missing function, module or anchor is a loud
 warning, so changes in Phoenix's generators surface instead of silently
 no-oping.
 
-## No local templates
+## Personal templates
 
-Local (`~/.config/composer/`) holds your recipes only, so it has no steps
-and no templates. Put personal steps, and the templates beside them, in a
-small cookbook package added as a path dependency.
+Templates always live beside a step in a cookbook. Put personal steps, and
+the templates beside them, in your own cookbook package added as a path
+dependency; see [Personal cookbook](cookbooks.md#personal-cookbook).
 
 ## Lint
 

@@ -1,13 +1,11 @@
 # Lint and editor diagnostics
 
-`mix composer.cookbook.lint` checks a cookbook, or your local recipes, and
-reports every problem as a **diagnostic**: a severity, a stable code, a
+`mix composer.cookbook.lint` checks a cookbook and reports every problem as a **diagnostic**: a severity, a stable code, a
 file and a range in it. Editors, CI and scripts read the same diagnostics
 in the format each understands.
 
 ```bash
 mix composer.cookbook.lint                     # this project's cookbook
-mix composer.cookbook.lint --local             # your local recipes
 mix composer.cookbook.lint --file PATH         # one recipe group file
 mix composer.cookbook.lint --format compact    # text | compact | json | github
 ```
@@ -27,8 +25,8 @@ task fail.
 **compact** prints one line per diagnostic, for editors:
 
 ```
-/home/me/.config/composer/recipes/auth.exs:15:8: error: In recipe local:auth/passkeys: no step matches "credoo". Did you mean: core:setup/credo? ... [typo]
-/home/me/.config/composer/recipes/auth.exs:13:15: warning: local:auth/magic: alias lab (= cc_lab) is never used. Remove it, or use it. [unused_alias]
+/home/me/src/my_app/lib/composer/my_app/recipes/auth.exs:15:8: error: In recipe my_app:auth/passkeys: no step matches "credoo". Did you mean: core:setup/credo? ... [typo]
+/home/me/src/my_app/lib/composer/my_app/recipes/auth.exs:13:15: warning: my_app:auth/magic: alias lab (= cb_lab) is never used. Remove it, or use it. [unused_alias]
 ```
 
 That is `file:line:col: severity: message [code]`, the shape of GCC and of
@@ -37,8 +35,7 @@ so an editor recipe written for `mix credo` adapts by changing the
 command. Paths are always absolute; the message is folded onto one line,
 dropping its indented examples. A diagnostic with no location is printed
 at `:1:1` of the file most related to it, or of the cookbook's
-`manifest.exs` (for local, the first group file), so no line is ever
-unparseable.
+`manifest.exs`, so no line is ever unparseable.
 
 **json** prints an array of diagnostics:
 
@@ -47,9 +44,9 @@ unparseable.
   {
     "severity": "error",
     "code": "typo",
-    "file": "/home/me/.config/composer/recipes/auth.exs",
+    "file": "/home/me/src/my_app/lib/composer/my_app/recipes/auth.exs",
     "line": 15, "column": 8, "end_line": 15, "end_column": 16,
-    "message": "In recipe local:auth/passkeys: no step matches \"credoo\".\n\n...",
+    "message": "In recipe my_app:auth/passkeys: no step matches \"credoo\".\n\n...",
     "suggestions": ["core:setup/credo"],
     "related": []
   }
@@ -94,35 +91,35 @@ none.
 Editors lint the file you just saved:
 
 ```bash
-mix composer.cookbook.lint --format compact --file ~/.config/composer/recipes/auth.exs
+mix composer.cookbook.lint --format compact --file lib/composer/my_app/recipes/auth.exs
 ```
 
 `--file` takes one recipe group file and finds its cookbook from the path:
-a file under your local config directory's `recipes/` is local; a file
-under a cookbook's `lib/composer/<name>/recipes/` is that cookbook's. Every
+a file under a cookbook's `lib/composer/<name>/recipes/` is that
+cookbook's, whether it is the project's own or a dependency's. Every
 cookbook is still loaded, since includes cross files, but only that file's
 diagnostics are printed, and lint exits zero when it has none, whatever
 other files hold.
 
 A `{:use, ...}` of a recipe that has problems of its own gets one summary
-diagnostic, `include_problems` ("local:ash/base has 2 problems."), with
+diagnostic, `include_problems` ("my_app:ash/base has 2 problems."), with
 those problems as related locations. Otherwise a broken include would look
 fine from the including file.
 
 ## The host project is your editor's working directory
 
 Lint runs inside a Mix project, which provides the installed cookbooks
-your recipes refer to. From an editor, that project is the editor's
-working directory: start the editor from the host project,
+your recipes refer to. A recipe group file lives in a cookbook, so the
+host is that cookbook's project. From an editor, it is the editor's
+working directory: start the editor there,
 
 ```bash
-cd ~/src/my_app && nvim ~/.config/composer/recipes/auth.exs
+cd ~/src/my_app && nvim lib/composer/my_app/recipes/auth.exs
 ```
 
 and every integration below runs `mix` there. The file is passed by its
-absolute path, local is found from it, and compact output uses absolute
-paths, so diagnostics land on the right buffer even though the file lives
-outside the project.
+absolute path, its cookbook is found from it, and compact output uses
+absolute paths, so diagnostics land on the right buffer.
 
 Don't set a `cwd` in the editor configs. Things that move the working
 directory (`:cd`, `autochdir`, project-root plugins) break this: lint then
@@ -141,7 +138,7 @@ run lint once per save.
 No plugin needed:
 
 ```vim
-" e.g. in an autocmd for */composer/recipes/*.exs
+" e.g. in an autocmd for */lib/composer/*/recipes/*.exs
 setlocal makeprg=mix\ composer.cookbook.lint\ --format\ compact\ --file\ %:p
 setlocal errorformat=%f:%l:%c:\ %trror:\ %m,%f:%l:%c:\ %tarning:\ %m
 ```
@@ -167,7 +164,7 @@ lint.linters.composer = {
 }
 
 vim.api.nvim_create_autocmd("BufWritePost", {
-  pattern = { "*/composer/recipes/*.exs" },
+  pattern = { "*/lib/composer/*/recipes/*.exs" },
   callback = function() lint.try_lint("composer") end,
 })
 ```
@@ -234,7 +231,6 @@ scripts may match on them.
 | `unknown_alias_target` | a cookbook alias names a cookbook that is not installed |
 | `via_alias` | a problem with a reference written through an alias |
 | `invalid_ref` | a malformed reference string |
-| `local_step` | a reference to a step in local, which holds recipes only |
 | `dep_opts_on_step` | package options on a reference that names a step |
 | `conflicting_install` | one package installed with different options |
 | `cycle` | recipes that include each other |
@@ -251,7 +247,7 @@ scripts may match on them.
 | `duplicate_recipe`, `invalid_recipe_name`, `group_recipe_clash` | recipe names |
 | `group_parse`, `recipe_eval`, `group_shape`, `group_read` | a group file that does not parse, raises, or is not a keyword list |
 | `invalid_group_name`, `recipes_subdir`, `empty_group` (warning) | group files |
-| `local_recipes_only`, `local_unrecognized`, `legacy_recipes_dir` | entries in the local config directory |
+| `legacy_recipes_dir` | a leftover `profiles/` directory in the cookbook |
 | `step_missing_meta`, `missing_step_test`, `requires_unresolved` | a step's metadata, test and `requires` |
 | `manifest_missing`, `manifest_stale` | the cookbook's manifest |
 | `step_recipe_clash` (warning) | a step and a recipe share an id |
@@ -266,7 +262,8 @@ in question.
 
 `Composer.Lint` is a set of plain functions over discovered cookbooks;
 it prints nothing and returns `%{diagnostics: [Composer.Lint.Diagnostic.t()]}`
-(`run/3`, `local/2`), or per-file results for a set of group files
-(`files/3`). `Lint.dependents/2` lists the recipes that include a recipe,
-directly or not, and `Composer.Recipe.Locator` indexes a group file's
+(`run/3`), or per-file results for a set of group files
+(`files/3`). `Lint.owner/2` finds the cookbook a group file belongs to,
+`Lint.dependents/2` lists the recipes that include a recipe, directly or
+not, and `Composer.Recipe.Locator` indexes a group file's
 source (without evaluating it) for forward and cursor lookups.

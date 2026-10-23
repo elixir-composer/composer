@@ -30,7 +30,7 @@ archive installed (`mix archive.install hex phx_new --force`).
 `test/test_helper.exs` disables network version lookups (`fetch_versions:
 false`) and completion-index writes, so tests are offline.
 
-CI also runs a "golden" job: a fresh `phx.new` app runs `mix composer.new
+CI also runs a "golden" job: a fresh `phx.new` app runs `mix composer.init
 --yes` then `mix composer.recipe.run default ...`, and fails if any step
 logs that it no-oped ("Nothing was modified", "skipped adding/removing...",
 "was skipped"). Steps that pattern-match `phx.new` output must warn loudly
@@ -42,7 +42,7 @@ The pipeline for a run: **Discovery → Resolver → Preflight → Runner → Gi
 
 - `Composer.Discovery` finds cookbooks by convention, not scanning: for each
   dep app (and the current project) it checks whether `Composer.<App>` is
-  loaded and is a cookbook. Order: `core`, current project, deps, `local`.
+  loaded and is a cookbook. Order: `core`, current project, deps.
   Deps must be compiled first, which is why every task calls `compile`
   (`Composer.CLI`). `hex` is a virtual cookbook known only to the Resolver.
 - `Composer.Resolver` resolves references (`"cookbook:path"`, unqualified
@@ -74,8 +74,8 @@ OTP app, except the built-in `core` (`lib/composer/core/`). Layout:
   `Composer.Facets`.
 - **Recipe groups** are `.exs` keyword lists evaluated as literal data and
   validated by `Composer.Recipe.Group`; recipes are addressed
-  `cookbook:group/name`. `local` recipes live in
-  `~/.config/composer/recipes/` (`Composer.Local`).
+  `cookbook:group/name`. Personal recipes live in an ordinary cookbook
+  added as a path dependency; `local` is only a reserved name.
 - **Templates**: `template("x.eex")` inside a step is relative to
   `steps/_<id>/` (`Composer.Step.template_dir/1`; step path segments never
   start with `_`), checked at compile time and registered as an external
