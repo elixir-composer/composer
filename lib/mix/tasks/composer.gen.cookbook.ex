@@ -51,7 +51,7 @@ defmodule Mix.Tasks.Composer.Gen.Cookbook do
     bundled? = Keyword.get(igniter.args.options, :bundled, false)
 
     # Every file is left alone if it exists, so re-running is harmless and
-    # mix composer.new can write its own default recipe first.
+    # mix composer.init can write its own default recipe first.
     igniter
     |> Helpers.create_unless_exists(
       "lib/composer/#{name}.ex",
@@ -71,7 +71,7 @@ defmodule Mix.Tasks.Composer.Gen.Cookbook do
   end
 
   # The manifest lists the group's recipes with their shortdocs, read from
-  # the file actually being written (mix composer.new writes its own first),
+  # the file actually being written (mix composer.init writes its own first),
   # so the new cookbook passes mix composer.cookbook.lint. The file is our
   # own generated source (or a recipe the user chose to copy).
   defp write_manifest(igniter, app, name, recipe, path) do

@@ -34,7 +34,7 @@ defmodule Composer do
 
   ## Quick start
 
-      mix composer.new                       # writes lib/composer/<app>/recipes/app.exs
+      mix composer.init                       # writes lib/composer/<app>/recipes/app.exs
       mix composer.recipe.run app/default    # runs its default recipe
 
   ## Recipe syntax

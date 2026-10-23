@@ -71,7 +71,7 @@ jobs:
         working-directory: demo
         run: |
           set -euo pipefail
-          mix composer.new --yes
+          mix composer.init --yes
           # The generated cookbook passes lint as written.
           mix composer.cookbook.lint --format github
           # Flag-gated steps are off by default, so pass the ones CI can run —
