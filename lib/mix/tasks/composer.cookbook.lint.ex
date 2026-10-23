@@ -56,7 +56,7 @@ defmodule Mix.Tasks.Composer.Cookbook.Lint do
     CLI.require_project!()
     {opts, _args} = CLI.parse!(argv, format: :string, file: :string)
     format = format!(opts[:format])
-    cookbooks = CLI.quietly(format != :text, &CLI.cookbooks!/0)
+    cookbooks = CLI.cookbooks!(quiet: format != :text)
 
     result =
       if opts[:file],

@@ -29,7 +29,7 @@ defmodule Mix.Tasks.Composer.Recipe.List do
   @impl Mix.Task
   def run(argv) do
     {opts, args} = CLI.parse!(argv)
-    cookbooks = CLI.cookbooks!()
+    cookbooks = CLI.cookbooks!(quiet: opts[:json])
 
     check_commas!(args)
     selected = Enum.map(args, &select!(&1, cookbooks))

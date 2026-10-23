@@ -103,6 +103,23 @@ defmodule Composer.Integration.HostAppTest do
     refute output =~ "warning"
   end
 
+  test "--json output parses on a stale build; a compile error still fails", %{app: app} do
+    mix!(app, ["compile"])
+
+    # stderr is not captured, so compiler warnings there don't count.
+    list_json = fn ->
+      System.cmd("mix", ["composer.recipe.list", "--json"], cd: app, env: [{"MIX_ENV", "dev"}])
+    end
+
+    File.write!(Path.join(app, "lib/host_app.ex"), "defmodule HostApp do\n  def x, do: 1\nend\n")
+    {output, 0} = list_json.()
+    assert %{"recipes" => [_ | _]} = Jason.decode!(output)
+
+    File.write!(Path.join(app, "lib/host_app.ex"), "defmodule HostApp do\n")
+    {_output, status} = list_json.()
+    assert status != 0
+  end
+
   test "a grouped recipe in a path-dep cookbook uses a sibling and takes a declared flag",
        %{app: app} do
     group = Path.join(@root, "test/fixtures/fake_dep/lib/composer/fake_dep/recipes/mine.exs")

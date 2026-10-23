@@ -27,7 +27,7 @@ defmodule Mix.Tasks.Composer.Step.Find do
         words -> words |> Enum.join(" ") |> String.downcase()
       end
 
-    CLI.cookbooks!()
+    CLI.cookbooks!(quiet: opts[:json])
     |> Enum.flat_map(&Cookbook.steps/1)
     |> search(query)
     |> Mix.Tasks.Composer.Step.List.print(opts[:json])

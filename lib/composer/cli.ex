@@ -64,14 +64,18 @@ defmodule Composer.CLI do
   Dependencies are compiled first, so their cookbooks are loaded. The
   result is memoized per process, so `info/2` and `igniter/1` of one task
   run discover once, and the completion index is refreshed as a side effect.
+
+  With `quiet: true` (for `--json`), compiling prints nothing on stdout, so
+  the output parses even when the build was stale. Compile errors still
+  raise.
   """
-  def cookbooks! do
+  def cookbooks!(opts \\ []) do
     discovery = Application.get_env(:composer, :discovery, [])
     key = {__MODULE__, :cookbooks, discovery}
 
     case Process.get(key) do
       nil ->
-        compile()
+        quietly(opts[:quiet] || false, &compile/0)
         cookbooks = ok!(Discovery.cookbooks(discovery))
         Composer.Index.refresh(cookbooks)
         Process.put(key, cookbooks)

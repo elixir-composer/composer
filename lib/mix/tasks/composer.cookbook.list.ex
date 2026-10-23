@@ -25,7 +25,7 @@ defmodule Mix.Tasks.Composer.Cookbook.List do
   @impl Mix.Task
   def run(argv) do
     {opts, _args} = CLI.parse!(argv)
-    cookbooks = CLI.cookbooks!()
+    cookbooks = CLI.cookbooks!(quiet: opts[:json])
     data = Enum.map(cookbooks, &data/1)
 
     if opts[:json] do

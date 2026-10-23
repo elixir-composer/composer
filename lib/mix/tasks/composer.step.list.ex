@@ -30,7 +30,7 @@ defmodule Mix.Tasks.Composer.Step.List do
     {opts, _args} = CLI.parse!(argv, @filters)
 
     steps =
-      CLI.cookbooks!()
+      CLI.cookbooks!(quiet: opts[:json])
       |> Enum.flat_map(&Cookbook.steps/1)
       |> Enum.filter(&keep?(&1, opts))
 

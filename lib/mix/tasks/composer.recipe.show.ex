@@ -57,7 +57,7 @@ defmodule Mix.Tasks.Composer.Recipe.Show do
         _ -> Mix.raise("Usage: mix composer.recipe.show RECIPE")
       end
 
-    cookbooks = CLI.cookbooks!()
+    cookbooks = CLI.cookbooks!(quiet: opts[:json])
     result = CLI.resolve_recipe!(cookbooks, ref, :all)
     [recipe | _] = result.recipes
     declared = Resolver.declared_flags(result)
