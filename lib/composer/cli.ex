@@ -130,8 +130,11 @@ defmodule Composer.CLI do
   def ok!(:ok), do: :ok
   def ok!({:error, reason}), do: Mix.raise(Error.message(reason))
 
-  @doc "Prints `data` as pretty JSON."
-  def json(data), do: Mix.shell().info(Jason.encode!(data, pretty: true))
+  @doc """
+  Prints `data` as pretty JSON, straight to stdout rather than through the
+  Mix shell, which `MIX_QUIET=1` silences.
+  """
+  def json(data), do: IO.puts(Jason.encode!(data, pretty: true))
 
   @doc "Renders rows of strings as left-aligned columns."
   def table([]), do: ""

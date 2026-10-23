@@ -107,16 +107,23 @@ defmodule Composer.Integration.HostAppTest do
     mix!(app, ["compile"])
 
     # stderr is not captured, so compiler warnings there don't count.
-    list_json = fn ->
-      System.cmd("mix", ["composer.recipe.list", "--json"], cd: app, env: [{"MIX_ENV", "dev"}])
+    list_json = fn env ->
+      System.cmd("mix", ["composer.recipe.list", "--json"],
+        cd: app,
+        env: [{"MIX_ENV", "dev"} | env]
+      )
     end
 
     File.write!(Path.join(app, "lib/host_app.ex"), "defmodule HostApp do\n  def x, do: 1\nend\n")
-    {output, 0} = list_json.()
+    {output, 0} = list_json.([])
+    assert %{"recipes" => [_ | _]} = Jason.decode!(output)
+
+    # MIX_QUIET silences the Mix shell, but not the JSON.
+    {output, 0} = list_json.([{"MIX_QUIET", "1"}])
     assert %{"recipes" => [_ | _]} = Jason.decode!(output)
 
     File.write!(Path.join(app, "lib/host_app.ex"), "defmodule HostApp do\n")
-    {_output, status} = list_json.()
+    {_output, status} = list_json.([])
     assert status != 0
   end
 
