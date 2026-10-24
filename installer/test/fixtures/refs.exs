@@ -7,11 +7,11 @@
 # spec after it as the source of a hex:<cookbook>@<spec> reference.
 #
 # Only rules both parsers share belong here; the archive-only rules
-# (qualified refs, no hex:, no core@source) are tested in the archive.
+# (qualified refs, no hex:, no cb_std@source) are tested in the archive.
 [
   # no source: the latest hex release
   {"cb_lab:lv/base", {:ok, "cb_lab", "lv/base", []}},
-  {"core:debug/echo", {:ok, "core", "debug/echo", []}},
+  {"cb_std:debug/echo", {:ok, "cb_std", "debug/echo", []}},
   {"cb_lab:a/b/c", {:ok, "cb_lab", "a/b/c", []}},
 
   # - is normalized to _, in the name only

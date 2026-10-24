@@ -19,7 +19,7 @@ defmodule Composer.Recipe do
           steps: [
             {:use, "base"},
             "cc_lab:ash/authentication",
-            {"core:oban_pro", if: :oban_pro},
+            {"cb_std:oban_pro", if: :oban_pro},
             {:task, "ash.codegen", ["initial"]},
             {:queue, "ecto.setup", []}
           ]
@@ -75,9 +75,9 @@ defmodule Composer.Recipe do
 
     * it applies to the declaring recipe's own references, never inside a
       recipe it includes, and never on the command line
-    * the target is a package cookbook's name (a string), never `core`,
+    * the target is a package cookbook's name (a string), never `cb_std`,
       `hex`, `local` or another reserved name
-    * the alias is a lowercase `[a-z0-9_]` name other than `core`, `hex`
+    * the alias is a lowercase `[a-z0-9_]` name other than `cb_std`, `hex`
       and `local`, and must not be the name of an installed cookbook
     * resolved entries, listings and `--json` show the real cookbook name
 
@@ -122,7 +122,7 @@ defmodule Composer.Recipe do
 
   @segment ~r/\A[a-z0-9_]+\z/
   @archive_flags ~w(with with_args install composer extra_dep igniter_local reset dry_run no_recipe recipe)a
-  @reserved_aliases ["core", "hex", "local"]
+  @reserved_aliases ["cb_std", "hex", "local"]
   @sources [:version, :github, :git, :path]
   @git_options [:ref, :branch, :tag, :sparse, :submodules]
   @hex_options [:only, :runtime] ++ @sources ++ @git_options

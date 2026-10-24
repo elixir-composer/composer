@@ -6,7 +6,7 @@ defmodule Composer.LSP.PositionTest do
   # A combining é (e + U+0301), a precomposed é, an emoji outside the BMP
   # and a ZWJ family: 4 graphemes before the ref, each a different width.
   @combining "é"
-  @line ~s(#{@combining}é😀👩‍👩‍👧 "core:x")
+  @line ~s(#{@combining}é😀👩‍👩‍👧 "cb_std:x")
   # The ref's opening quote is grapheme 6.
   @column 6
 

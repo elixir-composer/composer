@@ -6,7 +6,7 @@ aliases = [fb: "fake_book", gone: "not_installed", ob: "other_book"]
     shortdoc: "x",
     aliases: aliases,
     steps: [
-      "core:setup/credoo",
+      "cb_std:setup/credoo",
       "credoo",
       "nope:x",
       "mine:x",

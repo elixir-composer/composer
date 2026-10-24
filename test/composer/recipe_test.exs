@@ -6,7 +6,7 @@ defmodule Composer.RecipeTest do
   test "accepts every entry form" do
     entries = [
       "credo",
-      {"core:oban_pro", if: :oban_pro},
+      {"cb_std:oban_pro", if: :oban_pro},
       {"fake_book:args", argv: ["--bar"]},
       {"fake_book:args", argv: [], if: :args},
       {:use, "base"},
@@ -110,13 +110,13 @@ defmodule Composer.RecipeTest do
     end
 
     test "package options on a qualified step reference are an error" do
-      entry = {"core:setup/credo", only: :dev}
+      entry = {"cb_std:setup/credo", only: :dev}
 
       assert {:error, {:hex_only_option, "r", ^entry, :only} = reason} =
                Recipe.validate([entry], "r")
 
       assert Composer.Error.message(reason) =~ "for hex: entries only"
-      assert {:ok, _} = Recipe.validate([{"core:setup/credo", argv: ["--x"]}], "r")
+      assert {:ok, _} = Recipe.validate([{"cb_std:setup/credo", argv: ["--x"]}], "r")
     end
 
     test "sources combine only one way" do

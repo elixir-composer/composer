@@ -39,6 +39,6 @@ defmodule Composer.LSP.DefinitionTest do
     assert Definition.links(text, @positions) == [{{{16, 8}, {16, 21}}, url}]
     assert Definition.links(text <> "\n[", @positions) == [{{{16, 8}, {16, 21}}, url}]
     assert Definition.hexdocs("hex:acme.secret") == "https://acme.hexdocs.pm/secret"
-    assert Definition.hexdocs("core:x") == nil
+    assert Definition.hexdocs("cb_std:x") == nil
   end
 end

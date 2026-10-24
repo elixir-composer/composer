@@ -27,7 +27,7 @@ defmodule Composer.FacetsTest do
     assert {:ok, _, []} =
              Facets.validate(
                requires: [
-                 "core:setup/credo",
+                 "cb_std:setup/credo",
                  {:executable, "bun"},
                  {:package, :phoenix, "~> 1.8"}
                ]

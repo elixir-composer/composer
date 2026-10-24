@@ -37,8 +37,8 @@ defmodule Composer.Recipe.LocatorTest do
   end
 
   test "the string of a {ref, opts} entry, and its if: flag", %{index: index} do
-    assert text(index, Locator.locate(index, "auth", {:ref, "core:setup/credo"})) ==
-             ~s("core:setup/credo")
+    assert text(index, Locator.locate(index, "auth", {:ref, "cb_std:setup/credo"})) ==
+             ~s("cb_std:setup/credo")
 
     assert text(index, Locator.locate(index, "auth", {:if, :credo})) == ":credo"
     # An undeclared flag that is not written falls back to steps:.
@@ -66,8 +66,8 @@ defmodule Composer.Recipe.LocatorTest do
     assert range == {{2, 12}, {2, 16}}
     assert text(index, range) == "lab:"
 
-    assert text(index, Locator.locate(index, "bound", {:ref, "core:setup/gitignore"})) ==
-             ~s("core:setup/gitignore")
+    assert text(index, Locator.locate(index, "bound", {:ref, "cb_std:setup/gitignore"})) ==
+             ~s("cb_std:setup/gitignore")
 
     assert {{3, 1}, {3, 7}} = index.bindings[:shared]
   end
@@ -81,8 +81,8 @@ defmodule Composer.Recipe.LocatorTest do
   end
 
   test "columns count characters after non-ASCII text", %{index: index} do
-    range = Locator.locate(index, "base", {:ref, "core:setup/sort_deps"})
-    assert text(index, range) == ~s("core:setup/sort_deps")
+    range = Locator.locate(index, "base", {:ref, "cb_std:setup/sort_deps"})
+    assert text(index, range) == ~s("cb_std:setup/sort_deps")
     assert text(index, Locator.locate(index, "base", {:use, "bound"})) == ~s("bound")
     assert text(index, Locator.locate(index, "base", {:if, :x})) == ":x"
   end
@@ -101,7 +101,7 @@ defmodule Composer.Recipe.LocatorTest do
       end
     end
 
-    assert {:ref, "auth", "core:setup/credo", _} = Locator.at(index, 13, 10)
+    assert {:ref, "auth", "cb_std:setup/credo", _} = Locator.at(index, 13, 10)
     assert Locator.at(index, 1, 1) == nil
   end
 

@@ -4,7 +4,7 @@ defmodule Mix.Tasks.Composer.Step.Run do
   @moduledoc """
   Runs one or more steps, as one diff.
 
-      mix composer.step.run core:setup/credo
+      mix composer.step.run cb_std:setup/credo
       mix composer.step.run setup/credo,phx/remove_topbar,hex:oban
       mix composer.step.run cc_lab:ash/postgres --dry-run
       mix composer.step.run cc_lab:foo -- --bar baz
@@ -37,7 +37,7 @@ defmodule Mix.Tasks.Composer.Step.Run do
   def info(_argv, _composing_task) do
     %Igniter.Mix.Task.Info{
       positional: [{:refs, optional: true}],
-      example: "mix composer.step.run core:setup/credo,core:setup/quokka"
+      example: "mix composer.step.run cb_std:setup/credo,cb_std:setup/quokka"
     }
   end
 

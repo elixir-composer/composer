@@ -25,7 +25,7 @@ task fail.
 **compact** prints one line per diagnostic, for editors:
 
 ```
-/home/me/src/my_app/lib/composer/my_app/recipes/auth.exs:15:8: error: In recipe my_app:auth/passkeys: no step matches "credoo". Did you mean: core:setup/credo? ... [typo]
+/home/me/src/my_app/lib/composer/my_app/recipes/auth.exs:15:8: error: In recipe my_app:auth/passkeys: no step matches "credoo". Did you mean: cb_std:setup/credo? ... [typo]
 /home/me/src/my_app/lib/composer/my_app/recipes/auth.exs:13:15: warning: my_app:auth/magic: alias lab (= cb_lab) is never used. Remove it, or use it. [unused_alias]
 ```
 
@@ -47,7 +47,7 @@ at `:1:1` of the file most related to it, or of the cookbook's
     "file": "/home/me/src/my_app/lib/composer/my_app/recipes/auth.exs",
     "line": 15, "column": 8, "end_line": 15, "end_column": 16,
     "message": "In recipe my_app:auth/passkeys: no step matches \"credoo\".\n\n...",
-    "suggestions": ["core:setup/credo"],
+    "suggestions": ["cb_std:setup/credo"],
     "related": []
   }
 ]

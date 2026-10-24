@@ -29,7 +29,7 @@ __composer_complete_ids() {
   local kinds=" $1 " index
   index=$(__composer_index) || return 0
 
-  # ':' is in COMP_WORDBREAKS, so "core:cr" arrives as three words. Rebuild
+  # ':' is in COMP_WORDBREAKS, so "cb_std:cr" arrives as three words. Rebuild
   # the whole argument from the line instead (ids never contain spaces).
   local line=${COMP_LINE:0:COMP_POINT}
   local full=${line##* }

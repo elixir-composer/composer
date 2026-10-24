@@ -65,7 +65,7 @@ defmodule Composer.Lint.DiagnosticsTest do
       typo = find(diagnostics, :typo)
       assert at(typo) == {"refs.exs", 10, 7}
       assert {typo.end_line, typo.end_column} == {10, 15}
-      assert typo.suggestions == ["core:setup/credo", "fake_book:setup/credo"]
+      assert typo.suggestions == ["cb_std:setup/credo", "fake_book:setup/credo"]
       # Behind an alias, at the reference as written.
       assert at(find(diagnostics, :via_alias)) == {"refs.exs", 16, 7}
       assert at(find(diagnostics, :unknown_alias_target)) == {"refs.exs", 15, 7}
@@ -74,7 +74,7 @@ defmodule Composer.Lint.DiagnosticsTest do
       assert {at(legacy), legacy.end_column} == {{"keys.exs", 21, 7}, 27}
       # {:recipe_key, recipe, key}, and the if: flag of an undeclared flag.
       assert at(find(diagnostics, :unknown_recipe_key)) == {"keys.exs", 4, 32}
-      assert at(find(diagnostics, :undeclared_flag)) == {"keys.exs", 6, 64}
+      assert at(find(diagnostics, :undeclared_flag)) == {"keys.exs", 6, 66}
       # {:alias, recipe, name}: in the recipe, or in the binding it names.
       assert at(find(diagnostics, :invalid_alias)) == {"keys.exs", 14, 15}
       assert at(find(diagnostics, :inconsistent_alias)) == {"refs.exs", 2, 12}
@@ -192,7 +192,7 @@ defmodule Composer.Lint.DiagnosticsTest do
       cookbooks: cookbooks
     } do
       config(dir, %{
-        "g.exs" => ~s|[a: [shortdoc: "x", steps: ["credoo", "core:nope", "gitignor"]]]\n|
+        "g.exs" => ~s|[a: [shortdoc: "x", steps: ["credoo", "cb_std:nope", "gitignor"]]]\n|
       })
 
       diagnostics = lint_recipes(dir, cookbooks).diagnostics
@@ -200,7 +200,7 @@ defmodule Composer.Lint.DiagnosticsTest do
       assert Enum.map(diagnostics, &{&1.code, &1.column}) == [
                {:typo, 29},
                {:missing_step, 39},
-               {:typo, 52}
+               {:typo, 54}
              ]
     end
 
@@ -223,10 +223,10 @@ defmodule Composer.Lint.DiagnosticsTest do
     setup %{tmp_dir: dir, cookbooks: cookbooks} do
       config(dir, %{
         "ash.exs" =>
-          ~s|[\n  base: [shortdoc: "x", steps: ["credoo", "core:nope"]],\n  mid: [shortdoc: "x", steps: [{:use, "base"}]]\n]\n|,
+          ~s|[\n  base: [shortdoc: "x", steps: ["credoo", "cb_std:nope"]],\n  mid: [shortdoc: "x", steps: [{:use, "base"}]]\n]\n|,
         "app.exs" =>
-          ~s|[\n  full: [shortdoc: "x", steps: [{:use, "mine:ash/mid"}, "core:setup/gitignore"]]\n]\n|,
-        "clean.exs" => ~s|[\n  ok: [shortdoc: "x", steps: ["core:setup/gitignore"]]\n]\n|
+          ~s|[\n  full: [shortdoc: "x", steps: [{:use, "mine:ash/mid"}, "cb_std:setup/gitignore"]]\n]\n|,
+        "clean.exs" => ~s|[\n  ok: [shortdoc: "x", steps: ["cb_std:setup/gitignore"]]\n]\n|
       })
 
       %{

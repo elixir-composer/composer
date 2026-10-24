@@ -1,6 +1,6 @@
 # Positions in this file are asserted by locator_test.exs: edit with care.
 aliases = [lab: "cc_lab"]
-shared = ["core:setup/gitignore"]
+shared = ["cb_std:setup/gitignore"]
 name = "dynamic"
 
 [
@@ -10,7 +10,7 @@ name = "dynamic"
     flags: [credo: "Add Credo"],
     steps: [
       "lab:auth/passkeys",
-      {"core:setup/credo",
+      {"cb_std:setup/credo",
        if: :credo},
       "lab:" <> name,
       {"hex:igniter",
@@ -20,6 +20,6 @@ name = "dynamic"
       "esc\"aped"
     ]
   ],
-  base: [shortdoc: "é😀 é", steps: ["core:setup/sort_deps", {:use, "bound", if: :x}]],
+  base: [shortdoc: "é😀 é", steps: ["cb_std:setup/sort_deps", {:use, "bound", if: :x}]],
   bound: [shortdoc: "Bound steps", steps: shared]
 ]

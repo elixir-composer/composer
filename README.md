@@ -56,7 +56,7 @@ steps make changes and can render templates.
   are addressed as `"cookbook:group/name"`.
 - A **cookbook** is a self-contained collection of steps (with their
   templates) and recipes, shipped by a framework, a standalone package, or your own app.
-  Composer ships a built-in `core` cookbook; your personal recipes live in
+  Composer ships a built-in `cb_std` cookbook; your personal recipes live in
   a cookbook of your own, added to apps as a path dependency.
 
 ### Mix tasks
@@ -84,10 +84,10 @@ A recipe is plain data. `mix composer.init` generates one; edit it to taste:
     shortdoc: "My app's setup",
     flags: [oban: "Add Oban"],
     steps: [
-      "core:phx/remove_daisy_ui",                # undo a phx.new default
-      "core:phx/remove_topbar",
-      "core:setup/gitignore",                    # project hygiene
-      "core:setup/credo",                        # add a package
+      "cb_std:phx/remove_daisy_ui",                # undo a phx.new default
+      "cb_std:phx/remove_topbar",
+      "cb_std:setup/gitignore",                    # project hygiene
+      "cb_std:setup/credo",                        # add a package
       {"cc_lab:ash/postgres", argv: ["--all"]},  # a step with arguments
       "hex:ash",                                 # a Hex package's own installer
       {"hex:oban", if: :oban},                   # optional, behind --oban
@@ -201,7 +201,7 @@ up, and you'll copy it into your next project.
 Every step also works on its own, no recipe required:
 
 ```bash
-mix composer.step.run core:setup/credo,core:setup/quokka
+mix composer.step.run cb_std:setup/credo,cb_std:setup/quokka
 mix composer.step.run phx/remove_daisy_ui    # unqualified names work too
 mix composer.step.run hex:oban               # a package's own installer
 mix composer.step.run hex:ash@github:ash-project/ash   # ... from GitHub
@@ -216,8 +216,8 @@ mix composer.step.run hex:ash_authentication -- --auth-strategy password  # ... 
 mix composer.cookbook.list                   # cookbooks, with step and recipe counts
 mix composer.step.list --action remove       # also --cookbook, --framework, --tag
 mix composer.step.find tailwind
-mix composer.step.show core:phx/bun          # facets, requires, and a dry run
-mix composer.step.edit core:phx/bun          # open its source in your editor
+mix composer.step.show cb_std:phx/bun          # facets, requires, and a dry run
+mix composer.step.edit cb_std:phx/bun          # open its source in your editor
 mix composer.recipe.list
 ```
 
@@ -255,15 +255,15 @@ telling you which it was:
 
 ```console
 Composer plan
-  core:setup/credo
+  cb_std:setup/credo
   hex:oban — oban.install
   hex:nimble_options — dependency only, ships no installer
-  core:setup/sort_deps
+  cb_std:setup/sort_deps
 ```
 
 A name that matches steps in two cookbooks is an error that lists both, and
 a name that looks like a typo of a step is reported rather than looked up on
-Hex. Qualify the reference (`"core:setup/credo"`) to be exact.
+Hex. Qualify the reference (`"cb_std:setup/credo"`) to be exact.
 
 A `hex:` entry can pass arguments to the installer, set dependency options,
 and install from a version, GitHub, git or a local path:
@@ -289,10 +289,10 @@ installer would do if it existed.
 
 ## Built-in steps
 
-All built-in steps live in the `core` cookbook, grouped by directory
+All built-in steps live in the `cb_std` cookbook, grouped by directory
 (`phx/`, `setup/`, `ecto/`, `pg/`, `cluster/`, `tidewave/`): reference them
-as `"core:<id>"`, e.g. `"core:setup/credo"`. `mix composer.step.list
---cookbook core` lists them with their facets.
+as `"cb_std:<id>"`, e.g. `"cb_std:setup/credo"`. `mix composer.step.list
+--cookbook cb_std` lists them with their facets.
 
 | Id                             | Action | What it does                                                                                                                               |
 |--------------------------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------|

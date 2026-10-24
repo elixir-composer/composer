@@ -3,7 +3,7 @@ defmodule Mix.Tasks.Composer.Cookbook.Manifest do
 
   @moduledoc """
   Writes `lib/composer/<cookbook>/manifest.exs` for the current project's
-  cookbook (in composer itself, `core`).
+  cookbook (in composer itself, `cb_std`).
 
       mix composer.cookbook.manifest
 

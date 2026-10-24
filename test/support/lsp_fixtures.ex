@@ -20,7 +20,7 @@ defmodule Composer.Test.LSPFixtures do
         "nope:x"
       ]
     ],
-    base: [shortdoc: "Base", doc: "The base.", flags: [x: "An x"], steps: ["core:setup/gitignore"]]
+    base: [shortdoc: "Base", doc: "The base.", flags: [x: "An x"], steps: ["cb_std:setup/gitignore"]]
   ]
   """
 

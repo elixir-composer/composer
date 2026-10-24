@@ -5,9 +5,9 @@ defmodule Composer.Templates do
   A step's templates live beside it, in the directory named after its file
   with a leading underscore (`Composer.Step.template_dir/1`):
 
-      lib/composer/core/steps/sidebar_layout.ex
-      lib/composer/core/steps/_sidebar_layout/app_fn.ex.eex
-      lib/composer/core/steps/_sidebar_layout/files/...
+      lib/composer/cb_std/steps/sidebar_layout.ex
+      lib/composer/cb_std/steps/_sidebar_layout/app_fn.ex.eex
+      lib/composer/cb_std/steps/_sidebar_layout/files/...
 
   Inside a step, `template/1` (imported by `use Composer.Step`) refers to a
   file or directory there, and is checked at compile time:

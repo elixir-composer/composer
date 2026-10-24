@@ -8,8 +8,8 @@ defmodule Composer.RunnerTest do
   test "applies module steps in order" do
     igniter =
       Runner.run(test_project(), [
-        {:module, Composer.Core.Steps.Setup.Gitignore},
-        {:module, Composer.Core.Steps.Setup.Credo}
+        {:module, Composer.CbStd.Steps.Setup.Gitignore},
+        {:module, Composer.CbStd.Steps.Setup.Credo}
       ])
 
     assert diff(igniter, only: ".gitignore") =~ ".expert/"
@@ -51,7 +51,7 @@ defmodule Composer.RunnerTest do
   test "installs/1 lists the packages to fetch up front, once each" do
     steps = [
       {:install, :ash, []},
-      {:module, Composer.Core.Steps.Setup.Credo},
+      {:module, Composer.CbStd.Steps.Setup.Credo},
       {:install, :ash, [argv: ["--x"]]},
       {:install, :tidewave, [dep: [only: [:dev]]]}
     ]
@@ -192,7 +192,7 @@ defmodule Composer.RunnerTest do
       )
     end
 
-    @steps [{:module, Composer.Core.Steps.Setup.Gitignore}]
+    @steps [{:module, Composer.CbStd.Steps.Setup.Gitignore}]
 
     test "warns when the app's Phoenix is older than the supported series" do
       igniter = Runner.run(project_with_phoenix("~> 1.7.14"), @steps)

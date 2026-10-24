@@ -11,11 +11,20 @@ defmodule Composer.RefTest do
 
     assert {:ok, %Ref{cookbook: nil, path: "daisy_ui"}} = Ref.parse("daisy-ui")
     assert {:ok, %Ref{cookbook: "hex", path: "oban.oban_pro"}} = Ref.parse("hex:oban.oban_pro")
-    assert Ref.to_string(Ref.parse!("core:setup/credo")) == "core:setup/credo"
+    assert Ref.to_string(Ref.parse!("cb_std:setup/credo")) == "cb_std:setup/credo"
   end
 
   test "rejects malformed references" do
-    for bad <- ["", "a:b:c", "Core:credo", "core:", "core:a//b", "core:a.b", "hex:a/b", "x y"] do
+    for bad <- [
+          "",
+          "a:b:c",
+          "CbStd:credo",
+          "cb_std:",
+          "cb_std:a//b",
+          "cb_std:a.b",
+          "hex:a/b",
+          "x y"
+        ] do
       assert {:error, {:invalid_ref, ^bad, _why}} = Ref.parse(bad),
              "expected #{inspect(bad)} to fail"
     end
@@ -76,7 +85,7 @@ defmodule Composer.RefTest do
     end
 
     test "an @ outside hex: is invalid, suggesting the hex: form" do
-      for bad <- ["ash@3.5", "core:x@1"] do
+      for bad <- ["ash@3.5", "cb_std:x@1"] do
         assert {:error, {:invalid_ref, ^bad, why}} = Ref.parse(bad)
         assert why =~ "hex:"
       end

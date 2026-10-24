@@ -99,7 +99,7 @@ defmodule Mix.Tasks.Composer.Gen.Cookbook do
 
   @doc false
   # composer's own cookbook is the one exception to "named after the app".
-  def cookbook_name(:composer), do: "core"
+  def cookbook_name(:composer), do: "cb_std"
   def cookbook_name(app), do: Atom.to_string(app)
 
   @doc false

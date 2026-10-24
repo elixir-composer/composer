@@ -18,7 +18,7 @@ defmodule Composer do
     * **Cookbook** - one package's tree of steps, recipes and templates at
       `lib/composer/<package>/`, declared by `lib/composer/<package>.ex`
       (`use Composer.Cookbook`). A cookbook is named after its package.
-      Composer ships the built-in `core` cookbook, and any dependency with a
+      Composer ships the built-in `cb_std` cookbook, and any dependency with a
       cookbook is discovered automatically. See `Composer.Cookbook`.
 
     * **Recipe** - a named list of steps with a shortdoc, an optional doc
@@ -27,7 +27,7 @@ defmodule Composer do
       `Composer.Recipe.Group`.
 
     * **Reference** - the string `"cookbook:path"` that names a step or a
-      recipe, e.g. `"core:setup/credo"` or `"cc_lab:ash/postgres"`. An unqualified
+      recipe, e.g. `"cb_std:setup/credo"` or `"cc_lab:ash/postgres"`. An unqualified
       `"path"` is looked up in the referring recipe's own cookbook first,
       then everywhere; a name that matches no step is a Hex package
       (`"oban"` is `"hex:oban"`). See `Composer.Resolver`.
@@ -48,10 +48,10 @@ defmodule Composer do
           shortdoc: "My usual setup",
           flags: [oban_pro: "Add Oban Pro", gigalixir: "Deploy to Gigalixir"],
           steps: [
-            "core:phx/remove_daisy_ui",                  # a step
+            "cb_std:phx/remove_daisy_ui",                  # a step
             "setup/credo",                               # an unqualified step reference
             "hex:oban",                                  # a Hex package and its installer
-            {"core:oban_pro", if: :oban_pro},            # only with --oban-pro
+            {"cb_std:oban_pro", if: :oban_pro},            # only with --oban-pro
             {:use, "base"},                              # a recipe in this group, in place
             {:use, "cb_lab:deploy/gigalixir", if: :gigalixir},  # ... only with --gigalixir
             {:task, "ash.codegen", ["init"]},            # compose any Igniter task

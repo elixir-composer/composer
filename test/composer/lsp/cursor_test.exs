@@ -49,7 +49,7 @@ defmodule Composer.LSP.CursorTest do
     assert [%{value: "a", start: 1, end: 4}, %{value: ~s(b"c), start: 6, end: 12}] =
              Cursor.literals(~S("a", "b\"c" # "not"))
 
-    assert [%{value: "core:se", start: 3, end: nil}] = Cursor.literals(~s(  "core:se))
+    assert [%{value: "cb_std:se", start: 3, end: nil}] = Cursor.literals(~s(  "cb_std:se))
     assert Cursor.literal_at(~s(  "ab" ), 5) == %{value: "ab", start: 3, end: 7}
     assert Cursor.literal_at(~s(  "ab" ), 7) == nil
   end
@@ -62,7 +62,7 @@ defmodule Composer.LSP.CursorTest do
         aliases: [fb: "fake_book"],
         steps: [
           "co",
-          {"core:setup/credo",
+          {"cb_std:setup/credo",
            if: :credo},
           "x", {:use, "fake
     """

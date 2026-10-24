@@ -50,7 +50,7 @@ is the cookbook `cc_lab`, and it must live in the `:cc_lab` package, in
 package-name uniqueness keeps cookbook names unique. A mismatch is a compile
 error that says how to fix it.
 
-The one exception is composer itself, whose built-in cookbook is `core`.
+The one exception is composer itself, whose built-in cookbook is `cb_std`.
 
 Cookbook packages are usually named `composer_<x>`, which makes qualified
 references long (`cc_lab:auth/passkeys`). Recipes can declare short
@@ -60,7 +60,7 @@ changes the cookbook's name.
 
 These names are reserved, and a cookbook using one fails to compile:
 
-  * `core` (outside composer), `hex` and `local`
+  * `cb_std` (outside composer), `hex` and `local`
   * every top-level `Composer.*` module name: `runner`, `step`, `cookbook`,
     `templates`, `helpers`, `versions`, `resolver`, `ref`, `recipe`,
     `discovery`, `manifest`, `index`, `completion`, `facets`,
@@ -71,8 +71,8 @@ These names are reserved, and a cookbook using one fails to compile:
 Discovery is a convention lookup: for each dependency, composer checks
 whether `Composer.<App>` is loaded and defines a cookbook. Nothing is
 scanned, and no configuration is needed. The current project's own cookbook
-and composer's `core` are always included. Cookbooks are listed in
-discovery order: `core`, the current project's, then each dependency's.
+and composer's `cb_std` are always included. Cookbooks are listed in
+discovery order: `cb_std`, the current project's, then each dependency's.
 
 The host app can limit package cookbooks:
 

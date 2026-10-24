@@ -38,7 +38,7 @@ defmodule Composer.Lint do
       a value of the wrong type; a `shortdoc` on more than one line
     * an `if:` flag that the recipe does not declare in its own `flags`
     * a declared flag with a reserved name (`Composer.Recipe.reserved_flags/0`)
-    * an invalid, reserved (`core`, `hex`, `local`), duplicate or
+    * an invalid, reserved (`cb_std`, `hex`, `local`), duplicate or
       atom-valued cookbook alias, or one whose target is not a package
       cookbook name
     * a recipe named like a group of the same cookbook

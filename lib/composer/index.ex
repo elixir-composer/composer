@@ -8,7 +8,7 @@ defmodule Composer.Index do
       cookbook	cb_lab	Andy's composer steps
       group	cb_lab:base/	1 recipe
       recipe	cb_lab:base/completions	CbLab's base recipe
-      step	core:setup/credo	Adds Credo for static code analysis
+      step	cb_std:setup/credo	Adds Credo for static code analysis
 
   Cookbooks are read from their committed manifests. A cookbook with no
   manifest, or one that fails to read, falls back to runtime metadata: its

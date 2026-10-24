@@ -2,7 +2,7 @@ defmodule Mix.Tasks.Composer.Cookbook.Lint do
   @shortdoc "Checks this project's cookbook"
 
   @moduledoc """
-  Checks the current project's cookbook (in composer itself, `core`):
+  Checks the current project's cookbook (in composer itself, `cb_std`):
 
     * every step has a summary, an `action` and a `stability`
     * every step has a test at `test/composer/<cookbook>/steps/<id>_test.exs`

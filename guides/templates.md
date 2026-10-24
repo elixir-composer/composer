@@ -68,9 +68,9 @@ templates in the same name with a leading underscore, so a step can have
 both:
 
 ```
-steps/cluster/gigalixir.ex                   # Composer.Core.Steps.Cluster.Gigalixir
+steps/cluster/gigalixir.ex                   # Composer.CbStd.Steps.Cluster.Gigalixir
 steps/cluster/_gigalixir/some.conf.eex       # template("some.conf.eex") in Gigalixir
-steps/cluster/gigalixir/libcluster.ex        # Composer.Core.Steps.Cluster.Gigalixir.Libcluster
+steps/cluster/gigalixir/libcluster.ex        # Composer.CbStd.Steps.Cluster.Gigalixir.Libcluster
 steps/cluster/gigalixir/_libcluster/x.eex    # template("x.eex") in Libcluster
 ```
 

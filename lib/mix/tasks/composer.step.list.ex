@@ -5,7 +5,7 @@ defmodule Mix.Tasks.Composer.Step.List do
   Lists the steps of every cookbook, optionally filtered.
 
       mix composer.step.list
-      mix composer.step.list --cookbook core --action remove
+      mix composer.step.list --cookbook cb_std --action remove
       mix composer.step.list --framework ash --tag postgres
       mix composer.step.list --json
 

@@ -24,7 +24,7 @@ defmodule ComposerNew.Ref do
       `github:OWNER/REPO[@GITREF]`, `git:URL` or `path:PATH`
 
   On top of those, a reference here must name a cookbook (no shortnames),
-  can't be `hex:`, and `core:`, which ships with composer, takes no
+  can't be `hex:`, and `cb_std:`, which ships with composer, takes no
   source.
 
   Parsing never creates atoms.
@@ -131,8 +131,8 @@ defmodule ComposerNew.Ref do
   defp archive_rules(original, "hex", _spec),
     do: {:error, invalid(original, "hex: names a package, not a cookbook")}
 
-  defp archive_rules(original, "core", spec) when spec != nil,
-    do: {:error, invalid(original, "core ships with composer; drop the @source")}
+  defp archive_rules(original, "cb_std", spec) when spec != nil,
+    do: {:error, invalid(original, "cb_std ships with composer; drop the @source")}
 
   defp archive_rules(_original, _cookbook, _spec), do: :ok
 

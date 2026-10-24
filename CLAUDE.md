@@ -18,7 +18,7 @@ These mirror CI (`.github/workflows/ci.yml`):
 mix deps.get
 mix format --check-formatted
 mix compile --warnings-as-errors
-mix composer.cookbook.lint             # lints the built-in `core` cookbook
+mix composer.cookbook.lint             # lints the built-in `cb_std` cookbook
 mix test                               # integration tests excluded by default
 mix test --include integration         # also builds a real host app (slow)
 mix test test/composer/resolver_test.exs:42   # single test
@@ -42,7 +42,7 @@ The pipeline for a run: **Discovery → Resolver → Preflight → Runner → Gi
 
 - `Composer.Discovery` finds cookbooks by convention, not scanning: for each
   dep app (and the current project) it checks whether `Composer.<App>` is
-  loaded and is a cookbook. Order: `core`, current project, deps.
+  loaded and is a cookbook. Order: `cb_std`, current project, deps.
   Deps must be compiled first, which is why every task calls `compile`
   (`Composer.CLI`). `hex` is a virtual cookbook known only to the Resolver.
 - `Composer.Resolver` resolves references (`"cookbook:path"`, unqualified
@@ -61,15 +61,15 @@ The pipeline for a run: **Discovery → Resolver → Preflight → Runner → Gi
 
 A cookbook is a package's tree at `lib/composer/<name>/` declared by
 `lib/composer/<name>.ex` (`use Composer.Cookbook`); the name must equal the
-OTP app, except the built-in `core` (`lib/composer/core/`). Layout:
+OTP app, except the built-in `cb_std` (`lib/composer/cb_std/`). Layout:
 `steps/` (each step's templates in the directory beside it, `steps/_<id>/`),
 `recipes/<group>.exs`, `manifest.exs`. There is no cookbook-level
 `templates/`.
 
 - **Steps** (`use Composer.Step`) are `Igniter.Mix.Task` modules, *not* Mix
   tasks. The module name must match the file path
-  (`lib/composer/core/steps/cluster/gigalixir/libcluster.ex` →
-  `Composer.Core.Steps.Cluster.Gigalixir.Libcluster`) or compilation fails.
+  (`lib/composer/cb_std/steps/cluster/gigalixir/libcluster.ex` →
+  `Composer.CbStd.Steps.Cluster.Gigalixir.Libcluster`) or compilation fails.
   Metadata vocabulary (action, phase, stability, frameworks, capability...) lives in
   `Composer.Facets`.
 - **Recipe groups** are `.exs` keyword lists evaluated as literal data and
@@ -92,8 +92,8 @@ OTP app, except the built-in `core` (`lib/composer/core/`). Layout:
 
 `mix composer.cookbook.lint` (`Composer.Lint`) enforces, and CI fails on:
 - every step has `summary`, `action`, `stability`
-- a test exists at `test/composer/core/steps/<id>_test.exs`
-- `lib/composer/core/manifest.exs` matches — regenerate with
+- a test exists at `test/composer/cb_std/steps/<id>_test.exs`
+- `lib/composer/cb_std/manifest.exs` matches — regenerate with
   `mix composer.cookbook.manifest` after changing step metadata (never edit
   it by hand)
 

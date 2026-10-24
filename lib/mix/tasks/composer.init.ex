@@ -50,55 +50,55 @@ defmodule Mix.Tasks.Composer.Init do
   @sections [
     {"Undo phx.new defaults you don't want",
      [
-       "core:phx/remove_agents_md",
-       "core:phx/remove_daisy_ui",
-       "core:phx/remove_live_title_suffix",
-       "core:phx/remove_theme_toggle",
-       "core:phx/remove_topbar"
+       "cb_std:phx/remove_agents_md",
+       "cb_std:phx/remove_daisy_ui",
+       "cb_std:phx/remove_live_title_suffix",
+       "cb_std:phx/remove_theme_toggle",
+       "cb_std:phx/remove_topbar"
      ]},
     {"Generate configuration and code",
      [
-       "core:phx/minimal_app_layout",
-       "core:phx/minimal_home_page",
-       "core:phx/tailwind_formatter",
-       "core:setup/gitignore",
-       "core:pg/extensions",
-       "core:setup/generator_defaults",
-       "core:ecto/base_schema",
-       "core:setup/mix_env_config"
+       "cb_std:phx/minimal_app_layout",
+       "cb_std:phx/minimal_home_page",
+       "cb_std:phx/tailwind_formatter",
+       "cb_std:setup/gitignore",
+       "cb_std:pg/extensions",
+       "cb_std:setup/generator_defaults",
+       "cb_std:ecto/base_schema",
+       "cb_std:setup/mix_env_config"
      ]},
     {"Add packages",
      [
-       "core:phx/bun",
-       "core:setup/credo",
-       "core:setup/dotenv_parser",
-       {"core:setup/exsync", if: :exsync},
-       "core:cluster/libcluster",
-       "core:pg/vector",
-       "core:setup/quokka",
-       "core:phx/remixicons",
-       "core:ecto/uuidv7",
-       {"core:setup/mix_test_watch", if: :mix_test_watch},
+       "cb_std:phx/bun",
+       "cb_std:setup/credo",
+       "cb_std:setup/dotenv_parser",
+       {"cb_std:setup/exsync", if: :exsync},
+       "cb_std:cluster/libcluster",
+       "cb_std:pg/vector",
+       "cb_std:setup/quokka",
+       "cb_std:phx/remixicons",
+       "cb_std:ecto/uuidv7",
+       {"cb_std:setup/mix_test_watch", if: :mix_test_watch},
        {:comment, "No built-in step: these ship their own installers, which run here."},
        "hex:oban",
        "hex:oban_web",
        "hex:tidewave",
        {:comment,
         "tidewave's own installer only wires the plug — it writes no MCP config, so this follows it in the list to fill that gap."},
-       "core:tidewave/tidewave_config",
+       "cb_std:tidewave/tidewave_config",
        {:comment, "Patches what oban's installer wrote, so it follows it in the list."},
-       {"core:oban_pro", if: :oban_pro}
+       {"cb_std:oban_pro", if: :oban_pro}
      ]},
     {"Deployment",
      [
-       {"core:cluster/gigalixir", if: :gigalixir},
-       {"core:cluster/gigalixir/libcluster", if: :gigalixir}
+       {"cb_std:cluster/gigalixir", if: :gigalixir},
+       {"cb_std:cluster/gigalixir/libcluster", if: :gigalixir}
      ]},
     {"Tidy mix.exs",
      [
-       "core:ecto/force_drop",
+       "cb_std:ecto/force_drop",
        {:comment, "Last, so it also sorts the deps the steps above added"},
-       "core:setup/sort_deps"
+       "cb_std:setup/sort_deps"
      ]}
   ]
 
@@ -148,12 +148,12 @@ defmodule Mix.Tasks.Composer.Init do
   end
 
   defp cookbook_source do
-    core = Cookbook.from_module(Composer.Core)
+    cb_std = Cookbook.from_module(Composer.CbStd)
 
     steps =
       @sections
       |> Enum.map(fn {title, entries} ->
-        "      # #{title}\n\n" <> Enum.map_join(entries, "\n", &render_entry(&1, core))
+        "      # #{title}\n\n" <> Enum.map_join(entries, "\n", &render_entry(&1, cb_std))
       end)
       |> Enum.join("\n\n")
 
@@ -162,7 +162,7 @@ defmodule Mix.Tasks.Composer.Init do
       for({_title, entries} <- @sections, entry <- entries, flag = flag(entry), do: {flag, entry})
       |> Enum.uniq_by(&elem(&1, 0))
       |> Enum.map(fn {flag, entry} ->
-        "      #{flag}: #{inspect(describe(ref(entry), core))},"
+        "      #{flag}: #{inspect(describe(ref(entry), cb_std))},"
       end)
 
     """
@@ -178,7 +178,7 @@ defmodule Mix.Tasks.Composer.Init do
     # optional (it then runs only when you pass the matching `--flag`), and
     # describe the flag under flags:.
     #
-    #   "core:setup/credo"        a step, as "cookbook:path"
+    #   "cb_std:setup/credo"        a step, as "cookbook:path"
     #   "hex:oban"                a Hex package and its own installer
     #   {:use, "other"}           another recipe in this group, in place
     #   {:use, "cb_lab:lv/base"}  a recipe in another group or cookbook
@@ -209,16 +209,16 @@ defmodule Mix.Tasks.Composer.Init do
 
   defp render_entry({:comment, text}, _core), do: "      # #{text}"
 
-  defp render_entry(entry, core) do
+  defp render_entry(entry, cb_std) do
     ref = ref(entry)
 
     description =
       case flag(entry) do
         nil ->
-          describe(ref, core)
+          describe(ref, cb_std)
 
         flag ->
-          "#{describe(ref, core)} (only with --#{String.replace(to_string(flag), "_", "-")})"
+          "#{describe(ref, cb_std)} (only with --#{String.replace(to_string(flag), "_", "-")})"
       end
 
     code =
@@ -241,10 +241,10 @@ defmodule Mix.Tasks.Composer.Init do
     "Installs #{package} and runs the package's own igniter installer"
   end
 
-  defp describe(ref, core) do
+  defp describe(ref, cb_std) do
     %Ref{path: id} = Ref.parse!(ref)
 
-    case Cookbook.step(core, id) do
+    case Cookbook.step(cb_std, id) do
       {:ok, meta} -> meta.summary || ref
       :error -> raise "the default recipe references unknown step: #{ref}"
     end

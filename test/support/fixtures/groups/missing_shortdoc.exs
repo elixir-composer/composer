@@ -1,1 +1,1 @@
-[base: [steps: ["core:setup/credo"]]]
+[base: [steps: ["cb_std:setup/credo"]]]

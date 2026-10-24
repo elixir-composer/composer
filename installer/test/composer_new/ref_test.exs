@@ -44,10 +44,10 @@ defmodule ComposerNew.RefTest do
       assert {:error, _} = Ref.parse("hex:oban@2.0.0")
     end
 
-    test "core: takes no source" do
-      assert {:ok, %{cookbook: "core", source: []}} = Ref.parse("core:debug/echo")
-      assert {:error, message} = Ref.parse("core:debug/echo@0.3")
-      assert message =~ "core ships with composer; drop the @source"
+    test "cb_std: takes no source" do
+      assert {:ok, %{cookbook: "cb_std", source: []}} = Ref.parse("cb_std:debug/echo")
+      assert {:error, message} = Ref.parse("cb_std:debug/echo@0.3")
+      assert message =~ "cb_std ships with composer; drop the @source"
     end
   end
 

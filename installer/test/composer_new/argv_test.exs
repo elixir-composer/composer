@@ -70,7 +70,7 @@ defmodule ComposerNew.ArgvTest do
   end
 
   test "everything after -- is a recipe flag" do
-    parsed = parse!(~w(a core:debug/echo --gigalixir -- --reset --with x extra))
+    parsed = parse!(~w(a cb_std:debug/echo --gigalixir -- --reset --with x extra))
     assert parsed.recipe_flags == ~w(--gigalixir --reset --with x extra)
     refute parsed.opts[:reset]
     assert parsed.opts[:with] == nil

@@ -131,7 +131,7 @@ defmodule ComposerNew.PlanTest do
 
   test "--reset removes APP first" do
     assert [{:rm_rf, "/work/my_app"}, {nil, "mix igniter.new my_app" <> _} | _] =
-             commands(~w(my_app core:debug/echo --reset))
+             commands(~w(my_app cb_std:debug/echo --reset))
 
     assert [{:rm_rf, "/tmp/x"} | _] = commands(~w(/tmp/x --reset))
   end
@@ -187,10 +187,10 @@ defmodule ComposerNew.PlanTest do
     refute plan.summary.default_composer?
   end
 
-  test "core: installs no cookbook" do
-    plan = build!(~w(my_app core:debug/echo))
+  test "cb_std: installs no cookbook" do
+    plan = build!(~w(my_app cb_std:debug/echo))
     assert plan.summary.deps == ["composer@~> 0.3"]
-    assert plan.summary.recipe == "core:debug/echo"
+    assert plan.summary.recipe == "cb_std:debug/echo"
     assert plan.summary.source == "ships with composer"
   end
 
@@ -214,8 +214,8 @@ defmodule ComposerNew.PlanTest do
       assert {:error, "Invalid reference \"lv/base\": refs must name a cookbook" <> _} =
                Plan.build(~w(my_app lv/base), @env)
 
-      assert {:error, "Invalid reference \"core:debug/echo@0.3\": core ships" <> _} =
-               Plan.build(~w(my_app core:debug/echo@0.3), @env)
+      assert {:error, "Invalid reference \"cb_std:debug/echo@0.3\": cb_std ships" <> _} =
+               Plan.build(~w(my_app cb_std:debug/echo@0.3), @env)
 
       assert {:error, "Invalid reference \"hex:oban\": hex: names a package" <> _} =
                Plan.build(~w(my_app hex:oban), @env)

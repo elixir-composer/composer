@@ -5,7 +5,7 @@ defmodule Mix.Tasks.Composer.Step.Edit do
   Opens the source file of a step in your editor, at its
   `use Composer.Step` line.
 
-      $ mix composer.step.edit core:setup/credo
+      $ mix composer.step.edit cb_std:setup/credo
 
   The editor command comes from `COMPOSER_EDITOR`, then `VISUAL`, then
   `EDITOR`; `__FILE__` and `__LINE__` in it are replaced with the file and
@@ -18,7 +18,7 @@ defmodule Mix.Tasks.Composer.Step.Edit do
       export COMPOSER_EDITOR="ghostty -e 'nvim +__LINE__ __FILE__'"
 
   The step is found as `mix composer.step.run` finds it. A step from a
-  dependency's cookbook (including the built-in `core` steps) opens too,
+  dependency's cookbook (including the built-in `cb_std` steps) opens too,
   with a warning: edits under `deps/` are lost when the dependency is
   updated. A `hex:` package has no step file, so it cannot be edited.
 

@@ -9,7 +9,7 @@ recipes, keyed by name.
 [
   clean: [
     shortdoc: "Strip the Phoenix theme toggle and topbar",
-    steps: ["core:phx/remove_theme_toggle", "core:phx/remove_topbar"]
+    steps: ["cb_std:phx/remove_theme_toggle", "cb_std:phx/remove_topbar"]
   ],
   app: [
     shortdoc: "A Phoenix app with my usual tooling",
@@ -23,13 +23,13 @@ recipes, keyed by name.
     ],
     steps: [
       {:use, "clean"},
-      "core:setup/credo",
-      "core:setup/quokka",
+      "cb_std:setup/credo",
+      "cb_std:setup/quokka",
       "hex:oban",
-      {"core:oban_pro", if: :oban_pro},
+      {"cb_std:oban_pro", if: :oban_pro},
       {:use, "my_app:deploy/gigalixir", if: :gigalixir},
       {:task, "ash.codegen", ["initial"]},
-      "core:setup/sort_deps"
+      "cb_std:setup/sort_deps"
     ]
   ]
 ]
@@ -98,7 +98,7 @@ Bindings before the list are fine, and the values can be any expression.
 
 | Entry                                        | Meaning                                                        |
 |----------------------------------------------|----------------------------------------------------------------|
-| `"core:setup/credo"`                         | a step, by `"cookbook:path"`                                   |
+| `"cb_std:setup/credo"`                         | a step, by `"cookbook:path"`                                   |
 | `"setup/credo"`                              | a step, unqualified (see below)                                |
 | `"hex:oban"`                                 | a Hex package: added to `mix.exs`, then its own installer runs |
 | `"hex:org.pkg"`                              | a package from a private Hex repo or organization              |
@@ -106,7 +106,7 @@ Bindings before the list are fine, and the values can be any expression.
 | `{"hex:ash_authentication", argv: ["--auth-strategy", "password"]}` | a package whose installer runs with arguments |
 | `{"hex:mix_test_watch", only: [:dev, :test], runtime: false}` | a package with dependency options |
 | `{"hex:my_lib", path: "../my_lib"}`          | a package from a source: `version:`, `github:`, `git:` or `path:` |
-| `{"core:oban_pro", if: :oban_pro}`           | a step that runs only with `--oban-pro`                        |
+| `{"cb_std:oban_pro", if: :oban_pro}`           | a step that runs only with `--oban-pro`                        |
 | `{"cc_lab:x", argv: ["--all"]}`              | a step run with options, as after `--` on `composer.step.run`  |
 | `{:use, "clean"}`                            | the recipe `clean` in the same group, in place                 |
 | `{:use, "cb_lab:lv/base"}`                   | a recipe in another group or cookbook                          |
@@ -264,10 +264,10 @@ An alias is only a lookup shortcut; it never renames a cookbook:
     references only — **not** inside a recipe it includes (that recipe
     uses its own aliases), and never to references typed on the command
     line;
-  * its value is a string naming a package cookbook. `core`, `hex`,
+  * its value is a string naming a package cookbook. `cb_std`, `hex`,
     `local` (and other reserved names) cannot be targets, and an atom
     value is rejected;
-  * its name is a lowercase `[a-z0-9_]` name other than `core`, `hex` and
+  * its name is a lowercase `[a-z0-9_]` name other than `cb_std`, `hex` and
     `local`, declared once per recipe, and it must not be the name of an
     installed cookbook — pick alias names that don't look like package
     names, since a cookbook installed later would collide;
@@ -296,10 +296,10 @@ aliases = [lab: "cc_lab"]
   * **No cycles.** A cycle is an error that prints the whole chain, across
     groups and cookbooks: `my_app:ash/a -> cc_lab:lv/b -> my_app:ash/a`.
   * **De-duplication.** A step equal to an earlier one is dropped, first
-    occurrence wins — `"setup/credo"` and `"core:setup/credo"` count as the
+    occurrence wins — `"setup/credo"` and `"cb_std:setup/credo"` count as the
     same step.
     Steps that differ only in their `if:` are distinct. Keep finishing steps
-    like `"core:setup/sort_deps"` in a recipe that is used last.
+    like `"cb_std:setup/sort_deps"` in a recipe that is used last.
   * **Flags** declared by the recipe, and by every recipe it reaches,
     become `--flag` options of `mix composer.recipe.run`. Any other
     `--flag` is rejected.

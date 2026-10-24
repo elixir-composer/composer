@@ -68,7 +68,7 @@ defmodule Composer.LSP.SessionTest do
 
   test "reload swaps the cookbooks, and one reload runs at a time" do
     test = self()
-    cookbooks = [Composer.Cookbook.from_module(Composer.Core)]
+    cookbooks = [Composer.Cookbook.from_module(Composer.CbStd)]
 
     discover = fn ->
       send(test, {:discovering, self()})
@@ -85,7 +85,7 @@ defmodule Composer.LSP.SessionTest do
     assert_receive {:composer_lsp, {:reloaded, {:ok, 1}}}, 2000
     snapshot = Session.snapshot(session)
     assert snapshot.cookbooks == cookbooks
-    assert Enum.any?(snapshot.entries, &match?({"step", "core:setup/credo", _}, &1))
+    assert Enum.any?(snapshot.entries, &match?({"step", "cb_std:setup/credo", _}, &1))
   end
 
   test "a failed reload keeps the cookbooks" do

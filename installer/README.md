@@ -69,7 +69,7 @@ Rules:
 
 - REF must name its cookbook: `lv/base` alone is an error (there are no
   shortnames).
-- `core:GROUP/RECIPE` installs no cookbook (`core` ships with composer), so
+- `cb_std:GROUP/RECIPE` installs no cookbook (`cb_std` ships with composer), so
   it takes no `@SOURCE`.
 - `hex:` refs name packages, not cookbooks, and are rejected.
 - Without REF, the app gets composer and nothing else. Run

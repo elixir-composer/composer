@@ -20,9 +20,9 @@ defmodule Mix.Tasks.Composer.ListTest do
           {:use, "fake_book:main/full"},
           "fake_book:ash/postgres",
           "fake_book:sqlite",
-          {"core:setup/credo", if: :credo},
+          {"cb_std:setup/credo", if: :credo},
           "setup/gitignore",
-          "core:setup/gitignore"
+          "cb_std:setup/gitignore"
         ]
       ]
     ]
@@ -46,18 +46,18 @@ defmodule Mix.Tasks.Composer.ListTest do
 
   test "cookbook.list shows each cookbook with its counts" do
     output = run("composer.cookbook.list", [])
-    assert output =~ ~r/core\s+composer\s+30 steps\s+1 recipes/
+    assert output =~ ~r/cb_std\s+composer\s+30 steps\s+1 recipes/
     assert output =~ ~r/fake_book\s+fake_book\s+\d+ steps\s+3 recipes\s+A fixture cookbook/
     assert output =~ ~r/mine\s+composer\s+0 steps\s+1 recipes/
 
-    assert %{"cookbooks" => [%{"name" => "core", "steps" => 30} | _]} =
+    assert %{"cookbooks" => [%{"name" => "cb_std", "steps" => 30} | _]} =
              json("composer.cookbook.list", [])
   end
 
   test "step.list filters by cookbook, framework, action and tag" do
     output = run("composer.step.list", ["--cookbook", "fake_book"])
     assert output =~ ~r/fake_book:ash\/postgres\s+add\s+Adds AshPostgres/
-    refute output =~ "core:"
+    refute output =~ "cb_std:"
 
     assert run("composer.step.list", ["--framework", "ash"]) =~
              "fake_book:ash/postgres"
@@ -96,7 +96,7 @@ defmodule Mix.Tasks.Composer.ListTest do
     assert output =~ ~r/requires:\s+fake_book:hello/
     assert output =~ ~r/files: .*postgres.txt/
 
-    data = json("composer.step.show", ["core:setup/credo"])
+    data = json("composer.step.show", ["cb_std:setup/credo"])
     assert data["summary"] == "Adds Credo for static code analysis"
     assert %{"files" => ["mix.exs"], "deps" => ["credo"]} = data["dry_run"]
 
@@ -150,13 +150,13 @@ defmodule Mix.Tasks.Composer.ListTest do
 
     assert refs.(["fake_book", "mine"]) == refs.(["fake_book"]) ++ refs.(["mine"])
     assert refs.(["fake_book:main/"]) == ["fake_book:main/base", "fake_book:main/full"]
-    assert refs.(["core"]) == ["core:debug/echo"]
+    assert refs.(["cb_std"]) == ["cb_std:debug/echo"]
   end
 
   test "recipe.list --only-leaves hides recipes included within their group", %{tmp_dir: dir} do
     File.write!(Path.join(dir, "recipes/site.exs"), """
     [
-      ui: [shortdoc: "UI", steps: ["core:setup/gitignore"]],
+      ui: [shortdoc: "UI", steps: ["cb_std:setup/gitignore"]],
       parts: [shortdoc: "Parts", steps: [{:use, "mine:site/ui"}]],
       app: [shortdoc: "App", steps: [{:use, "parts"}, {:use, "phx/standard_app"}]]
     ]
@@ -211,7 +211,7 @@ defmodule Mix.Tasks.Composer.ListTest do
   end
 
   test "recipe.list warns about a group that does not load", %{tmp_dir: dir} do
-    File.write!(Path.join(dir, "recipes/old.exs"), ~s(["core:setup/credo"]\n))
+    File.write!(Path.join(dir, "recipes/old.exs"), ~s(["cb_std:setup/credo"]\n))
 
     output = run("composer.recipe.list", ["mine"])
     assert output =~ "mine:phx/standard_app"
@@ -230,7 +230,7 @@ defmodule Mix.Tasks.Composer.ListTest do
     assert output =~ ~r/Flags:\n\s+--credo\s+Add Credo/
     assert output =~ ~r/Flags from used recipes:\n\s+--extra\s+Add the extra steps/
     assert output =~ "1. fake_book:hello  [fake_book:main/base]"
-    assert output =~ "core:setup/credo, if: :credo  [mine:phx/standard_app]"
+    assert output =~ "cb_std:setup/credo, if: :credo  [mine:phx/standard_app]"
     assert output =~ "Duplicates dropped"
     assert output =~ "fake_book:sqlite (phase cleanup) runs after fake_book:hello (phase setup)"
     assert output =~ "all provide :datalayer"
@@ -258,14 +258,14 @@ defmodule Mix.Tasks.Composer.ListTest do
       aliased: [
         shortdoc: "Aliased",
         aliases: [fb: "fake_book"],
-        steps: ["fb:sqlite", "core:setup/gitignore"]
+        steps: ["fb:sqlite", "cb_std:setup/gitignore"]
       ]
     ]
     """)
 
     output = run("composer.recipe.show", ["lab/aliased"])
     assert output =~ "1. fake_book:sqlite (as fb)  [mine:lab/aliased]"
-    assert output =~ "2. core:setup/gitignore  [mine:lab/aliased]"
+    assert output =~ "2. cb_std:setup/gitignore  [mine:lab/aliased]"
 
     data = json("composer.recipe.show", ["lab/aliased"])
     assert data["aliases"] == %{"fb" => "fake_book"}

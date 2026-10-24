@@ -46,8 +46,8 @@ defmodule Composer.Resolver do
 
   Every leaf becomes an entry:
 
-      %{ref: "core:setup/credo", label: "core:setup/credo",
-        step: {:module, Composer.Core.Steps.Setup.Credo},
+      %{ref: "cb_std:setup/credo", label: "cb_std:setup/credo",
+        step: {:module, Composer.CbStd.Steps.Setup.Credo},
         origin: "my_app:phx/app", gates: [:dev_tools], if: nil, meta: %Composer.Step.Meta{}}
 
   `origin` is the recipe the step came from, `gates` the `if:` flags of the
@@ -70,7 +70,7 @@ defmodule Composer.Resolver do
       `{:cycle, path}` error, with the full `cookbook:path` chain.
     * **De-duplication.** A step equal to an earlier one is dropped (first
       occurrence wins) and reported in `duplicates`. Equality uses the
-      resolved step, so `"setup/credo"` and `"core:setup/credo"` are
+      resolved step, so `"setup/credo"` and `"cb_std:setup/credo"` are
       duplicates. Steps that differ only in their `if:` are distinct.
     * **One install per package.** Installs of one package with different
       options (argv, source or dep options, or none against some) are a

@@ -101,11 +101,11 @@ defmodule Composer.LintTest do
 
   test "every recipe must resolve", %{tmp_dir: dir, cookbooks: cookbooks} do
     File.mkdir_p!(Path.join(dir, "recipes"))
-    File.write!(Path.join(dir, "recipes/g.exs"), ~s([a: [shortdoc: "A", steps: ["core:nope"]]]))
+    File.write!(Path.join(dir, "recipes/g.exs"), ~s([a: [shortdoc: "A", steps: ["cb_std:nope"]]]))
 
     assert_error(
       lint_recipes(dir, cookbooks),
-      ~r/In recipe mine:g\/a: no step matches "core:nope"/
+      ~r/In recipe mine:g\/a: no step matches "cb_std:nope"/
     )
   end
 
@@ -309,10 +309,10 @@ defmodule Composer.LintTest do
 
       reserved =
         lint_group(Path.join(dir, "reserved"), """
-        [b: [shortdoc: "x", aliases: [core: "fake_book"], steps: []]]
+        [b: [shortdoc: "x", aliases: [cb_std: "fake_book"], steps: []]]
         """)
 
-      assert_error(reserved, ~r/mine:g\/b declares the alias core:, but core is a reserved/)
+      assert_error(reserved, ~r/mine:g\/b declares the alias cb_std:, but cb_std is a reserved/)
     end
   end
 end

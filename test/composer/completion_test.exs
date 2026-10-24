@@ -16,11 +16,11 @@ defmodule Composer.CompletionTest do
   recipe\tmine:ash/base\tAsh core
   recipe\tmine:lv/base\tMy LiveView
   cookbook\tcc_lab\tAndy's steps
-  cookbook\tcore\tBuilt-in steps
+  cookbook\tcb_std\tBuilt-in steps
   cookbook\tmine\tYour recipes
   step\tcc_lab:ash\tAdds Ash
   step\tcc_lab:ash/postgres\tAdds AshPostgres
-  step\tcore:setup/credo\tAdds Credo
+  step\tcb_std:setup/credo\tAdds Credo
   """
 
   setup %{tmp_dir: dir} do
@@ -65,7 +65,7 @@ defmodule Composer.CompletionTest do
     assert complete(dir, "mix composer.step.show c") == [
              "cc_lab:ash",
              "cc_lab:ash/postgres",
-             "core:setup/credo"
+             "cb_std:setup/credo"
            ]
 
     # Together with the "cc_lab:" already on the line, these are full ids.
@@ -78,7 +78,7 @@ defmodule Composer.CompletionTest do
 
   test "completes the last item of a comma-separated list", %{tmp_dir: dir} do
     # Bash replaces the word after the last ":", so "ash/" becomes "ash/postgres".
-    assert complete(dir, "mix composer.step.run core:setup/credo,cc_lab:ash/") == [
+    assert complete(dir, "mix composer.step.run cb_std:setup/credo,cc_lab:ash/") == [
              "ash/postgres"
            ]
   end
@@ -98,7 +98,7 @@ defmodule Composer.CompletionTest do
              ["mine:ash/", "mine:lv/", "mine"]
 
     assert complete(dir, "mix composer.recipe.list mine c") ==
-             ["cc_lab:lv/", "cc_lab", "core"]
+             ["cc_lab:lv/", "cc_lab", "cb_std"]
 
     assert complete(dir, "mix composer.recipe.list mine:a") == ["ash/"]
   end

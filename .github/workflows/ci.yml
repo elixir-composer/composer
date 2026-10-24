@@ -30,7 +30,7 @@ jobs:
       # gen_lsp is optional: composer must also compile cleanly without it.
       - run: mix compile --no-optional-deps --warnings-as-errors --force
       - run: mix compile --warnings-as-errors --force
-      # The core cookbook: metadata, a test per step, an up-to-date manifest.
+      # The cb_std cookbook: metadata, a test per step, an up-to-date manifest.
       - run: mix composer.cookbook.lint --format github
       # Includes the host-app integration test (a cookbook in a dependency).
       - run: mix test --include integration

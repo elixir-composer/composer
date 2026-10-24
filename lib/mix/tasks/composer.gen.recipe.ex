@@ -130,9 +130,9 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
     #
     # Step entries:
     #
-    #   "core:setup/credo"             a step ("cookbook:path", or "path")
+    #   "cb_std:setup/credo"             a step ("cookbook:path", or "path")
     #   "hex:oban"                     a Hex package and its own installer
-    #   {"core:oban_pro", if: :flag}   only with --flag
+    #   {"cb_std:oban_pro", if: :flag}   only with --flag
     #   {:use, "other"}                another recipe in this group, in place
     #   {:use, "cb_lab:lv/base"}       a recipe in another group or cookbook
     #   {:task, "x.y", ["arg"]}        compose an Igniter-aware Mix task

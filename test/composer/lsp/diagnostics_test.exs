@@ -14,7 +14,7 @@ defmodule Composer.LSP.DiagnosticsTest do
     write = fn name, source -> File.write!(Path.join([dir, "recipes", name]), source) end
     write.("ash.exs", ~s|[\n  base: [shortdoc: "x", steps: ["credoo"]]\n]\n|)
     write.("app.exs", ~s|[\n  full: [shortdoc: "x", steps: [{:use, "mine:ash/base"}]]\n]\n|)
-    write.("other.exs", ~s|[\n  ok: [shortdoc: "x", steps: ["core:setup/gitignore"]]\n]\n|)
+    write.("other.exs", ~s|[\n  ok: [shortdoc: "x", steps: ["cb_std:setup/gitignore"]]\n]\n|)
 
     args = %{cookbooks: cookbooks, root: File.cwd!(), known_dependents: []}
     %{args: args, ash: Path.join(dir, "recipes/ash.exs"), app: Path.join(dir, "recipes/app.exs")}

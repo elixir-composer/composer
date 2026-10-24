@@ -40,11 +40,11 @@ defmodule Composer.CookbookTest do
     assert ids == Enum.sort(ids)
     assert "ash/postgres" in ids and "hello" in ids
 
-    core = Cookbook.from_module(Composer.Core)
-    assert length(Cookbook.steps(core)) == 30
+    cb_std = Cookbook.from_module(Composer.CbStd)
+    assert length(Cookbook.steps(cb_std)) == 30
 
-    assert {:ok, %{ref: "core:cluster/gigalixir/libcluster"}} =
-             Cookbook.step(core, "cluster/gigalixir/libcluster")
+    assert {:ok, %{ref: "cb_std:cluster/gigalixir/libcluster"}} =
+             Cookbook.step(cb_std, "cluster/gigalixir/libcluster")
   end
 
   test "a name that matches the app compiles", %{tmp_dir: dir} do
@@ -78,7 +78,7 @@ defmodule Composer.CookbookTest do
     end
 
     assert_raise CompileError, ~r/reserved for composer's built-in cookbook/, fn ->
-      define(Composer.Core, :core)
+      define(Composer.CbStd, :cb_std)
     end
   end
 

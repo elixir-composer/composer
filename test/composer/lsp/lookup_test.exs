@@ -47,6 +47,6 @@ defmodule Composer.LSP.LookupTest do
 
   test "alias expansion" do
     assert Lookup.expand("lab:x/y", %{"lab" => "cc_lab"}) == "cc_lab:x/y"
-    assert Lookup.expand("core:x", %{"lab" => "cc_lab"}) == "core:x"
+    assert Lookup.expand("cb_std:x", %{"lab" => "cc_lab"}) == "cb_std:x"
   end
 end

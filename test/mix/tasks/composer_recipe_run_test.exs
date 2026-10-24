@@ -10,12 +10,12 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
   @moduletag :tmp_dir
 
   @recipes %{
-    "base" => ~s(["core:setup/gitignore"]),
-    "deploy" => ~s(["core:ecto/force_drop"]),
+    "base" => ~s(["cb_std:setup/gitignore"]),
+    "deploy" => ~s(["cb_std:ecto/force_drop"]),
     "app" =>
-      ~s([{:use, "base"}, {"core:ecto/force_drop", if: :force_drop}, {:queue, "foo.bar", []}]),
+      ~s([{:use, "base"}, {"cb_std:ecto/force_drop", if: :force_drop}, {:queue, "foo.bar", []}]),
     "gated" => ~s([{:use, "base"}, {:use, "deploy", if: :deploy}]),
-    "reserved" => ~s([{"core:setup/gitignore", if: :yes}]),
+    "reserved" => ~s([{"cb_std:setup/gitignore", if: :yes}]),
     "cookbook" => ~s(["fake_book:hello", "setup/gitignore"]),
     "cookbook_gated" => ~s([{"fake_book:hello", if: :hello}]),
     "cookbook_missing" => ~s(["fake_book:nope"]),
@@ -126,15 +126,15 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
     assert_received {:steps,
                      [
                        {:module, Composer.FakeBook.Steps.Hello},
-                       {:module, Composer.Core.Steps.Setup.Gitignore}
+                       {:module, Composer.CbStd.Steps.Setup.Gitignore}
                      ]}
 
     run(["t/app", "--no-commit", "--force-drop"])
 
     assert_received {:steps,
                      [
-                       {:module, Composer.Core.Steps.Setup.Gitignore},
-                       {:module, Composer.Core.Steps.Ecto.ForceDrop},
+                       {:module, Composer.CbStd.Steps.Setup.Gitignore},
+                       {:module, Composer.CbStd.Steps.Ecto.ForceDrop},
                        {:queue, "foo.bar", []}
                      ]}
   end
@@ -173,8 +173,8 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
            Flags: --force-drop
 
            Steps:
-           1. core:setup/gitignore [mine:t/base]
-           2. core:ecto/force_drop [mine:t/app]
+           1. cb_std:setup/gitignore [mine:t/base]
+           2. cb_std:ecto/force_drop [mine:t/app]
            3. {:queue, "foo.bar", []} [mine:t/app]
            """
   end

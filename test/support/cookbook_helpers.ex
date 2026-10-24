@@ -23,7 +23,7 @@ defmodule Composer.Test.Cookbooks do
     }
   end
 
-  @doc "The cookbooks of `apps` (and core), then `code_cookbook(dir)`."
+  @doc "The cookbooks of `apps` (and cb_std), then `code_cookbook(dir)`."
   def discover(dir, apps) do
     {:ok, cookbooks} =
       Composer.Discovery.cookbooks(apps: apps, cookbooks: [code_cookbook(dir)])

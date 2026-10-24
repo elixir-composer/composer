@@ -6,7 +6,7 @@ defmodule Mix.Tasks.Composer.Step.Show do
   then dry-runs it against the current project to report the files it
   touches and the dependencies it adds. Nothing is written.
 
-      mix composer.step.show core:setup/credo
+      mix composer.step.show cb_std:setup/credo
       mix composer.step.show ash/postgres --json
 
   The dry run stays offline (package versions fall back to permissive

@@ -19,18 +19,18 @@ defmodule Composer.ManifestTest do
     assert {^data, _} = Code.eval_string(rendered)
   end
 
-  test "core's committed manifest is up to date" do
-    core = Cookbook.from_module(Composer.Core)
+  test "cb_std's committed manifest is up to date" do
+    cb_std = Cookbook.from_module(Composer.CbStd)
 
-    assert File.read!(Manifest.path(core)) == Manifest.render(Manifest.build(core)),
+    assert File.read!(Manifest.path(cb_std)) == Manifest.render(Manifest.build(cb_std)),
            "run mix composer.cookbook.manifest"
   end
 
-  test "lint passes on core" do
+  test "lint passes on cb_std" do
     {:ok, cookbooks} = Discovery.cookbooks(apps: [])
-    core = Cookbook.from_module(Composer.Core)
+    cb_std = Cookbook.from_module(Composer.CbStd)
 
-    assert %{diagnostics: []} = Lint.run(core, cookbooks, File.cwd!())
+    assert %{diagnostics: []} = Lint.run(cb_std, cookbooks, File.cwd!())
   end
 
   test "lint fails on a stale or missing manifest, missing tests and bad requires", %{
@@ -84,7 +84,7 @@ defmodule Composer.ManifestTest do
     cookbooks = discover(dir, [:fake_book])
 
     lines = Index.lines(cookbooks)
-    assert "step\tcore:setup/credo\tAdds Credo for static code analysis" in lines
+    assert "step\tcb_std:setup/credo\tAdds Credo for static code analysis" in lines
     assert "step\tfake_book:ash/postgres\tAdds AshPostgres" in lines
     assert "recipe\tfake_book:nested/extra\tExtra steps" in lines
     assert "recipe\tmine:mine/a\tMy recipe" in lines

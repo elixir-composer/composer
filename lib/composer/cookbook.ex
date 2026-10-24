@@ -26,9 +26,9 @@ defmodule Composer.Cookbook do
   The cookbook name comes from the module (`Composer.CcLab` is `cc_lab`)
   and must equal the package's OTP app name, so one package defines at most
   one cookbook and Hex's package uniqueness keeps cookbook names unique.
-  The one exception is composer's own built-in cookbook, `core`.
+  The one exception is composer's own built-in cookbook, `cb_std`.
 
-  These names are reserved and rejected at compile time: #{Enum.join(["core", "hex", "local"], ", ")}
+  These names are reserved and rejected at compile time: #{Enum.join(["cb_std", "hex", "local"], ", ")}
   and every top-level `Composer.*` module name (see `reserved/0`).
 
   ## Compile-time checks
@@ -83,7 +83,7 @@ defmodule Composer.Cookbook do
     lint lsp editor
   )
 
-  @reserved ["core", "hex", "local" | @module_names]
+  @reserved ["cb_std", "hex", "local" | @module_names]
 
   @doc "The cookbook names no package may use."
   @spec reserved() :: [String.t()]
@@ -431,11 +431,11 @@ defmodule Composer.Cookbook do
     end
   end
 
-  defp check_name!(env, "core", :composer), do: env
+  defp check_name!(env, "cb_std", :composer), do: env
 
-  defp check_name!(env, "core", _app) do
+  defp check_name!(env, "cb_std", _app) do
     compile_error!(env, """
-    The cookbook name "core" is reserved for composer's built-in cookbook.
+    The cookbook name "cb_std" is reserved for composer's built-in cookbook.
 
     Name the cookbook after your package's OTP app instead.
     """)

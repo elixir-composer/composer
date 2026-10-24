@@ -24,8 +24,8 @@ defmodule Mix.Tasks.Composer.New do
     * `@git:URL`
     * `@path:PATH`
 
-  REF must name its cookbook. `core:GROUP/RECIPE` takes no source, since
-  `core` ships with composer, and `hex:` refs aren't cookbooks. Without a
+  REF must name its cookbook. `cb_std:GROUP/RECIPE` takes no source, since
+  `cb_std` ships with composer, and `hex:` refs aren't cookbooks. Without a
   REF, the app gets composer only: run `mix composer.init` in it to start
   your own cookbook.
 

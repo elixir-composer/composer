@@ -179,9 +179,9 @@ defmodule ComposerNew.Plan do
     %__MODULE__{summary: summary, commands: commands, parsed: parsed}
   end
 
-  # A core: recipe needs no cookbook install: core ships with composer.
+  # A cb_std: recipe needs no cookbook install: cb_std ships with composer.
   defp cookbook_spec(nil, _env), do: nil
-  defp cookbook_spec(%{cookbook: "core"}, _env), do: nil
+  defp cookbook_spec(%{cookbook: "cb_std"}, _env), do: nil
   defp cookbook_spec(ref, env), do: Ref.install_spec(ref.cookbook, ref.spec, env)
 
   # igniter.new writes `path: Path.join("..", local)` into the app's mix.exs,
@@ -196,7 +196,7 @@ defmodule ComposerNew.Plan do
   defp message(argv), do: Command.join(["mix", "composer.new" | argv])
 
   defp source(nil), do: nil
-  defp source(%{cookbook: "core"}), do: "ships with composer"
+  defp source(%{cookbook: "cb_std"}), do: "ships with composer"
   defp source(%{spec: nil}), do: "hex, latest"
   defp source(%{spec: spec}), do: spec
 

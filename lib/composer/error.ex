@@ -14,12 +14,12 @@ defmodule Composer.Error do
       [
         base: [
           shortdoc: "One line, shown by mix composer.recipe.list",
-          steps: ["core:setup/credo", "hex:oban"]
+          steps: ["cb_std:setup/credo", "hex:oban"]
         ],
         app: [
           shortdoc: "Builds on base",
           flags: [gigalixir: "Deploy to Gigalixir"],
-          steps: [{:use, "base"}, {"core:cluster/gigalixir", if: :gigalixir}]
+          steps: [{:use, "base"}, {"cb_std:cluster/gigalixir", if: :gigalixir}]
         ]
       ]
 
@@ -30,7 +30,7 @@ defmodule Composer.Error do
   @doc "Returns a human-readable message for an error reason."
   @spec message(term()) :: String.t()
   def message({:invalid_ref, ref, why}) do
-    "Invalid reference #{inspect(ref)}: #{why}.\n\nA reference is \"cookbook:path\" or \"path\", e.g. \"core:setup/credo\" or \"ash/postgres\"."
+    "Invalid reference #{inspect(ref)}: #{why}.\n\nA reference is \"cookbook:path\" or \"path\", e.g. \"cb_std:setup/credo\" or \"ash/postgres\"."
   end
 
   def message({:recipe_eval, ref, path, exception, _line}) do
@@ -127,7 +127,7 @@ defmodule Composer.Error do
     """
     Recipe #{ref} aliases #{name} to #{inspect(target)}, which is not a \
     package cookbook name. An alias target is the name of an installed \
-    package's cookbook (its OTP app, e.g. "cc_lab"); core, hex, \
+    package's cookbook (its OTP app, e.g. "cc_lab"); cb_std, hex, \
     local and other reserved names cannot be aliased.
     """
   end

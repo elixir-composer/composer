@@ -35,7 +35,7 @@ defmodule Composer.LSP.HoverTest do
     assert text =~ "**mine:app/base** - Base"
     assert text =~ "The base."
     assert text =~ "- `--x` - An x"
-    assert text =~ "1. core:setup/gitignore"
+    assert text =~ "1. cb_std:setup/gitignore"
     assert String.ends_with?(text, @footer)
   end
 

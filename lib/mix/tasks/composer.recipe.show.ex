@@ -17,11 +17,11 @@ defmodule Mix.Tasks.Composer.Recipe.Show do
         --gigalixir  Add Gigalixir deployment
 
       Steps:
-         1. core:phx/remove_theme_toggle  [my_app:phx/clean]
-         2. core:setup/credo  [my_app:dev/env]
-         3. core:cluster/gigalixir  [my_app:deploy/gigalixir] if :gigalixir
+         1. cb_std:phx/remove_theme_toggle  [my_app:phx/clean]
+         2. cb_std:setup/credo  [my_app:dev/env]
+         3. cb_std:cluster/gigalixir  [my_app:deploy/gigalixir] if :gigalixir
          4. cc_lab:auth/passkeys (as lab)  [my_app:phx/app]
-         5. core:setup/sort_deps  [my_app:phx/finish]
+         5. cb_std:setup/sort_deps  [my_app:phx/finish]
 
   Flags declared by recipes that this one `:use`s are listed after its
   own; `mix composer.recipe.run` accepts all of them.

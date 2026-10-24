@@ -89,8 +89,8 @@ defmodule Composer.MixProject do
           Composer.Recipe.Locator
         ],
         Editor: [Composer.LSP, ~r/^Composer.LSP./, Mix.Tasks.Composer.Lsp],
-        Cookbooks: [Composer.Core],
-        "Built-in steps": ~r/^Composer.Core.Steps./
+        Cookbooks: [Composer.CbStd],
+        "Built-in steps": ~r/^Composer.CbStd.Steps./
       ]
     ]
   end

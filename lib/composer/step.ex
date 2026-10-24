@@ -47,9 +47,9 @@ defmodule Composer.Step do
   A step's templates live in the directory named after its file with a
   leading underscore, and `template/1` takes a path relative to it:
 
-      steps/cluster/gigalixir.ex               # Composer.Core.Steps.Cluster.Gigalixir
+      steps/cluster/gigalixir.ex               # Composer.CbStd.Steps.Cluster.Gigalixir
       steps/cluster/_gigalixir/some.conf.eex   # template("some.conf.eex") in Gigalixir
-      steps/cluster/gigalixir/libcluster.ex    # a child step, Composer.Core.Steps.Cluster.Gigalixir.Libcluster
+      steps/cluster/gigalixir/libcluster.ex    # a child step, Composer.CbStd.Steps.Cluster.Gigalixir.Libcluster
 
       Composer.Templates.copy_file(igniter, template("some.conf.eex"), "config/some.conf")
 

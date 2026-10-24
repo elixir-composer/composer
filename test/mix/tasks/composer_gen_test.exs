@@ -98,7 +98,7 @@ defmodule Mix.Tasks.Composer.GenTest do
           # My Ash recipes.
           [
             # The base.
-            base: [shortdoc: "Base", steps: ["core:setup/credo"]]
+            base: [shortdoc: "Base", steps: ["cb_std:setup/credo"]]
           ]
           """
         }

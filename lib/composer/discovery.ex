@@ -9,7 +9,7 @@ defmodule Composer.Discovery do
 
   The cookbooks, in order:
 
-    * `core`, composer's built-in cookbook, always
+    * `cb_std`, composer's built-in cookbook, always
     * the current project's own cookbook, if it defines one
     * every dependency's cookbook
 
@@ -17,7 +17,7 @@ defmodule Composer.Discovery do
 
   ## Limiting cookbooks
 
-  The host app can allow or deny package cookbooks by name. `core` is
+  The host app can allow or deny package cookbooks by name. `cb_std` is
   always available.
 
       # config/config.exs
@@ -53,7 +53,7 @@ defmodule Composer.Discovery do
       |> Enum.filter(&Cookbook.cookbook_module?/1)
 
     code =
-      Enum.map([Composer.Core | modules], &Cookbook.from_module/1) ++
+      Enum.map([Composer.CbStd | modules], &Cookbook.from_module/1) ++
         Keyword.get(opts, :cookbooks, [])
 
     with :ok <- check_duplicates(code) do
@@ -69,7 +69,7 @@ defmodule Composer.Discovery do
   def own(cookbooks) when is_list(cookbooks) do
     with true <- Mix.Project.get() != nil,
          app when is_atom(app) and app != nil <- Mix.Project.config()[:app] do
-      name = if app == :composer, do: "core", else: Atom.to_string(app)
+      name = if app == :composer, do: "cb_std", else: Atom.to_string(app)
       Enum.find(cookbooks, &(&1.name == name and &1.kind == :code))
     else
       _ -> nil
@@ -105,7 +105,7 @@ defmodule Composer.Discovery do
     except = names(filter[:except]) || []
 
     Enum.filter(cookbooks, fn %{name: name} ->
-      name == "core" or ((only == nil or name in only) and name not in except)
+      name == "cb_std" or ((only == nil or name in only) and name not in except)
     end)
   end
 

@@ -113,7 +113,7 @@ defmodule Mix.Tasks.Composer.Gen.Step do
         # :experimental, :beta, :stable or :deprecated
         stability: :experimental,
         tags: [],
-        # step refs ("core:setup/credo"), {:executable, "bun"}, {:package, :phoenix, "~> 1.8"}
+        # step refs ("cb_std:setup/credo"), {:executable, "bun"}, {:package, :phoenix, "~> 1.8"}
         requires: [],
         provides: [],
         conflicts: []

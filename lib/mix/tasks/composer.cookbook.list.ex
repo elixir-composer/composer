@@ -6,7 +6,7 @@ defmodule Mix.Tasks.Composer.Cookbook.List do
   and recipes it holds.
 
       $ mix composer.cookbook.list
-        core          composer      29 steps  0 recipes  Composer's built-in steps for Phoenix apps
+        cb_std        composer      29 steps  0 recipes  Composer's built-in steps for Phoenix apps
         cc_lab  cc_lab  41 steps  6 recipes  Andy's composer steps
         cb_mine       cb_mine        0 steps  3 recipes  Composer steps and recipes for cb_mine
 

@@ -24,22 +24,22 @@ defmodule Mix.Tasks.Composer.Step.RunTest do
   defp run(argv), do: Igniter.compose_task(test_project(), "composer.step.run", argv)
 
   test "runs comma-separated steps as one diff" do
-    run(["fake_book:hello,core:setup/gitignore"])
+    run(["fake_book:hello,cb_std:setup/gitignore"])
     |> assert_creates("hello.txt", "hello\n")
     |> assert_has_patch(".gitignore", "+ |.expert/")
   end
 
-  # Inside composer the project's own cookbook is core, so it wins.
+  # Inside composer the project's own cookbook is cb_std, so it wins.
   test "hands the runner internal steps, own cookbook first, with hex: fallbacks" do
     Application.put_env(:composer, :runner, RecordingRunner)
     run(["phx/remove_topbar, ash/postgres, oban, setup/credo"])
 
     assert_received {:steps,
                      [
-                       {:module, Composer.Core.Steps.Phx.RemoveTopbar},
+                       {:module, Composer.CbStd.Steps.Phx.RemoveTopbar},
                        {:module, Composer.FakeBook.Steps.Ash.Postgres},
                        {:install, :oban, []},
-                       {:module, Composer.Core.Steps.Setup.Credo}
+                       {:module, Composer.CbStd.Steps.Setup.Credo}
                      ]}
   end
 

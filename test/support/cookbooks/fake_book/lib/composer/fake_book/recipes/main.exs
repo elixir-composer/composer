@@ -11,7 +11,7 @@
     steps: [
       {:use, "base"},
       "ash/postgres",
-      {"core:setup/credo", if: :credo},
+      {"cb_std:setup/credo", if: :credo},
       {:use, "nested/extra", if: :extra},
       {:queue, "foo.bar", []}
     ]

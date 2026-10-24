@@ -1,1 +1,1 @@
-[base: [shortdoc: "x", steps: [{"core:setup/credo", if: :credo}]]]
+[base: [shortdoc: "x", steps: [{"cb_std:setup/credo", if: :credo}]]]

@@ -21,7 +21,7 @@ defmodule Composer.Recipe.GroupTest do
              shortdoc: "The base",
              doc: nil,
              flags: [],
-             steps: ["core:setup/gitignore"]
+             steps: ["cb_std:setup/gitignore"]
            } = base
 
     assert base.path == fixture("clean")
@@ -40,7 +40,7 @@ defmodule Composer.Recipe.GroupTest do
 
     # Bindings before a literal list are fine.
     assert Group.ids(fixture("bindings")) == {:ok, ["base"]}
-    assert {:ok, [%{steps: ["core:setup/gitignore"]}]} = load("bindings")
+    assert {:ok, [%{steps: ["cb_std:setup/gitignore"]}]} = load("bindings")
   end
 
   test "a non-literal top level cannot be listed" do
@@ -56,7 +56,10 @@ defmodule Composer.Recipe.GroupTest do
 
   test "an old single-recipe file points at the group format" do
     path = fixture("old_format")
-    assert {:error, {:group_shape, ^path, ["core:setup/credo", _]} = reason} = load("old_format")
+
+    assert {:error, {:group_shape, ^path, ["cb_std:setup/credo", _]} = reason} =
+             load("old_format")
+
     message = Error.message(reason)
     assert message =~ "keyword list of recipes"
     assert message =~ "shortdoc:"
@@ -160,12 +163,12 @@ defmodule Composer.Recipe.GroupTest do
       assert {:ok, {[good], errors}} = Group.load_all(path, "mine")
       assert good.name == "good"
 
-      assert {:reserved_alias, "mine:bad_aliases/reserved", :core} in errors
+      assert {:reserved_alias, "mine:bad_aliases/reserved", :cb_std} in errors
       assert {:invalid_alias, "mine:bad_aliases/malformed", :Lab} in errors
       assert {:duplicate_alias, "mine:bad_aliases/duplicate", :fb} in errors
       assert {:alias_atom_target, "mine:bad_aliases/atom", :fb, :fake_book} in errors
 
-      for {name, target} <- [h: "hex", c: "core", l: "local"] do
+      for {name, target} <- [h: "hex", c: "cb_std", l: "local"] do
         assert {:invalid_alias_target, "mine:bad_aliases/virtual", name, target} in errors
       end
 
@@ -173,7 +176,7 @@ defmodule Composer.Recipe.GroupTest do
                Group.pick({[good], errors}, path, "mine", "atom")
 
       assert Error.message(reason) =~ ~s(aliases: [fb: "fake_book"])
-      assert Error.message({:reserved_alias, "r", :core}) =~ "reserved"
+      assert Error.message({:reserved_alias, "r", :cb_std}) =~ "reserved"
     end
   end
 

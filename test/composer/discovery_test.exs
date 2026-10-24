@@ -5,30 +5,30 @@ defmodule Composer.DiscoveryTest do
 
   defp names({:ok, cookbooks}), do: Enum.map(cookbooks, & &1.name)
 
-  test "core is always found; cookbooks are found by the Composer.<App> convention" do
-    assert names(Discovery.cookbooks(apps: [])) == ["core"]
+  test "cb_std is always found; cookbooks are found by the Composer.<App> convention" do
+    assert names(Discovery.cookbooks(apps: [])) == ["cb_std"]
 
     # :fake_book is not a real dependency, so the convention lookup of an app
     # named :fake_book is what finds Composer.FakeBook.
     assert names(Discovery.cookbooks(apps: [:fake_book, :jason])) ==
-             ["core", "fake_book"]
+             ["cb_std", "fake_book"]
   end
 
   test "extra cookbooks come after the discovered ones" do
     mine = Composer.Test.Cookbooks.code_cookbook(System.tmp_dir!())
 
-    assert ["core", "fake_book", "mine"] =
+    assert ["cb_std", "fake_book", "mine"] =
              names(Discovery.cookbooks(apps: [:fake_book], cookbooks: [mine]))
   end
 
-  test "except: and only: limit package cookbooks, but never core" do
+  test "except: and only: limit package cookbooks, but never cb_std" do
     opts = [apps: [:fake_book, :other_book]]
 
     assert names(Discovery.cookbooks(opts ++ [filter: [except: [:fake_book]]])) ==
-             ["core", "other_book"]
+             ["cb_std", "other_book"]
 
     assert names(Discovery.cookbooks(opts ++ [filter: [only: ["other_book"]]])) ==
-             ["core", "other_book"]
+             ["cb_std", "other_book"]
   end
 
   defmodule Impostor do
@@ -56,8 +56,8 @@ defmodule Composer.DiscoveryTest do
              "More than one cookbook is named \"fake_book\""
   end
 
-  test "own/1 is the current project's cookbook (core, inside composer)" do
+  test "own/1 is the current project's cookbook (cb_std, inside composer)" do
     {:ok, cookbooks} = Discovery.cookbooks(apps: [])
-    assert %{name: "core"} = Discovery.own(cookbooks)
+    assert %{name: "cb_std"} = Discovery.own(cookbooks)
   end
 end

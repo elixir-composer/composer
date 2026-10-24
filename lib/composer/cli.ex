@@ -155,7 +155,7 @@ defmodule Composer.CLI do
   end
 
   @doc """
-  Renders numbered entries: `   4. core:setup/credo  [cb_lab:dev/tooling] if :dev`.
+  Renders numbered entries: `   4. cb_std:setup/credo  [cb_lab:dev/tooling] if :dev`.
 
   With `aliases: true`, a step referenced through a cookbook alias is
   followed by the alias: `cc_lab:auth/passkeys (as lab)`.
