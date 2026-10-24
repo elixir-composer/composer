@@ -8,7 +8,7 @@ one command:
 mix composer.new my_app cb_lab:base/completions --with phx.new --with-args=--no-ecto
 ```
 
-It drives `igniter.new` and `igniter.install`; it doesn't replace them.
+It drives `igniter.new` and Igniter's installer; it doesn't replace them.
 
 ## Install
 
@@ -19,7 +19,7 @@ mix archive.install hex phx_new         # only for --with phx.new
 ```
 
 `composer_new` and `composer` have the same version, and an app created
-by `composer_new` X.Y.Z gets `composer ~> X.Y.Z` unless `--composer` says
+by `composer_new` X.Y.Z gets `composer ~> X.Y` unless `--composer` says
 otherwise.
 
 `igniter_new` must be 0.5.32 or later: earlier releases either ignore
@@ -39,14 +39,16 @@ directory part (`/tmp/my_app`); its last segment must be a valid app name.
 
 ```
 REF    = COOKBOOK:GROUP/RECIPE[@SOURCE]
-SOURCE = <version>                     hex, e.g. @0.3 or @~> 0.3.1 (no @: the latest)
+SOURCE = <requirement>                 hex, kept as written: @~> 0.3, @>= 0.3.1
+       | <version>                     hex: @0.3.1 is == 0.3.1, @0.3 is ~> 0.3 (no @: the latest)
        | github:OWNER/REPO[@GITREF]
        | git:URL
        | path:PATH
 ```
 
 REF is split on its first `@`: `COOKBOOK:GROUP/RECIPE` goes to
-`mix composer.recipe.run`, and `COOKBOOK@SOURCE` to `mix igniter.install`.
+`mix composer.recipe.run`, and `COOKBOOK@SOURCE` to
+`mix composer_new.install` (see [What it runs](#what-it-runs)).
 
 ```bash
 # hex
@@ -79,9 +81,9 @@ Rules:
 |------------------------|-------------------------------------------------------------------------------|
 | `--with TASK`          | the base generator, as in `igniter.new` (`phx.new`, ...); default `new`       |
 | `--with-args ARGS`     | arguments for `--with`; prefer `--with-args="--no-ecto --binary-id"`          |
-| `--install PKG[,PKG]`  | base packages installed with the app as prod deps (repeatable)                |
-| `--composer SOURCE`    | composer's source: `path:...`, `github:...` or a version; default `~> <archive version>` |
-| `--extra-dep PKG`      | another dev/test dep, such as a second cookbook (repeatable)                  |
+| `--install PKG[,PKG]`  | base packages installed with the app as prod deps (repeatable); `PKG[@SOURCE]` |
+| `--composer SOURCE`    | composer's source: `path:...`, `github:...` or a version; default `~> MAJOR.MINOR` of the archive |
+| `--extra-dep PKG`      | another dev/test dep, such as a second cookbook (repeatable); `PKG[@SOURCE]`  |
 | `--igniter-local PATH` | a local igniter checkout, passed as `igniter.new --local` (made relative to APP's parent) |
 | `--reset`              | delete APP first                                                              |
 | `--dry-run`            | print the plan and run nothing                                                |
@@ -108,10 +110,16 @@ printed first, every time. `--dry-run` stops there.
    `--reset`); `igniter_new` >= 0.5.32 is installed; the `--with` task's
    archive is installed; `git` is on the PATH.
 1. **Create**: `mix igniter.new APP --no-git --yes`, with `--with`,
-   `--with-args`, `--install` and `--local`.
-2. **Install**: in APP,
-   `mix igniter.install composer@SRC,COOKBOOK@SRC,... --only dev,test --yes`.
+   `--with-args` and `--local`.
+2. **Install**: in APP, `mix composer_new.install PKG,... --yes` for the
+   `--install` packages, then
+   `mix composer_new.install composer@SRC,COOKBOOK@SRC,... --only dev,test --yes`.
    The cookbook's own deps come with it.
+
+   `composer_new.install` ships in this archive. It is
+   `mix igniter.install`, except that it reads each `PKG@SOURCE` as a REF's
+   SOURCE: `igniter.install` rejects a version requirement such as
+   `~> 0.3`, while `composer_new.install` writes it to `mix.exs` as given.
 3. **Record**: in APP, `git init`, `git add -A`, and a commit whose message
    is the `mix composer.new` command line. `git log --reverse` shows how to
    rebuild the app, and `recipe.run` gets the clean tree it needs.

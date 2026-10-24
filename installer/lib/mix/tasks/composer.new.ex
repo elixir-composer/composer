@@ -18,7 +18,8 @@ defmodule Mix.Tasks.Composer.New do
   comes from, as in `mix igniter.install`:
 
     * none - the latest Hex release
-    * a version, `@0.3` or `@~> 0.3.1`
+    * a version requirement, `@~> 0.3` or `@>= 0.3.1`, kept as written
+    * a version, `@0.3.1` (`== 0.3.1`) or `@0.3` (`~> 0.3`)
     * `@github:OWNER/REPO`, or `@github:OWNER/REPO@GITREF`
     * `@git:URL`
     * `@path:PATH`
@@ -35,11 +36,12 @@ defmodule Mix.Tasks.Composer.New do
     * `--with-args ARGS` - arguments for `--with`. Prefer the `=` form:
       `--with-args="--no-ecto --binary-id"`
     * `--install PKG[,PKG]` - base packages installed with the app, as
-      prod deps (repeatable)
+      prod deps (repeatable); `PKG[@SOURCE]`, with SOURCE as in REF
     * `--composer SOURCE` - where composer comes from (`path:...`,
-      `github:...`, a version); default `~> <this archive's version>`
+      `github:...`, a version); default `~> MAJOR.MINOR` of this archive's
+      version
     * `--extra-dep PKG` - another dev/test dep, such as a second cookbook
-      (repeatable)
+      (repeatable); `PKG[@SOURCE]`, as `--install`
     * `--igniter-local PATH` - a local igniter checkout, passed to
       `igniter.new --local` relative to the app's parent directory
     * `--reset` - delete APP first
@@ -56,16 +58,22 @@ defmodule Mix.Tasks.Composer.New do
   The plan is printed first, every time; `--dry-run` stops there.
 
     1. `mix igniter.new APP --no-git --yes ...`, with `--with`,
-       `--with-args`, `--install` and `--local`
-    2. in APP, `mix igniter.install composer,COOKBOOK,... --only dev,test --yes`
-    3. in APP, `git init`, `git add -A` and `git commit`, with this command
+       `--with-args` and `--local`
+    2. in APP, `mix composer_new.install PKG,... --yes`, for `--install`
+    3. in APP, `mix composer_new.install composer,COOKBOOK,... --only dev,test --yes`
+    4. in APP, `git init`, `git add -A` and `git commit`, with this command
        line as the message: `git log --reverse` shows how to rebuild the app
-    4. in APP, `mix composer.recipe.run COOKBOOK:GROUP/RECIPE [RECIPE-FLAGS]`,
+    5. in APP, `mix composer.recipe.run COOKBOOK:GROUP/RECIPE [RECIPE-FLAGS]`,
        unless there is no REF or `--no-recipe` is given
+
+  `mix composer_new.install`, which this archive provides, is
+  `mix igniter.install` taking SOURCE as REF does: `igniter.install`
+  rejects a version requirement such as `~> 0.3`, and this writes it to
+  `mix.exs` as given.
 
   ## Recovery
 
-  The run stops at the first command that fails. If step 1 or 2 fails, APP
+  The run stops at the first command that fails. If steps 1 to 3 fail, APP
   is partial: fix the problem and rerun with `--reset`. If the recipe
   fails, APP is left at its generation commit, and the exact
   `cd APP && mix composer.recipe.run ...` to retry is printed.
@@ -139,7 +147,8 @@ defmodule Mix.Tasks.Composer.New do
         hint =
           if plan.summary.default_composer?,
             do:
-              "\n\nIf composer ~> #{@version} isn't on Hex, point at a checkout with " <>
+              "\n\nIf composer #{Plan.default_composer(@version)} isn't on Hex, " <>
+                "point at a checkout with " <>
                 "--composer path:/path/to/composer.",
             else: ""
 

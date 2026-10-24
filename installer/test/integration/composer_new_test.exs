@@ -99,4 +99,18 @@ defmodule ComposerNew.IntegrationTest do
     assert out =~
              "cd #{app} && mix composer.recipe.run fake_dep:main/default --no-such-flag"
   end
+
+  test "the default composer comes from Hex, and requirements are kept as written", %{
+    tmp_dir: dir,
+    archives: archives
+  } do
+    {out, status} = composer_new(["hex_app", "--install", "jason@~> 1.4"], dir, archives)
+    assert status == 0, out
+
+    mix_exs = File.read!(Path.join([dir, "hex_app", "mix.exs"]))
+    requirement = ComposerNew.Plan.default_composer(Mix.Project.config()[:version])
+    assert mix_exs =~ ~s({:composer, "#{requirement}", only: [:dev, :test]})
+    assert mix_exs =~ ~s({:jason, "~> 1.4"})
+    assert [_only] = log(Path.join(dir, "hex_app"))
+  end
 end

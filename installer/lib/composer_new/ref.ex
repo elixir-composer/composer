@@ -65,7 +65,7 @@ defmodule ComposerNew.Ref do
   def parse_source(spec) when is_binary(spec), do: parse_spec({:source, spec}, spec)
 
   @doc """
-  The `mix igniter.install` argument for `package` from `spec` (the text
+  The `mix composer_new.install` argument for `package` from `spec` (the text
   after `@`, or `nil`), with a `path:` source made absolute against
   `env.cwd` and `env.home`, since the install runs inside the new app.
   """

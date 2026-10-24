@@ -124,7 +124,10 @@ provides `mix composer.new` (create an app with `igniter.new`, install
 composer and a cookbook, commit, run a recipe). It has **no runtime deps**
 (an archive can't carry them), so `ComposerNew.Ref` is a copy of
 `Composer.Ref`'s name and `@source` rules; `installer/test/fixtures/refs.exs`
-is read by both projects' tests to keep them in step. Composer itself
+is read by both projects' tests to keep them in step. Packages are
+installed with the archive's own `mix composer_new.install` (which hands
+Igniter dep tuples), not `mix igniter.install`, because igniter.install
+rejects version requirements such as `~> 0.3`. Composer itself
 must never define `Mix.Tasks.Composer.New`. Run its checks from
 `installer/` (`mix test`, `mix test --only integration`). Its `@version`
 is bumped by git_ops together with composer's (`managed_files` in

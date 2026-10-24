@@ -3,6 +3,8 @@ defmodule ComposerNew.PlanTest do
 
   alias ComposerNew.{Command, Plan}
 
+  doctest ComposerNew.Plan
+
   @env %{cwd: "/work", home: "/home/me", version: "0.3.0"}
 
   defp build!(argv) do
@@ -37,7 +39,7 @@ defmodule ComposerNew.PlanTest do
                  {nil,
                   "mix igniter.new my_app --no-git --yes --with phx.new --with-args=--no-ecto"},
                  {"/work/my_app",
-                  "mix igniter.install 'composer@~> 0.3.0,cb_lab' --only dev,test --yes"}
+                  "mix composer_new.install 'composer@~> 0.3,cb_lab' --only dev,test --yes"}
                ] ++
                  record(
                    "/work/my_app",
@@ -51,7 +53,7 @@ defmodule ComposerNew.PlanTest do
 
       assert Enum.at(commands(argv), 1) ==
                {"/work/my_app",
-                "mix igniter.install 'composer@~> 0.3.0,cb_lab@github:elixir-composer/cb_lab' " <>
+                "mix composer_new.install 'composer@~> 0.3,cb_lab@github:elixir-composer/cb_lab' " <>
                   "--only dev,test --yes"}
 
       assert List.last(commands(argv)) ==
@@ -62,7 +64,7 @@ defmodule ComposerNew.PlanTest do
       plan = build!(~w(my_app cb_lab:lv/base@github:elixir-composer/cb_lab@v0.3.0))
 
       assert plan.summary.deps == [
-               "composer@~> 0.3.0",
+               "composer@~> 0.3",
                "cb_lab@github:elixir-composer/cb_lab@v0.3.0"
              ]
 
@@ -76,7 +78,7 @@ defmodule ComposerNew.PlanTest do
       assert Enum.take(commands(argv), 2) == [
                {nil, "mix igniter.new my_app --no-git --yes --with phx.new"},
                {"/work/my_app",
-                "mix igniter.install 'composer@~> 0.3.0,cb_home@path:/home/me/src/Gen/cb_home' " <>
+                "mix composer_new.install 'composer@~> 0.3,cb_home@path:/home/me/src/Gen/cb_home' " <>
                   "--only dev,test --yes"}
              ]
 
@@ -89,9 +91,14 @@ defmodule ComposerNew.PlanTest do
       argv =
         ~w(my_blog cb_home:astral/min@path:~/src/Gen/cb_home --install astral@path:~/src/Fork/astral)
 
-      assert hd(commands(argv)) ==
-               {nil,
-                "mix igniter.new my_blog --no-git --yes --install astral@path:/home/me/src/Fork/astral"}
+      assert Enum.take(commands(argv), 3) == [
+               {nil, "mix igniter.new my_blog --no-git --yes"},
+               {"/work/my_blog",
+                "mix composer_new.install astral@path:/home/me/src/Fork/astral --yes"},
+               {"/work/my_blog",
+                "mix composer_new.install 'composer@~> 0.3,cb_home@path:/home/me/src/Gen/cb_home' " <>
+                  "--only dev,test --yes"}
+             ]
 
       assert List.last(commands(argv)) ==
                {"/work/my_blog", "mix composer.recipe.run cb_home:astral/min"}
@@ -117,7 +124,8 @@ defmodule ComposerNew.PlanTest do
     assert commands(~w(my_app)) ==
              [
                {nil, "mix igniter.new my_app --no-git --yes"},
-               {"/work/my_app", "mix igniter.install 'composer@~> 0.3.0' --only dev,test --yes"}
+               {"/work/my_app",
+                "mix composer_new.install 'composer@~> 0.3' --only dev,test --yes"}
              ] ++ record("/work/my_app", "mix composer.new my_app")
   end
 
@@ -128,9 +136,23 @@ defmodule ComposerNew.PlanTest do
     assert [{:rm_rf, "/tmp/x"} | _] = commands(~w(/tmp/x --reset))
   end
 
+  test "version requirements are kept, in every package" do
+    argv =
+      ["my_app", "cb_lab:lv/base@~> 0.4", "--composer", "~> 0.3", "--install", "jason@>= 1.4.0"] ++
+        ["--extra-dep", "cb_more@~> 1.2"]
+
+    assert [_create, base, dev | _] = commands(argv)
+    assert base == {"/work/my_app", "mix composer_new.install 'jason@>= 1.4.0' --yes"}
+
+    assert dev ==
+             {"/work/my_app",
+              "mix composer_new.install 'composer@~> 0.3,cb_lab@~> 0.4,cb_more@~> 1.2' " <>
+                "--only dev,test --yes"}
+  end
+
   test "--extra-dep, given twice" do
     plan = build!(~w(my_app cb_lab:lv/base --extra-dep cb_more@path:../more --extra-dep=jason))
-    assert plan.summary.deps == ["composer@~> 0.3.0", "cb_lab", "cb_more@path:/more", "jason"]
+    assert plan.summary.deps == ["composer@~> 0.3", "cb_lab", "cb_more@path:/more", "jason"]
   end
 
   describe "--igniter-local is relative to APP's parent" do
@@ -153,6 +175,12 @@ defmodule ComposerNew.PlanTest do
     end
   end
 
+  test "the default composer requirement is ~> MAJOR.MINOR" do
+    assert Plan.default_composer("0.3.0") == "~> 0.3"
+    assert Plan.default_composer("1.2.3") == "~> 1.2"
+    assert Plan.default_composer("1.0.0-rc.1") == "~> 1.0"
+  end
+
   test "--composer path: is made absolute" do
     plan = build!(~w(my_app --composer path:../composer))
     assert plan.summary.deps == ["composer@path:/composer"]
@@ -161,7 +189,7 @@ defmodule ComposerNew.PlanTest do
 
   test "core: installs no cookbook" do
     plan = build!(~w(my_app core:debug/echo))
-    assert plan.summary.deps == ["composer@~> 0.3.0"]
+    assert plan.summary.deps == ["composer@~> 0.3"]
     assert plan.summary.recipe == "core:debug/echo"
     assert plan.summary.source == "ships with composer"
   end
@@ -198,6 +226,14 @@ defmodule ComposerNew.PlanTest do
 
       assert {:error, "\"my-app\" is not a valid app name" <> _} =
                Plan.build(~w(/tmp/my-app), @env)
+    end
+
+    test "a bad --install or --extra-dep package" do
+      assert {:error, "--install: Invalid package \"astral@svn:x\": Invalid source" <> _} =
+               Plan.build(~w(my_app --install astral@svn:x), @env)
+
+      assert {:error, "--extra-dep: Invalid package \"Jason\": package names" <> _} =
+               Plan.build(~w(my_app --extra-dep Jason), @env)
     end
 
     test "a bad --composer source" do

@@ -11,7 +11,8 @@ defmodule ComposerNew.MixProject do
   #     prefix (e.g. "installer-v"), and fix source_ref below to match
   #   * ../test/composer/installer_version_test.exs - delete it
   #   * lib/composer_new/plan.ex (composer_spec/2) - the default composer
-  #     requirement can no longer be "~> <this version>"; use a constant
+  #     requirement can no longer come from this version
+  #     (default_composer/1); use a constant
   #     for the minimum compatible composer
   #   * lib/mix/tasks/composer.new.ex - the --composer doc and the install
   #     failure hint both quote that default
