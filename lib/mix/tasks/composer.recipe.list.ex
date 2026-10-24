@@ -16,20 +16,37 @@ defmodule Mix.Tasks.Composer.Recipe.List do
   Cookbooks are separate arguments, not a comma-separated list. A group
   file that cannot be loaded is reported as a warning, with its path.
 
+  ## Leaf recipes
+
+  A recipe is a *leaf* when no other recipe in its own group includes it
+  with `{:use, ...}`. Leaves are the recipes meant to be run directly; the
+  others are building blocks for them. Only includes within the same
+  cookbook and group count: a recipe that another group or cookbook uses is
+  still a leaf in its own group. An include that does not resolve is
+  ignored.
+
+      mix composer.recipe.list cb_lab:base/ --only-leaves
+
+  `--only-leaves` only hides recipes from the listing; every recipe can
+  still be run. The JSON output marks each recipe with `"leaf"`, with or
+  without the option.
+
   ## Options
 
     * `--json` - print JSON instead of text
+    * `--only-leaves` - list only leaf recipes (see above)
   """
 
   use Mix.Task
 
-  alias Composer.{CLI, Error, Recipe, Cookbook}
+  alias Composer.{CLI, Error, Recipe, Cookbook, Resolver}
   alias Composer.Recipe.Group
 
   @impl Mix.Task
   def run(argv) do
-    {opts, args} = CLI.parse!(argv)
+    {opts, args} = CLI.parse!(argv, only_leaves: :boolean)
     cookbooks = CLI.cookbooks!(quiet: opts[:json])
+    index = Resolver.index(cookbooks)
 
     check_commas!(args)
     selected = Enum.map(args, &select!(&1, cookbooks))
@@ -46,8 +63,14 @@ defmodule Mix.Tasks.Composer.Recipe.List do
     {recipes, problems} =
       Enum.reduce(selected, {[], []}, fn {cookbook, group}, {recipes, problems} ->
         {loaded, errors} = Cookbook.load_recipes(cookbook)
+        included = included_in_group(index, loaded)
 
         loaded = if group, do: Enum.filter(loaded, &(&1.group == group)), else: loaded
+
+        loaded =
+          loaded
+          |> Enum.map(&{&1, &1.ref not in included})
+          |> Enum.filter(fn {_recipe, leaf} -> leaf or !opts[:only_leaves] end)
 
         errors =
           if group, do: Enum.filter(errors, &(Group.name(elem(&1, 0)) == group)), else: errors
@@ -85,7 +108,17 @@ defmodule Mix.Tasks.Composer.Recipe.List do
     end
   end
 
-  defp data(recipe) do
+  # The refs of the recipes that a recipe in their own group includes.
+  defp included_in_group(index, recipes) do
+    for recipe <- recipes,
+        {_written, {:ok, ref}} <- Resolver.included(index, recipe),
+        ref != recipe.ref,
+        Path.dirname(ref) == recipe.cookbook <> ":" <> recipe.group,
+        into: MapSet.new(),
+        do: ref
+  end
+
+  defp data({recipe, leaf}) do
     %{
       "ref" => recipe.ref,
       "cookbook" => recipe.cookbook,
@@ -93,7 +126,8 @@ defmodule Mix.Tasks.Composer.Recipe.List do
       "name" => recipe.name,
       "id" => recipe.id,
       "shortdoc" => recipe.shortdoc,
-      "path" => recipe.path
+      "path" => recipe.path,
+      "leaf" => leaf
     }
   end
 

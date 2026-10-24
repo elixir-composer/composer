@@ -153,6 +153,37 @@ defmodule Mix.Tasks.Composer.ListTest do
     assert refs.(["core"]) == ["core:debug/echo"]
   end
 
+  test "recipe.list --only-leaves hides recipes included within their group", %{tmp_dir: dir} do
+    File.write!(Path.join(dir, "recipes/site.exs"), """
+    [
+      ui: [shortdoc: "UI", steps: ["core:setup/gitignore"]],
+      parts: [shortdoc: "Parts", steps: [{:use, "mine:site/ui"}]],
+      app: [shortdoc: "App", steps: [{:use, "parts"}, {:use, "phx/standard_app"}]]
+    ]
+    """)
+
+    refs = &Enum.map(json("composer.recipe.list", &1)["recipes"], fn p -> p["ref"] end)
+
+    # Unqualified and self-qualified includes both count; phx/standard_app
+    # and fake_book:nested/extra are only used from other groups.
+    assert refs.(["mine:site/", "--only-leaves"]) == ["mine:site/app"]
+    assert refs.(["mine", "--only-leaves"]) == ["mine:phx/standard_app", "mine:site/app"]
+
+    assert refs.(["fake_book", "--only-leaves"]) == [
+             "fake_book:main/full",
+             "fake_book:nested/extra"
+           ]
+
+    leaves =
+      Map.new(json("composer.recipe.list", ["mine:site/"])["recipes"], &{&1["name"], &1["leaf"]})
+
+    assert leaves == %{"ui" => false, "parts" => false, "app" => true}
+
+    output = run("composer.recipe.list", ["mine:site/", "--only-leaves"])
+    assert output =~ "mine:site/app"
+    refute output =~ "mine:site/ui"
+  end
+
   test "recipe.list rejects commas, unknown cookbooks and groups" do
     assert_raise Mix.Error,
                  ~r/separate arguments.*mix composer.recipe.list mine fake_book/s,

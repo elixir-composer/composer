@@ -3,6 +3,7 @@ defmodule Composer.InstallerVersionTest do
 
   # composer and the composer_new archive (installer/) are released in
   # lockstep: git_ops bumps both (managed_files in config/config.exs).
+  # To split versions, see the checklist in installer/mix.exs.
   defp version(path) do
     [_, version] = Regex.run(~r/@version "([^"]+)"/, File.read!(path))
     version
