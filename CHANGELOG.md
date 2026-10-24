@@ -5,6 +5,27 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.3.0 (2026-10-24)
+### Breaking Changes:
+
+* reserve composer.new option names as recipe flags by andyl
+
+* rename mix composer.new to mix composer.init by andyl
+
+* remove the local cookbook and the -c/--config option by andyl
+
+
+
+### Features:
+
+* add the composer_new archive (mix composer.new) by andyl
+
+### Bug Fixes:
+
+* print --json output when MIX_QUIET is set by andyl
+
+* keep --json output clean on a stale build by andyl
+
 ## v0.2.1 (2026-10-20)
 
 
