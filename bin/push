@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+# push to github
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+# everything must be staged and committed before releasing
+if [ -n "$(git status --porcelain)" ]; then
+  echo "error: working tree is not clean; commit or stash your changes first" >&2
+  git status --short >&2
+  exit 1
+fi
+
+# tests and cookbook lint must pass before releasing
+if ! mix test; then
+  echo "error: 'mix test' failed; aborting release" >&2
+  exit 1
+fi
+
+# push to github
+git push --follow-tags

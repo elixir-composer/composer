@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# generate a release and push to github 
+# increment the version number, update CHANGELOG
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -31,4 +31,4 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 
 # release and push 
-mix git_ops.release --yes --no-major && git push --follow-tags
+mix git_ops.release --yes --no-major && ./push 
