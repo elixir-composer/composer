@@ -3,6 +3,19 @@ defmodule ComposerNew.MixProject do
 
   # Lockstep with composer's mix.exs: git_ops bumps both (managed_files in
   # ../config/config.exs). Don't edit by hand.
+  #
+  # To version composer_new independently, change each "split versions"
+  # site:
+  #   * ../config/config.exs - drop installer/mix.exs from managed_files;
+  #     release the archive by hand or with its own git_ops config and tag
+  #     prefix (e.g. "installer-v"), and fix source_ref below to match
+  #   * ../test/composer/installer_version_test.exs - delete it
+  #   * lib/composer_new/plan.ex (composer_spec/2) - the default composer
+  #     requirement can no longer be "~> <this version>"; use a constant
+  #     for the minimum compatible composer
+  #   * lib/mix/tasks/composer.new.ex - the --composer doc and the install
+  #     failure hint both quote that default
+  #   * README.md and ../CLAUDE.md - both say the versions match
   @version "0.3.0"
   @source_url "https://github.com/elixir-composer/composer"
 

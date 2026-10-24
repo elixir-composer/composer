@@ -8,6 +8,7 @@ if config_env() == :dev do
     version_tag_prefix: "v",
     manage_mix_version?: true,
     manage_readme_version: true,
-    # The composer_new archive (installer/) is released in lockstep.
+    # The composer_new archive (installer/) is released in lockstep. To
+    # split versions, see the checklist in installer/mix.exs.
     managed_files: [{"installer/mix.exs", :mix}]
 end

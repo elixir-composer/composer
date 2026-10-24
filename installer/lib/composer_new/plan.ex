@@ -51,6 +51,8 @@ defmodule ComposerNew.Plan do
   defp parse_ref(nil), do: {:ok, nil}
   defp parse_ref(string), do: Ref.parse(string)
 
+  # Relies on composer and composer_new sharing a version; to split
+  # versions, see the checklist in installer/mix.exs.
   defp composer_spec(nil, env), do: {:ok, "composer@~> #{env.version}"}
 
   defp composer_spec(spec, env) do

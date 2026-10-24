@@ -135,6 +135,7 @@ defmodule Mix.Tasks.Composer.New do
           "    cd #{Command.escape(dir)} && #{Command.to_string(command)}"
 
       :install ->
+        # Quotes the lockstep default (see the checklist in installer/mix.exs).
         hint =
           if plan.summary.default_composer?,
             do:
