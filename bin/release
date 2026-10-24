@@ -31,4 +31,4 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 
 # release and push 
-mix git_ops.release --yes && git push --follow-tags
+mix git_ops.release --yes --no-major && git push --follow-tags

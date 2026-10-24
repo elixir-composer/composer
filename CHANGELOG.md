@@ -12,13 +12,13 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes:
 
-* Handle failing tests by andyl
+* Handle failing tests
 
-* remove the requirement for 'gen_lsp' on the target app by andyl
+* remove the requirement for 'gen_lsp' on the target app
 
-* improve did-you-mean logic by andyl
+* improve did-you-mean logic
 
-* remove test warnings by andyl
+* remove test warnings
 
 ## v0.2.0 (2026-10-12)
 
@@ -27,19 +27,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 ### Features:
 
-* add 'step.edit' mix task by andyl
+* add 'step.edit' mix task
 
-* add 'recipe.edit' mix task by andyl
+* add 'recipe.edit' mix task
 
 ### Bug Fixes:
 
-* lint should ignore junk files indicated in .gitignore by andyl
+* lint should ignore junk files indicated in .gitignore
 
-* add link and test checks to the release script by andyl
+* add link and test checks to the release script
 
-* eliminate CLAUDE warning message by andyl
+* eliminate CLAUDE warning message
 
-* update the release script by andyl
+* update the release script
 
 ## v0.1.0 (2026-10-12)
 
@@ -48,9 +48,9 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 ### Features:
 
-* prep for hex.pm by andyl
+* prep for hex.pm
 
-* Add release script by andyl
+* Add release script
 
 ## v0.0.1 (2026-10-12)
 
