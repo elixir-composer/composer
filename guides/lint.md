@@ -241,6 +241,7 @@ scripts may match on them.
 | `recipe_missing_key`, `unknown_recipe_key`, `bad_recipe_value`, `recipe_shape` | a malformed recipe |
 | `multiline_shortdoc` | a `shortdoc` on more than one line |
 | `undeclared_flag` | an `if:` flag the recipe does not declare |
+| `reserved_flag` | a declared flag with a reserved name (`Composer.Recipe.reserved_flags/0`) |
 | `invalid_alias`, `reserved_alias`, `duplicate_alias`, `alias_atom_target`, `invalid_alias_target`, `alias_shadows_cookbook` | a bad cookbook alias |
 | `unused_alias` (warning) | an alias none of the recipe's references use |
 | `inconsistent_alias` (warning) | one alias naming different cookbooks in one group |
@@ -253,6 +254,7 @@ scripts may match on them.
 | `step_recipe_clash` (warning) | a step and a recipe share an id |
 | `legacy_templates_dir`, `orphaned_templates`, `unprefixed_templates`, `not_a_step`, `missing_template` | templates and files under `steps/` |
 | `unused_template` (warning) | a template no `template/1` call refers to |
+| `path_dep_in_package` (warning) | a path dependency in a project with a `package:` section |
 
 Step problems are placed in the step's source file: at its
 `use Composer.Step`, or at the `template/1` path or `requires` reference

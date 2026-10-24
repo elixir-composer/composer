@@ -1,3 +1,19 @@
-#!/usr/bin/env bash 
+#!/usr/bin/env bash
 
-mix hex.user whoami &&  mix hex.publish
+# publish composer, then the composer_new archive (installer/), to hex
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+version() { grep -m1 '@version' "$1" | sed -E 's/.*"(.*)".*/\1/'; }
+
+composer=$(version mix.exs)
+installer=$(version installer/mix.exs)
+if [ "$composer" != "$installer" ]; then
+  echo "error: composer is $composer but composer_new is $installer; release them together" >&2
+  exit 1
+fi
+
+mix hex.user whoami
+mix hex.publish
+(cd installer && mix deps.get && mix hex.publish)

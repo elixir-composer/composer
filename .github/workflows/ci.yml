@@ -35,6 +35,32 @@ jobs:
       # Includes the host-app integration test (a cookbook in a dependency).
       - run: mix test --include integration
 
+  installer:
+    name: composer_new archive
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: installer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.20"
+          otp-version: "28"
+      - run: mix deps.get
+      - run: mix format --check-formatted
+      - run: mix compile --warnings-as-errors
+      - run: mix test
+      # An archive carries no deps: the build proves none leak in.
+      - run: MIX_ENV=prod mix archive.build
+      - run: mix archive.install hex igniter_new --force
+      - run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@example.com"
+      # Builds and installs the archive, then generates apps from the
+      # test/fixtures/fake_dep cookbook with --composer path:..
+      - run: mix test --only integration
+
   golden:
     name: Golden test (fresh phx.new app)
     runs-on: ubuntu-latest

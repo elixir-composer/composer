@@ -63,6 +63,7 @@ steps make changes and can render templates.
 
 | Task                                      | Purpose                                          |
 |-------------------------------------------|--------------------------------------------------|
+| `composer.new` (`composer_new` archive)   | Create an app and apply a recipe                 |
 | `composer.init`                           | Make your app a cookbook and generate its recipe |
 | `composer.recipe.{list,show,run,edit}`    | List, inspect, run and edit recipes              |
 | `composer.step.{list,find,help,run,edit}` | List, search, inspect, run and edit steps        |
@@ -104,6 +105,26 @@ $ mix composer.recipe.run app/default --oban
 ```
 
 ## Getting started
+
+### The one-liner
+
+The `composer_new` archive creates an app and applies a recipe in one
+command:
+
+```bash
+mix archive.install hex igniter_new     # 0.5.32 or later
+mix archive.install hex composer_new
+mix composer.new my_app cb_lab:base/completions --with phx.new
+```
+
+It runs `igniter.new`, installs composer and the cookbook as dev/test deps,
+commits the command line as the app's first commit, and runs the recipe.
+The cookbook can come from Hex, `@github:`, `@git:` or `@path:`, and
+`--dry-run` prints every command first. Without a recipe
+(`mix composer.new my_app`), you get an app with composer installed, ready
+for step 2 below. See the [archive's README](installer/README.md).
+
+To set up an existing app by hand instead:
 
 ### 1. Create an app and add the dependency
 

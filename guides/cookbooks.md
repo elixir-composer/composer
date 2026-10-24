@@ -211,15 +211,17 @@ exits non-zero on failure so it can run in CI:
   * the manifest is up to date
   * every recipe group is well formed: a keyword list of recipes with a
     one-line `shortdoc`, `steps`, no unknown keys, no duplicate names, every
-    `if:` flag declared, no subdirectory under `recipes/`, and no recipe
-    named like a group
+    `if:` flag declared, no reserved flag name, no subdirectory under
+    `recipes/`, and no recipe named like a group
   * every recipe resolves
   * there is no cookbook-level `templates/` directory, every file under
     `steps/` belongs to a step, every `.ex` file there is a step, and every
     `template/1` path exists
 
 It warns about a template file that no `template/1` call refers to (steps
-whose path is computed at run time are not checked).
+whose path is computed at run time are not checked), and about a path
+dependency in a project with a `package:` section (see "Publishing a
+cookbook" below).
 
 `mix composer.cookbook.lint --file PATH` checks one group file of any
 installed cookbook, which is what an editor runs on save. Every problem is reported at its file, line and column;
@@ -289,6 +291,23 @@ When an app also gets one of your cookbook's dependencies from Hex (say
 ```elixir
 {:cb_lab, "~> 0.1", only: [:dev, :test], override: true}
 ```
+
+## Publishing a cookbook
+
+A cookbook installed from Hex or git, for example with
+`mix composer.new my_app cb_mine:lv/base@github:me/cb_mine`, must declare
+Hex or git dependencies, not path dependencies. Mix resolves a path
+relative to the cookbook, which is now a checkout in the app's `deps/`, so
+`path: "../composer"` points at nothing. `mix composer.cookbook.lint`
+warns about every path dependency in a project that has a `package:`
+section.
+
+Some flag names are reserved: a recipe can't declare `no_commit`, one of
+Igniter's global switches (`yes`, `dry_run`, `only`, ...), or an option of
+`mix composer.new` (`with`, `with_args`, `install`, `composer`,
+`extra_dep`, `igniter_local`, `reset`, `no_recipe`) or `recipe`.
+`mix composer.new` passes every other switch to the recipe, so a flag
+with one of those names could never reach it. Lint reports them.
 
 ## Bundling a cookbook with a framework
 

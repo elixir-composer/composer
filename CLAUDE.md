@@ -117,6 +117,19 @@ are excluded from formatting on purpose.
   completion (`priv/completion/`) never starts the BEAM; every task refreshes
   it.
 
+## The `composer_new` archive (`installer/`)
+
+`installer/` is a separate Mix project, the `composer_new` archive that
+provides `mix composer.new` (create an app with `igniter.new`, install
+composer and a cookbook, commit, run a recipe). It has **no runtime deps**
+(an archive can't carry them), so `ComposerNew.Ref` is a copy of
+`Composer.Ref`'s name and `@source` rules; `installer/test/fixtures/refs.exs`
+is read by both projects' tests to keep them in step. Composer itself
+must never define `Mix.Tasks.Composer.New`. Run its checks from
+`installer/` (`mix test`, `mix test --only integration`). Its `@version`
+is bumped by git_ops together with composer's (`managed_files` in
+`config/config.exs`); a test fails if they differ.
+
 ## Specs and docs
 
 Design docs, feature specs and implementation plans live in
