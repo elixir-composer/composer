@@ -49,6 +49,7 @@ defmodule Composer.LintTest do
       {"unknown_key", ~r/Recipe mine:unknown_key\/base has an unknown key :help/},
       {"bad_value", ~r/Recipe mine:bad_value\/base has an invalid flags:/},
       {"undeclared_flag", ~r/Recipe mine:undeclared_flag\/base uses if: :credo/},
+      {"reserved_flag", ~r/mine:reserved_flag\/base declares the flag :with/},
       {"duplicate", ~r/duplicate.exs defines the recipe base more than once/},
       {"raises", ~r/Could not evaluate recipe group mine:raises\/.*boom/s},
       {"BadName", ~r/BadName.exs has an invalid name/},
@@ -201,6 +202,38 @@ defmodule Composer.LintTest do
       )
 
       assert errors_matching(report, ~r/no step owns/) == []
+    end
+
+    test "a path dep in a project with a package: section warns", %{tmp_dir: dir} do
+      {:ok, cookbooks} = Discovery.cookbooks(apps: [:fake_book])
+      cookbook = Cookbook.from_module(Composer.FakeBook)
+
+      File.write!(Path.join(dir, "mix.exs"), """
+      defp deps do
+        [{:composer, path: "../composer"},
+         {:jason, "~> 1.4"},
+         {:a, "~> 1.0", path: "a"}]
+      end
+      """)
+
+      deps = [{:composer, path: "../composer"}, {:jason, "~> 1.4"}, {:a, "~> 1.0", path: "a"}]
+      path_dep = ~r/path dependency, but this project has a package: section/
+
+      published = Lint.run(cookbook, cookbooks, dir, project: [package: [], deps: deps])
+      messages = Enum.filter(warnings(published), &(&1 =~ path_dep))
+      assert length(messages) == 2
+      assert Enum.any?(messages, &(&1 =~ ":composer"))
+      assert Enum.any?(messages, &(&1 =~ ":a "))
+
+      lines =
+        for %{code: :path_dep_in_package} = d <- published.diagnostics, do: d.line
+
+      assert Enum.sort(lines) == [2, 4]
+      assert errors_matching(published, path_dep) == []
+
+      private = Lint.run(cookbook, cookbooks, dir, project: [deps: deps])
+      refute Enum.any?(warnings(private), &(&1 =~ path_dep))
+      refute Enum.any?(warnings(Lint.run(cookbook, cookbooks, dir)), &(&1 =~ path_dep))
     end
 
     test "fake_book: child-step directories pass; unreferenced templates warn", %{tmp_dir: dir} do

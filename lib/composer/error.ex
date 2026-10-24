@@ -424,8 +424,30 @@ defmodule Composer.Error do
     "Include cycle: " <> Enum.join(path, " -> ")
   end
 
+  def message({:path_dep_in_package, app, _mix_exs}) do
+    "The dependency #{inspect(app)} is a path dependency, but this project has a package: section. " <>
+      "A cookbook installed from git or hex can't resolve path deps; use a hex or git dep."
+  end
+
+  def message({:reserved_flag, ref, flag}) do
+    by =
+      if Composer.Recipe.archive_flag?(flag),
+        do: "mix composer.new, which passes every other switch to the recipe",
+        else: "mix composer.recipe.run"
+
+    """
+    Recipe #{ref} declares the flag #{inspect(flag)}, but --#{dashed(flag)} is \
+    reserved by #{by}. Rename the #{flag}: flag (and its if: :#{flag}).
+    """
+  end
+
   def message({:reserved_flag, flag}) do
-    "Flag :#{flag} is reserved by mix composer.recipe.run; rename the #{flag}: flag (and its if: :#{flag}) in your recipes"
+    by =
+      if Composer.Recipe.archive_flag?(flag),
+        do: "mix composer.new",
+        else: "mix composer.recipe.run"
+
+    "Flag :#{flag} is reserved by #{by}; rename the #{flag}: flag (and its if: :#{flag}) in your recipes"
   end
 
   def message({:requires_unmet, failures}) do
@@ -583,6 +605,8 @@ defmodule Composer.Error do
   def anchor({:multiline_shortdoc, ref}), do: {:recipe_key, ref, :shortdoc}
   def anchor({:duplicate_recipe, path, name}), do: {:recipe_name, path, name}
   def anchor({:undeclared_flag, ref, flag}), do: {:recipe_key, ref, {:if, flag}}
+  def anchor({:reserved_flag, ref, _flag}), do: {:recipe_key, ref, :flags}
+  def anchor({:path_dep_in_package, _app, {mix_exs, line}}), do: {:file, mix_exs, line}
   def anchor({:recipes_subdir, path}), do: {:file, path}
   def anchor({:legacy_recipes_dir, path}), do: {:file, path}
   def anchor({:legacy_templates_dir, path}), do: {:file, path}

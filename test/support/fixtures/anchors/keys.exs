@@ -30,5 +30,6 @@
       {"hex:org.a", path: "../a"},
       {"a:b:c", if: :x}
     ]
-  ]
+  ],
+  reserved: [shortdoc: "x", flags: [with: "W"], steps: []]
 ]

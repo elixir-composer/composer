@@ -52,7 +52,8 @@ defmodule Composer.Lint.DiagnosticsTest do
            git_option_without_git multiple_git_refs source_conflict repo_source invalid_ref
            recipe_eval inconsistent_alias missing_step typo unknown_cookbook
            ambiguous dep_opts_on_step unknown_alias_target via_alias missing_recipe
-           alias_shadows_cookbook unused_alias conflicting_install cycle group_recipe_clash)a
+           alias_shadows_cookbook unused_alias conflicting_install cycle group_recipe_clash
+           reserved_flag)a
 
       assert expected -- Enum.map(diagnostics, & &1.code) == []
     end

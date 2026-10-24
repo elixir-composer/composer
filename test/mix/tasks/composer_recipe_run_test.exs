@@ -293,7 +293,7 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
   end
 
   test "flags that collide with task options are rejected" do
-    assert_raise Mix.Error, ~r/Flag :yes is reserved/, fn ->
+    assert_raise Mix.Error, ~r/flag :yes, but --yes is reserved/, fn ->
       Mix.Tasks.Composer.Recipe.Run.info(["t/reserved"], nil)
     end
   end

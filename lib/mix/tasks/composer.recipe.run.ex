@@ -57,9 +57,6 @@ defmodule Mix.Tasks.Composer.Recipe.Run do
 
   @base_schema [no_commit: :boolean]
 
-  @reserved Keyword.keys(@base_schema) ++
-              Keyword.keys(Igniter.Mix.Task.Info.global_options()[:switches])
-
   @impl Igniter.Mix.Task
   def info(argv, _composing_task) do
     flag_schema =
@@ -69,7 +66,7 @@ defmodule Mix.Tasks.Composer.Recipe.Run do
           result = CLI.resolve_recipe!(cookbooks, recipe, :all)
           flags = result |> Resolver.declared_flags() |> Keyword.keys()
 
-          if flag = Enum.find(flags, &(&1 in @reserved)) do
+          if flag = Enum.find(flags, &(&1 in Composer.Recipe.reserved_flags())) do
             Mix.raise(Error.message({:reserved_flag, flag}))
           end
 

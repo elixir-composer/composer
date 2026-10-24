@@ -82,7 +82,8 @@ defmodule Mix.Tasks.Composer.Cookbook.Lint do
         """)
 
     %{
-      diagnostics: Lint.run(cookbook, cookbooks, root()).diagnostics,
+      diagnostics:
+        Lint.run(cookbook, cookbooks, root(), project: Mix.Project.config()).diagnostics,
       valid: "Cookbook #{cookbook.name} is valid.",
       problems: "Cookbook #{cookbook.name} has",
       fallback: Manifest.path(cookbook)

@@ -247,7 +247,7 @@ defmodule Composer.Recipe.Group do
       case value[:steps] do
         steps when is_list(steps) ->
           case for(entry <- steps, reason = Recipe.entry_error(entry, ref), do: reason) do
-            [] -> undeclared(steps, value[:flags], ref)
+            [] -> undeclared(steps, value[:flags], ref) ++ reserved(value[:flags], ref)
             reasons -> reasons
           end
 
@@ -281,6 +281,14 @@ defmodule Composer.Recipe.Group do
   defp undeclared(steps, flags, ref) do
     declared = if is_list(flags) and Keyword.keyword?(flags), do: Keyword.keys(flags), else: []
     for flag <- Recipe.if_flags(steps), flag not in declared, do: {:undeclared_flag, ref, flag}
+  end
+
+  # No recipe may declare a flag that the commands passing flags through to
+  # it use themselves (Composer.Recipe.reserved_flags/0).
+  defp reserved(flags, ref) do
+    declared = if is_list(flags) and Keyword.keyword?(flags), do: Keyword.keys(flags), else: []
+    reserved = Recipe.reserved_flags()
+    for flag <- Enum.uniq(declared), flag in reserved, do: {:reserved_flag, ref, flag}
   end
 
   defp read(path) do

@@ -84,6 +84,34 @@ defmodule Composer.Recipe.GroupTest do
     assert Error.message(reason) =~ ~s(flags: [credo: "What --credo does"])
   end
 
+  test "a flag named like a mix composer.new option is reserved" do
+    assert {:error, {:reserved_flag, "mine:reserved_flag/base", :with} = reason} =
+             load("reserved_flag")
+
+    assert Error.message(reason) =~ "--with is reserved by mix composer.new"
+
+    {term, _} = Code.eval_file(fixture("reserved_flag"))
+    {[], errors} = Group.check(term, fixture("reserved_flag"), "mine")
+
+    assert Enum.sort(errors) == [
+             {:reserved_flag, "mine:reserved_flag/base", :extra_dep},
+             {:reserved_flag, "mine:reserved_flag/base", :with}
+           ]
+  end
+
+  test "reserved flags cover recipe.run, Igniter and mix composer.new" do
+    reserved = Recipe.reserved_flags()
+
+    for flag <- ~w(no_commit yes dry_run only with with_args install composer extra_dep
+                   igniter_local reset no_recipe recipe)a,
+        do: assert(flag in reserved, "#{flag} is not reserved")
+
+    assert reserved == Enum.uniq(reserved)
+    assert Recipe.archive_flag?(:with_args)
+    refute Recipe.archive_flag?(:dry_run)
+    refute Recipe.archive_flag?(:no_commit)
+  end
+
   test "check/3 reports every problem" do
     {term, _} = Code.eval_file(fixture("bad_value"))
     {[], errors} = Group.check(term, fixture("bad_value"), "mine")

@@ -37,6 +37,7 @@ defmodule Composer.Lint do
     * a recipe missing `shortdoc` or `steps`, with an unknown key, or with
       a value of the wrong type; a `shortdoc` on more than one line
     * an `if:` flag that the recipe does not declare in its own `flags`
+    * a declared flag with a reserved name (`Composer.Recipe.reserved_flags/0`)
     * an invalid, reserved (`core`, `hex`, `local`), duplicate or
       atom-valued cookbook alias, or one whose target is not a package
       cookbook name
@@ -51,6 +52,9 @@ defmodule Composer.Lint do
     * a file in a step's template directory that its `template/1` calls
       never refer to (skipped for a step whose `template/1` path is
       computed at run time)
+    * a path dependency in a project that has a `package:` section (given
+      as the `:project` option): a cookbook installed from git or Hex
+      can't resolve it
 
   A file belongs to the step named by the first directory on its path that
   starts with `_`: `steps/ash/_postgres/x/y` belongs to `ash/postgres`.
@@ -71,9 +75,15 @@ defmodule Composer.Lint do
   @doc """
   Lints `cookbook`, resolving references against `cookbooks`. `root` is
   the project root, where step tests are looked for.
+
+  ## Options
+
+    * `:project` - the cookbook's Mix project config
+      (`Mix.Project.config/0`), for the path dependency check; skipped
+      when absent
   """
-  @spec run(Cookbook.t(), [Cookbook.t()], Path.t()) :: result()
-  def run(%Cookbook{} = cookbook, cookbooks, root) do
+  @spec run(Cookbook.t(), [Cookbook.t()], Path.t(), keyword()) :: result()
+  def run(%Cookbook{} = cookbook, cookbooks, root, opts \\ []) do
     steps = Cookbook.steps(cookbook)
     index = Resolver.index(cookbooks)
     recipes = recipes(cookbook, index)
@@ -87,6 +97,7 @@ defmodule Composer.Lint do
         templates(cookbook, steps) ++
         recipes.problems ++
         deep(cookbook, cookbooks, recipes.loaded, recipes) ++
+        path_deps(opts[:project], root) ++
         for %{id: id} <- steps,
             id in recipe_ids,
             do: {:warning, {:step_recipe_clash, Ref.id(cookbook.name, id)}, nil}
@@ -202,6 +213,37 @@ defmodule Composer.Lint do
   # -- building diagnostics -------------------------------------------------
 
   defp errors(reasons), do: for(reason <- reasons, do: {:error, reason, nil})
+
+  # A published cookbook's path deps resolve only on its author's machine.
+  defp path_deps(nil, _root), do: []
+
+  defp path_deps(project, root) do
+    if project[:package] do
+      mix_exs = Path.join(root, "mix.exs")
+
+      lines =
+        case File.read(mix_exs) do
+          {:ok, text} -> String.split(text, "\n")
+          {:error, _} -> []
+        end
+
+      for dep <- List.wrap(project[:deps]),
+          app = path_dep(dep),
+          do: {:warning, {:path_dep_in_package, app, {mix_exs, dep_line(lines, app)}}, nil}
+    else
+      []
+    end
+  end
+
+  # The line declaring the dep, if it is written as `{:app, ...`.
+  defp dep_line(lines, app) do
+    needle = "{#{inspect(app)},"
+    if index = Enum.find_index(lines, &String.contains?(&1, needle)), do: index + 1
+  end
+
+  defp path_dep({app, opts}) when is_list(opts), do: if(opts[:path], do: app)
+  defp path_dep({app, _requirement, opts}) when is_list(opts), do: if(opts[:path], do: app)
+  defp path_dep(_dep), do: nil
 
   @spec build([problem()], Locate.t()) :: [Diagnostic.t()]
   defp build(problems, locate) do

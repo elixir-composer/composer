@@ -32,7 +32,8 @@ defmodule Composer.Recipe do
     * `doc` - longer help, shown by `mix composer.recipe.show`
     * `flags` - `[flag: "description"]`. Every `if: :flag` in the recipe's
       own steps must be declared here, and `mix composer.recipe.run`
-      rejects a `--flag` that no recipe it reaches declares.
+      rejects a `--flag` that no recipe it reaches declares. Some names
+      are reserved (see "Reserved flags" below).
     * `aliases` - `[alias: "cookbook"]`, short names for cookbooks in this
       recipe's own references (see "Cookbook aliases" below)
     * `steps` (required) - the entries below
@@ -83,6 +84,22 @@ defmodule Composer.Recipe do
   To share aliases across the recipes of a group, bind them before the
   final list (see `Composer.Recipe.Group`).
 
+  ## Reserved flags
+
+  A recipe can't declare a flag named like an option of the commands that
+  pass flags through to it (`reserved_flags/0`):
+
+    * `no_commit`, the option of `mix composer.recipe.run`
+    * Igniter's global switches (`yes`, `dry_run`, `only`, ...), which
+      every Igniter task accepts
+    * the options of `mix composer.new` (the `composer_new` archive):
+      `with`, `with_args`, `install`, `composer`, `extra_dep`,
+      `igniter_local`, `reset`, `dry_run` and `no_recipe`. It passes every
+      other switch to the recipe, so a flag with one of these names could
+      never be given there.
+    * `recipe`, because a boolean flag named `recipe` would make
+      `--no-recipe` mean `recipe: false`
+
   > #### Warning {: .warning}
   >
   > A group file is Elixir code, evaluated with `Code.eval_file/1`. Only
@@ -104,6 +121,7 @@ defmodule Composer.Recipe do
   ]
 
   @segment ~r/\A[a-z0-9_]+\z/
+  @archive_flags ~w(with with_args install composer extra_dep igniter_local reset dry_run no_recipe recipe)a
   @reserved_aliases ["core", "hex", "local"]
   @sources [:version, :github, :git, :path]
   @git_options [:ref, :branch, :tag, :sparse, :submodules]
@@ -300,6 +318,19 @@ defmodule Composer.Recipe do
 
   defp option?(key, value) when key in [:github, :git, :path, :ref, :branch, :tag],
     do: is_binary(value) and String.trim(value) != ""
+
+  @doc """
+  Returns the flag names no recipe may declare (see "Reserved flags").
+  """
+  @spec reserved_flags() :: [atom()]
+  def reserved_flags, do: Enum.uniq(own_reserved() ++ @archive_flags)
+
+  @doc "True when `flag` is reserved only by `mix composer.new`."
+  @spec archive_flag?(atom()) :: boolean()
+  def archive_flag?(flag), do: flag in @archive_flags and flag not in own_reserved()
+
+  defp own_reserved,
+    do: [:no_commit | Keyword.keys(Igniter.Mix.Task.Info.global_options()[:switches])]
 
   @doc "Returns every `if:` flag in `steps`, in order, without duplicates."
   @spec if_flags([entry()]) :: [atom()]
