@@ -1,6 +1,6 @@
 defmodule ComposerNew.Ref do
   @moduledoc """
-  Parses a `mix composer.new` recipe reference: `COOKBOOK:GROUP/RECIPE`,
+  Parses a `mix composer.new` recipe reference: `COOKBOOK:CHAPTER/RECIPE`,
   with an optional `@SOURCE` naming where the cookbook comes from.
 
       iex> ComposerNew.Ref.parse("cb_lab:lv/base@github:elixir-composer/cb_lab@v0.3.0")
@@ -104,7 +104,7 @@ defmodule ComposerNew.Ref do
         {:error,
          invalid(
            original,
-           "refs must name a cookbook (cookbook:group/recipe); shortnames aren't supported"
+           "refs must name a cookbook (cookbook:chapter/recipe); shortnames aren't supported"
          )}
 
       [cookbook, path] ->

@@ -46,7 +46,7 @@ defmodule Composer.LSP.DiagnosticsTest do
     assert results[other] == []
   end
 
-  test "a file that is not a recipe group is ignored", %{args: args} do
+  test "a file that is not a chapter is ignored", %{args: args} do
     assert Diagnostics.run(Path.expand("mix.exs"), args) == :ignore
   end
 end

@@ -6,13 +6,13 @@ defmodule Composer.Index do
   without starting the BEAM:
 
       cookbook	cb_lab	Andy's composer steps
-      group	cb_lab:base/	1 recipe
+      chapter	cb_lab:base/	1 recipe
       recipe	cb_lab:base/completions	CbLab's base recipe
       step	cb_std:setup/credo	Adds Credo for static code analysis
 
   Cookbooks are read from their committed manifests. A cookbook with no
   manifest, or one that fails to read, falls back to runtime metadata: its
-  group files are evaluated to read their shortdocs, and a group that fails
+  chapter files are evaluated to read their shortdocs, and a chapter that fails
   to load lists its recipes with no shortdoc and never fails the refresh.
 
   Every composer task refreshes the index as a side effect, and
@@ -72,16 +72,16 @@ defmodule Composer.Index do
            Enum.map(Manifest.recipes(cookbook), &{&1.id, &1.shortdoc})}
       end
 
-    groups =
+    chapters =
       recipes
       |> Enum.map(&Path.dirname(elem(&1, 0)))
       |> Enum.frequencies()
-      |> Enum.map(fn {group, count} ->
-        {"group", Ref.id(name, group <> "/"), "#{count} recipe#{if count != 1, do: "s"}"}
+      |> Enum.map(fn {chapter, count} ->
+        {"chapter", Ref.id(name, chapter <> "/"), "#{count} recipe#{if count != 1, do: "s"}"}
       end)
 
     [{"cookbook", name, cookbook.summary}] ++
-      groups ++
+      chapters ++
       Enum.map(recipes, fn {id, shortdoc} ->
         {"recipe", Ref.id(name, id), first_line(shortdoc)}
       end) ++

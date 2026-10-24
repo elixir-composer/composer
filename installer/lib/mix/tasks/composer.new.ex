@@ -14,7 +14,7 @@ defmodule Mix.Tasks.Composer.New do
 
   ## REF
 
-  `COOKBOOK:GROUP/RECIPE[@SOURCE]`, where SOURCE says where the cookbook
+  `COOKBOOK:CHAPTER/RECIPE[@SOURCE]`, where SOURCE says where the cookbook
   comes from, as in `mix igniter.install`:
 
     * none - the latest Hex release
@@ -24,7 +24,7 @@ defmodule Mix.Tasks.Composer.New do
     * `@git:URL`
     * `@path:PATH`
 
-  REF must name its cookbook. `cb_std:GROUP/RECIPE` takes no source, since
+  REF must name its cookbook. `cb_std:CHAPTER/RECIPE` takes no source, since
   `cb_std` ships with composer, and `hex:` refs aren't cookbooks. Without a
   REF, the app gets composer only: run `mix composer.init` in it to start
   your own cookbook.
@@ -63,7 +63,7 @@ defmodule Mix.Tasks.Composer.New do
     3. in APP, `mix composer_new.install composer,COOKBOOK,... --only dev,test --yes`
     4. in APP, `git init`, `git add -A` and `git commit`, with this command
        line as the message: `git log --reverse` shows how to rebuild the app
-    5. in APP, `mix composer.recipe.run COOKBOOK:GROUP/RECIPE [RECIPE-FLAGS]`,
+    5. in APP, `mix composer.recipe.run COOKBOOK:CHAPTER/RECIPE [RECIPE-FLAGS]`,
        unless there is no REF or `--no-recipe` is given
 
   `mix composer_new.install`, which this archive provides, is

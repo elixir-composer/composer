@@ -90,9 +90,9 @@ defmodule Composer.Ref do
   @spec id(String.t(), String.t()) :: String.t()
   def id(cookbook, path), do: cookbook <> ":" <> path
 
-  @doc "True when `path` contains a `/`, i.e. it is grouped."
-  @spec grouped?(t()) :: boolean()
-  def grouped?(%__MODULE__{path: path}), do: String.contains?(path, "/")
+  @doc "True when `path` contains a `/`, i.e. it names a chapter or a step directory."
+  @spec nested?(t()) :: boolean()
+  def nested?(%__MODULE__{path: path}), do: String.contains?(path, "/")
 
   @doc "True when `package` names a package in a private repo (`org.pkg`)."
   @spec repo_package?(String.t()) :: boolean()

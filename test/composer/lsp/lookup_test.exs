@@ -28,7 +28,7 @@ defmodule Composer.LSP.LookupTest do
     assert lookup(context, 11, 8) == {:hex, "oban", :fallthrough}
   end
 
-  test "{:use, ...} targets, in the same group and qualified", context do
+  test "{:use, ...} targets, in the same chapter and qualified", context do
     assert {:recipe, %{ref: "mine:app/base", doc: "The base."}} = lookup(context, 12, 15)
     assert {:recipe, %{ref: "fake_book:main/full"}} = lookup(context, 13, 15)
   end

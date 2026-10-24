@@ -30,7 +30,7 @@ defmodule Composer.LSP.ConvertTest do
     assert lsp.message =~ "credoo"
     assert lsp.data == %{"code" => "typo", "suggestions" => ["cb_std:setup/credo"]}
 
-    warning = Diagnostic.new(:warning, {:empty_group, "/r/a.exs"})
+    warning = Diagnostic.new(:warning, {:empty_chapter, "/r/a.exs"})
     assert Convert.diagnostic(warning, :utf16, line_fun()).severity == 2
   end
 
@@ -53,7 +53,9 @@ defmodule Composer.LSP.ConvertTest do
   end
 
   test "a diagnostic without a position is at the file's start" do
-    d = :error |> Diagnostic.new({:empty_group, "/r/a.exs"}) |> Diagnostic.locate("/r/a.exs", nil)
+    d =
+      :error |> Diagnostic.new({:empty_chapter, "/r/a.exs"}) |> Diagnostic.locate("/r/a.exs", nil)
+
     assert Convert.diagnostic(d, :utf16, line_fun()).range.start == %{line: 0, character: 0}
   end
 

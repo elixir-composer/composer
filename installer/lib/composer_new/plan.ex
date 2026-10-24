@@ -16,7 +16,7 @@ defmodule ComposerNew.Plan do
       (in APP) git init
       (in APP) git add -A
       (in APP) git commit -m "mix composer.new <argv as typed>"
-      (in APP) mix composer.recipe.run COOKBOOK:GROUP/RECIPE [FLAGS]
+      (in APP) mix composer.recipe.run COOKBOOK:CHAPTER/RECIPE [FLAGS]
                                                (REF given, no --no-recipe)
 
   `igniter.new` gets `--no-git`, so the history starts with the commit

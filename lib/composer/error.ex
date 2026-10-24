@@ -8,8 +8,8 @@ defmodule Composer.Error do
   and how to fix it.
   """
 
-  @group_example """
-  A group file looks like:
+  @chapter_example """
+  A chapter file looks like:
 
       [
         base: [
@@ -24,7 +24,7 @@ defmodule Composer.Error do
       ]
 
   A single-recipe file (a plain list of steps) is no longer supported: \
-  move its steps under a name in a group file.
+  move its steps under a name in a chapter file.
   """
 
   @doc "Returns a human-readable message for an error reason."
@@ -34,39 +34,39 @@ defmodule Composer.Error do
   end
 
   def message({:recipe_eval, ref, path, exception, _line}) do
-    "Could not evaluate recipe group #{ref} (#{path}):\n\n" <> Exception.message(exception)
+    "Could not evaluate chapter #{ref} (#{path}):\n\n" <> Exception.message(exception)
   end
 
-  def message({:group_read, path, reason}) do
-    "Could not read recipe group #{path}: #{:file.format_error(reason)}"
+  def message({:chapter_read, path, reason}) do
+    "Could not read chapter #{path}: #{:file.format_error(reason)}"
   end
 
-  def message({:group_parse, path, description, _line}) do
-    "Recipe group #{path} does not parse: #{description}"
+  def message({:chapter_parse, path, description, _line}) do
+    "Chapter #{path} does not parse: #{description}"
   end
 
-  def message({:group_shape, path, :not_literal}) do
+  def message({:chapter_shape, path, :not_literal}) do
     """
-    Recipe group #{path} must end in a literal keyword list of recipes, \
+    Chapter #{path} must end in a literal keyword list of recipes, \
     so its recipe names can be read without evaluating it.
 
-    #{@group_example}
+    #{@chapter_example}
     """
   end
 
-  def message({:group_shape, path, term}) do
+  def message({:chapter_shape, path, term}) do
     """
-    Recipe group #{path} must evaluate to a keyword list of recipes, got:
+    Chapter #{path} must evaluate to a keyword list of recipes, got:
 
         #{inspect(term, pretty: true, limit: 10)}
 
-    #{@group_example}
+    #{@chapter_example}
     """
   end
 
-  def message({:invalid_group_name, path}) do
+  def message({:invalid_chapter_name, path}) do
     """
-    Recipe group #{path} has an invalid name. A group name is a lowercase \
+    Chapter #{path} has an invalid name. A chapter name is a lowercase \
     [a-z0-9_] segment; rename the file (for example lv-base.exs to lv_base.exs).
     """
   end
@@ -160,7 +160,7 @@ defmodule Composer.Error do
   end
 
   def message({:duplicate_recipe, path, name}) do
-    "Recipe group #{path} defines the recipe #{name} more than once. Recipe names in a group must be unique."
+    "Chapter #{path} defines the recipe #{name} more than once. Recipe names in a chapter must be unique."
   end
 
   def message({:undeclared_flag, ref, flag}) do
@@ -185,11 +185,11 @@ defmodule Composer.Error do
   end
 
   def message({:recipes_subdir, path}) do
-    "#{path} is a directory. Recipe groups are .exs files directly under recipes/; nested groups are not supported."
+    "#{path} is a directory. Chapters are .exs files directly under recipes/; nested chapters are not supported."
   end
 
   def message({:legacy_recipes_dir, path}) do
-    "#{path} is no longer read. Recipe groups now live under recipes/; rename the directory."
+    "#{path} is no longer read. Chapters now live under recipes/; rename the directory."
   end
 
   def message({:legacy_templates_dir, path}) do
@@ -234,8 +234,8 @@ defmodule Composer.Error do
     "#{ref}: template #{inspect(path)} does not exist (looked for #{file})."
   end
 
-  def message({:group_recipe_clash, cookbook, name}) do
-    "#{cookbook} has a recipe group #{name} and a recipe named #{name}. Rename one, so #{cookbook}:#{name} is never ambiguous."
+  def message({:chapter_recipe_clash, cookbook, name}) do
+    "#{cookbook} has a chapter #{name} and a recipe named #{name}. Rename one, so #{cookbook}:#{name} is never ambiguous."
   end
 
   def message({:legacy_form, ref, entry, suggestion}) do
@@ -328,9 +328,9 @@ defmodule Composer.Error do
         {"cookbook:path", argv: ["--opt"], if: :flag}
         "hex:pkg"                        # a package, and its installer
         {"hex:pkg", argv: ["--opt"], only: :dev, version: "~> 1.0"}
-        {:use, "cookbook:group/name"}    # another recipe, in place
-        {:use, "name"}                   # a recipe in the same group
-        {:use, "cookbook:group/name", if: :flag}
+        {:use, "cookbook:chapter/name"}    # another recipe, in place
+        {:use, "name"}                   # a recipe in the same chapter
+        {:use, "cookbook:chapter/name", if: :flag}
         {:task, "x.y", ["arg"]}          # compose an Igniter task
         {:queue, "x.y", ["arg"]}         # run a Mix task after changes apply
     """
@@ -411,9 +411,9 @@ defmodule Composer.Error do
         do: "",
         else:
           if(origin,
-            do: "An unqualified name refers to a recipe in the same group.\n\n",
+            do: "An unqualified name refers to a recipe in the same chapter.\n\n",
             else:
-              "Recipes are addressed as \"cookbook:group/name\" (e.g. \"cb_lab:lv/base\").\n\n"
+              "Recipes are addressed as \"cookbook:chapter/name\" (e.g. \"cb_lab:lv/base\").\n\n"
           )
 
     "#{where(origin)}no recipe matches #{inspect(ref)}.\n\n" <>
@@ -485,8 +485,8 @@ defmodule Composer.Error do
     "#{Path.relative_to_cwd(path)} is out of date. Run mix composer.cookbook.manifest."
   end
 
-  def message({:empty_group, path}) do
-    "Recipe group #{path} is empty."
+  def message({:empty_chapter, path}) do
+    "Chapter #{path} is empty."
   end
 
   def message({:unused_alias, recipe_ref, name, target}) do
@@ -499,7 +499,7 @@ defmodule Composer.Error do
         "#{target} in #{recipe_id(recipe_ref)}"
       end)
 
-    "Recipe group #{path}: alias #{name} names different cookbooks: #{where}."
+    "Chapter #{path}: alias #{name} names different cookbooks: #{where}."
   end
 
   def message({:step_recipe_clash, ref}) do
@@ -516,12 +516,12 @@ defmodule Composer.Error do
   end
 
   def message({:lint_file_missing, path}) do
-    "#{path} does not exist. --file takes an existing recipe group file."
+    "#{path} does not exist. --file takes an existing chapter file."
   end
 
   def message({:lint_file_unknown, path}) do
     """
-    #{path} is not a recipe group of an installed cookbook. --file takes a \
+    #{path} is not a chapter of an installed cookbook. --file takes a \
     file under a cookbook's lib/composer/<name>/recipes/.
     """
   end
@@ -559,9 +559,9 @@ defmodule Composer.Error do
       `{:if, flag}` for an `if:` flag
     * `{:alias, recipe_ref, name}` - a cookbook alias
     * `{:recipe, recipe_ref}` - a recipe's name key
-    * `{:recipe_name, path, name}` - every name key `name` in a group file
+    * `{:recipe_name, path, name}` - every name key `name` in a chapter file
     * `{:recipe_named, cookbook, name}` - a recipe named `name` in any
-      group of `cookbook`
+      chapter of `cookbook`
     * `{:cycle, chain}` - the include that closes a cycle
     * `{:install, package, [{origin, label}]}` - the installs of a package
     * `{:file, path}` / `{:file, path, line}` - a file, or one of its lines
@@ -576,10 +576,10 @@ defmodule Composer.Error do
   def anchor({:invalid_ref, written, _why}), do: {:ref, nil, written}
 
   def anchor({:recipe_eval, _ref, path, _exception, line}), do: {:file, path, line}
-  def anchor({:group_read, path, _reason}), do: {:file, path}
-  def anchor({:group_parse, path, _description, line}), do: {:file, path, line}
-  def anchor({:group_shape, path, _term}), do: {:file, path}
-  def anchor({:invalid_group_name, path}), do: {:file, path}
+  def anchor({:chapter_read, path, _reason}), do: {:file, path}
+  def anchor({:chapter_parse, path, _description, line}), do: {:file, path, line}
+  def anchor({:chapter_shape, path, _term}), do: {:file, path}
+  def anchor({:invalid_chapter_name, path}), do: {:file, path}
   def anchor({:invalid_recipe_name, path, name}), do: {:recipe_name, path, name}
   def anchor({:recipe_shape, ref, _term}), do: {:recipe, ref}
   def anchor({:recipe_missing_key, ref, key}), do: {:recipe_key, ref, key}
@@ -614,7 +614,7 @@ defmodule Composer.Error do
   def anchor({:unprefixed_templates, dir, _template_dir}), do: {:file, dir}
   def anchor({:not_a_step, path}), do: {:file, path}
   def anchor({:missing_template, ref, path, _file}), do: {:step, ref, {:template, path}}
-  def anchor({:group_recipe_clash, cookbook, name}), do: {:recipe_named, cookbook, name}
+  def anchor({:chapter_recipe_clash, cookbook, name}), do: {:recipe_named, cookbook, name}
 
   def anchor({tag, ref, entry})
       when tag in [:legacy_form, :invalid_entry, :source_conflict],
@@ -655,7 +655,7 @@ defmodule Composer.Error do
 
   def anchor({:manifest_missing, path}), do: {:file, path}
   def anchor({:manifest_stale, path}), do: {:file, path}
-  def anchor({:empty_group, path}), do: {:file, path}
+  def anchor({:empty_chapter, path}), do: {:file, path}
   def anchor({:unused_alias, ref, name, _target}), do: {:alias, ref, name}
   def anchor({:inconsistent_alias, _path, name, [{_target, ref} | _]}), do: {:alias, ref, name}
   def anchor({:step_recipe_clash, ref}), do: {:recipe, ref}

@@ -31,7 +31,7 @@ defmodule Mix.Tasks.Composer.RecipeEditTest do
       System.delete_env("COMPOSER_EDITOR")
     end)
 
-    %{group: Path.join(dir, "recipes/phx.exs")}
+    %{chapter: Path.join(dir, "recipes/phx.exs")}
   end
 
   defp run(argv) do
@@ -39,17 +39,17 @@ defmodule Mix.Tasks.Composer.RecipeEditTest do
     capture_io(fn -> Mix.Task.run("composer.recipe.edit", argv) end)
   end
 
-  test "--print shows the group file and the recipe's line, even if it fails to load",
-       %{group: group} do
-    assert run(["--print", "mine:phx/first"]) == "#{group}:2\n"
-    assert run(["--print", "phx/second"]) == "#{group}:4\n"
+  test "--print shows the chapter file and the recipe's line, even if it fails to load",
+       %{chapter: chapter} do
+    assert run(["--print", "mine:phx/first"]) == "#{chapter}:2\n"
+    assert run(["--print", "phx/second"]) == "#{chapter}:4\n"
   end
 
-  test "opens the editor from COMPOSER_EDITOR", %{group: group, tmp_dir: dir} do
+  test "opens the editor from COMPOSER_EDITOR", %{chapter: chapter, tmp_dir: dir} do
     out = Path.join(dir, "opened")
     System.put_env("COMPOSER_EDITOR", "echo __FILE__:__LINE__ > '#{out}'")
     run(["phx/second"])
-    assert File.read!(out) == "#{group}:4\n"
+    assert File.read!(out) == "#{chapter}:4\n"
   end
 
   test "raises on a failing editor" do

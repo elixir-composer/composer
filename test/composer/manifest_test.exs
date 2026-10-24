@@ -78,7 +78,7 @@ defmodule Composer.ManifestTest do
       "[a: [shortdoc: \"My recipe\\nMore\", steps: []], b: [shortdoc: \"B\", steps: []]]\n"
     )
 
-    # A group that fails to load still lists its ids, with no shortdoc.
+    # A chapter that fails to load still lists its ids, with no shortdoc.
     File.write!(Path.join(dir, "recipes/broken.exs"), "[x: raise(\"boom\")]\n")
 
     cookbooks = discover(dir, [:fake_book])
@@ -89,8 +89,8 @@ defmodule Composer.ManifestTest do
     assert "recipe\tfake_book:nested/extra\tExtra steps" in lines
     assert "recipe\tmine:mine/a\tMy recipe" in lines
     assert "recipe\tmine:broken/x\t" in lines
-    assert "group\tmine:mine/\t2 recipes" in lines
-    assert "group\tfake_book:main/\t2 recipes" in lines
+    assert "chapter\tmine:mine/\t2 recipes" in lines
+    assert "chapter\tfake_book:main/\t2 recipes" in lines
     assert "cookbook\tmine\tTest recipes in #{dir}" in lines
     assert Enum.any?(lines, &String.starts_with?(&1, "cookbook\tfake_book\t"))
 

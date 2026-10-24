@@ -1,7 +1,7 @@
 # Recipes
 
 A **recipe** is a named, ordered, flag-aware list of steps, with its own
-docs. Recipes live in **groups**: one `.exs` file holding one or more
+docs. Recipes live in **chapters**: one `.exs` file holding one or more
 recipes, keyed by name.
 
 ```elixir
@@ -39,21 +39,21 @@ The terms:
 
   * A **recipe** has a name, a shortdoc, an optional doc, optional flags
     and a list of steps.
-  * A **group** is one file under `recipes/`. The file name is the group
+  * A **chapter** is one file under `recipes/`. The file name is the chapter
     name, so the file above holds `phx/clean` and `phx/app`.
   * A **cookbook** is a package that ships steps (with their templates) and recipe
-    groups.
+    chapters.
 
 ## Addressing
 
-Every recipe lives in a group and is addressed as
-`<cookbook>:<group>/<name>`:
+Every recipe lives in a chapter and is addressed as
+`<cookbook>:<chapter>/<name>`:
 
-    recipes/<group>.exs  →  <cookbook>:<group>/<name>
+    recipes/<chapter>.exs  →  <cookbook>:<chapter>/<name>
 
 so `recipes/phx.exs` in the cookbook `my_app` holds `my_app:phx/clean` and
-`my_app:phx/app`. Give groups logical names (`ash.exs`, `lv.exs`) rather
-than a catch-all `recipes.exs`. Moving a recipe to another group changes
+`my_app:phx/app`. Give chapters logical names (`ash.exs`, `lv.exs`) rather
+than a catch-all `recipes.exs`. Moving a recipe to another chapter changes
 its address, the same as moving a step.
 
 ## Recipe keys
@@ -69,9 +69,9 @@ its address, the same as moving a step.
 Every `if: :flag` in a recipe's own steps must be declared in its own
 `flags`; a flag declared only by a recipe it `:use`s does not count.
 
-## Where groups live
+## Where chapters live
 
-  * **In a cookbook**, at `lib/composer/<package>/recipes/<group>.exs`.
+  * **In a cookbook**, at `lib/composer/<package>/recipes/<chapter>.exs`.
     Your app's own `app/default` recipe, written by `mix composer.init`, is
     one.
   * **In a personal cookbook**, a small cookbook package of your own,
@@ -79,18 +79,18 @@ Every `if: :flag` in a recipe's own steps must be declared in its own
     across apps, and any personal steps and templates. See
     [Personal cookbook](cookbooks.md#personal-cookbook).
 
-A group has the same relative path, file format and addressing rule
-in every cookbook. Groups are files: a subdirectory under `recipes/` is
-not a group. Add a recipe to a group (creating the file if needed) with:
+A chapter has the same relative path, file format and addressing rule
+in every cookbook. Chapters are files: a subdirectory under `recipes/` is
+not a chapter. Add a recipe to a chapter (creating the file if needed) with:
 
 ```bash
 mix composer.gen.recipe ash/base                  # in this project's cookbook
 ```
 
-> **Group files are Elixir code**, evaluated with `Code.eval_file/1`. Only
+> **Chapter files are Elixir code**, evaluated with `Code.eval_file/1`. Only
 > use recipes you wrote or trust.
 
-A group file must end in a **literal** keyword list (`[name: [...], ...]`)
+A chapter file must end in a **literal** keyword list (`[name: [...], ...]`)
 so its recipe names can be listed, and completed, without evaluating it.
 Bindings before the list are fine, and the values can be any expression.
 
@@ -108,8 +108,8 @@ Bindings before the list are fine, and the values can be any expression.
 | `{"hex:my_lib", path: "../my_lib"}`          | a package from a source: `version:`, `github:`, `git:` or `path:` |
 | `{"cb_std:oban_pro", if: :oban_pro}`           | a step that runs only with `--oban-pro`                        |
 | `{"cc_lab:x", argv: ["--all"]}`              | a step run with options, as after `--` on `composer.step.run`  |
-| `{:use, "clean"}`                            | the recipe `clean` in the same group, in place                 |
-| `{:use, "cb_lab:lv/base"}`                   | a recipe in another group or cookbook                          |
+| `{:use, "clean"}`                            | the recipe `clean` in the same chapter, in place                 |
+| `{:use, "cb_lab:lv/base"}`                   | a recipe in another chapter or cookbook                          |
 | `{:use, "deploy/gigalixir", if: :gigalixir}` | ... only with `--gigalixir`                                    |
 | `{:task, "x.y", ["arg"]}`                    | compose any Igniter-aware Mix task                             |
 | `{:queue, "x.y", ["arg"]}`                   | run a Mix task after the changes apply                         |
@@ -239,7 +239,7 @@ the `hex:` entry.
 A step in a cookbook wins over a Hex package of the same name.
 
 `{:use, "name"}` without a `/` is the recipe of that name **in the same
-group**; nothing outside the group can match it. `{:use, "group/name"}`
+chapter**; nothing outside the chapter can match it. `{:use, "chapter/name"}`
 resolves like an unqualified step (own cookbook first, then every
 cookbook), with no Hex fallback.
 
@@ -276,7 +276,7 @@ An alias is only a lookup shortcut; it never renames a cookbook:
     the reference as written: `lab:auth/passkeys (lab = cc_lab):
     cookbook cc_lab not found`.
 
-To share aliases across a group, bind them before the final list (the
+To share aliases across a chapter, bind them before the final list (the
 file must still end in a literal keyword list):
 
 ```elixir
@@ -294,7 +294,7 @@ aliases = [lab: "cc_lab"]
   * **Include-once.** A recipe is expanded at most once per run; later
     includes of it are no-ops. A diamond is not a cycle.
   * **No cycles.** A cycle is an error that prints the whole chain, across
-    groups and cookbooks: `my_app:ash/a -> cc_lab:lv/b -> my_app:ash/a`.
+    chapters and cookbooks: `my_app:ash/a -> cc_lab:lv/b -> my_app:ash/a`.
   * **De-duplication.** A step equal to an earlier one is dropped, first
     occurrence wins — `"setup/credo"` and `"cb_std:setup/credo"` count as the
     same step.
@@ -310,9 +310,9 @@ aliases = [lab: "cc_lab"]
 mix composer.recipe.list                         # every cookbook, in discovery order
 mix composer.recipe.list my_app                  # one cookbook
 mix composer.recipe.list my_app cb_lab           # several (separate arguments)
-mix composer.recipe.list my_app:phx/             # one group (note the slash)
+mix composer.recipe.list my_app:phx/             # one chapter (note the slash)
 mix composer.recipe.show my_app:phx/app          # docs, flags, resolved steps
-mix composer.recipe.edit my_app:phx/app          # open its group file in your editor
+mix composer.recipe.edit my_app:phx/app          # open its chapter file in your editor
 mix composer.recipe.run my_app:phx/app --oban-pro
 mix composer.recipe.run my_app:phx/app --dry-run
 ```
@@ -327,7 +327,7 @@ records the run as one git commit listing every step and the recipe it
 came from. It refuses to start outside a git work tree or in a dirty one;
 `--no-commit` skips the git checks and the commit.
 
-`recipe.edit` opens the recipe's group file at the recipe's line, with
+`recipe.edit` opens the recipe's chapter file at the recipe's line, with
 the command in `COMPOSER_EDITOR` (then `VISUAL`, then `EDITOR`).
 `__FILE__` and `__LINE__` in it are replaced, as in `ELIXIR_EDITOR`:
 
@@ -345,16 +345,16 @@ mix composer.cookbook.lint             # this project's cookbook, recipes includ
 mix composer.cookbook.lint --format compact --file lib/composer/my_app/recipes/ash.exs
 ```
 
-To see problems in your editor as you save a group file, see the
+To see problems in your editor as you save a chapter file, see the
 [lint guide](lint.md).
 
-Lint reports a subdirectory under `recipes/`, a group file that is not
+Lint reports a subdirectory under `recipes/`, a chapter file that is not
 a keyword list of recipes, a duplicate recipe name, a missing `shortdoc`
 or `steps`, an unknown key, an undeclared `if:` flag, an invalid,
-reserved, duplicate or shadowing alias, a recipe named like a group, and
+reserved, duplicate or shadowing alias, a recipe named like a chapter, and
 every recipe that does not resolve. It warns about an alias that none of
 the recipe's references use, and about an alias that names different
-cookbooks in two recipes of one group.
+cookbooks in two recipes of one chapter.
 
 ## Starting a new app from a recipe
 
@@ -363,7 +363,7 @@ mix composer.init --from cb_lab:lv/base
 ```
 
 copies the recipe into the new app as `app/default`, so the app owns and
-can edit its setup while the shared recipe stays the template. Same-group
+can edit its setup while the shared recipe stays the template. Same-chapter
 `{:use, ...}` entries are qualified so they still resolve; comments are not
 copied.
 
@@ -371,10 +371,10 @@ copied.
 
 Recipes used to be one file each, with help text in a leading `#`
 comment. That format is gone, and loading such a file is an error pointing
-at the group format. Convert by hand: gather related files into one group,
+at the chapter format. Convert by hand: gather related files into one chapter,
 key each recipe by its old name, move the comment into `shortdoc:`, and
 point `{:use, "my_app:old_name"}` at the new address (or at `{:use,
-"name"}` within the same group).
+"name"}` within the same chapter).
 
 ```elixir
 # before: recipes/ash_base.exs and recipes/ash_ecto.exs

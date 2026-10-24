@@ -1,7 +1,7 @@
 # Bash completion for composer's mix tasks, from `mix composer.completion bash`.
 #
 # Completes step ids for `mix composer.step.{run,show,edit}`, recipe ids for
-# `mix composer.recipe.{run,show,edit}`, and cookbook and group names
+# `mix composer.recipe.{run,show,edit}`, and cookbook and chapter names
 # (`cb_lab`, `cb_lab:lv/`) for `mix composer.recipe.list`, from
 # _build/composer/index, without starting the BEAM, and hands every
 # other `mix` completion to mix_completions (https://hex.pm/packages/mix_completions)
@@ -24,7 +24,7 @@ __composer_index() {
 }
 
 # Completes the current argument from index lines of the given kinds
-# (space-separated, e.g. "cookbook group").
+# (space-separated, e.g. "cookbook chapter").
 __composer_complete_ids() {
   local kinds=" $1 " index
   index=$(__composer_index) || return 0
@@ -47,7 +47,7 @@ __composer_complete_ids() {
     [[ $kinds == *" $k "* && $id == "$item"* ]] && COMPREPLY+=("$before$id")
   done <"$index"
 
-  # A group ("cb_lab:lv/") is completed further, so no space after it.
+  # A chapter ("cb_lab:lv/") is completed further, so no space after it.
   if [[ ${#COMPREPLY[@]} -eq 1 && ${COMPREPLY[0]} == */ ]]; then
     compopt -o nospace 2>/dev/null
   fi
@@ -68,7 +68,7 @@ _composer_mix_complete() {
   case ${COMP_WORDS[1]-} in
     composer.step.run | composer.step.show | composer.step.help | composer.step.edit) kind=step ;;
     composer.recipe.run | composer.recipe.show | composer.recipe.help | composer.recipe.edit) kind=recipe ;;
-    composer.recipe.list) kind="cookbook group" ;;
+    composer.recipe.list) kind="cookbook chapter" ;;
   esac
 
   if [[ -n $kind && $COMP_CWORD -ge 2 && ${COMP_WORDS[COMP_CWORD]} != -* ]]; then

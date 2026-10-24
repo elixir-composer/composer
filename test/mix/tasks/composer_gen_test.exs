@@ -36,8 +36,8 @@ defmodule Mix.Tasks.Composer.GenTest do
              recipes: [%{id: "app/default", shortdoc: "The default recipe of test"}]
            } = manifest
 
-    {group, _} = Code.eval_string(content(igniter, "lib/composer/test/recipes/app.exs"))
-    assert group == [default: [shortdoc: "The default recipe of test", steps: []]]
+    {chapter, _} = Code.eval_string(content(igniter, "lib/composer/test/recipes/app.exs"))
+    assert chapter == [default: [shortdoc: "The default recipe of test", steps: []]]
   end
 
   test "gen.cookbook --bundled guards the module" do
@@ -81,7 +81,7 @@ defmodule Mix.Tasks.Composer.GenTest do
     end
   end
 
-  test "gen.recipe creates a group in the cookbook" do
+  test "gen.recipe creates a chapter in the cookbook" do
     igniter = Igniter.compose_task(test_project(), "composer.gen.recipe", ["phoenix/base"])
     source = parses!(igniter, "lib/composer/test/recipes/phoenix.exs")
     assert source =~ "mix composer.recipe.run test:phoenix/base"
@@ -90,7 +90,7 @@ defmodule Mix.Tasks.Composer.GenTest do
              Code.eval_string(source)
   end
 
-  test "gen.recipe appends to an existing group, keeping it valid" do
+  test "gen.recipe appends to an existing chapter, keeping it valid" do
     igniter =
       test_project(
         files: %{
@@ -109,12 +109,12 @@ defmodule Mix.Tasks.Composer.GenTest do
     assert source =~ "# My Ash recipes."
     assert source =~ "# The base."
 
-    {group, _} = Code.eval_string(source)
-    assert Keyword.keys(group) == [:base, :auth]
-    assert {[_, _], []} = Composer.Recipe.Group.check(group, "ash.exs", "test")
+    {chapter, _} = Code.eval_string(source)
+    assert Keyword.keys(chapter) == [:base, :auth]
+    assert {[_, _], []} = Composer.Recipe.Chapter.check(chapter, "ash.exs", "test")
   end
 
-  test "gen.recipe rejects a duplicate and an ungrouped name" do
+  test "gen.recipe rejects a duplicate and an unqualified name" do
     project =
       test_project(
         files: %{"lib/composer/test/recipes/ash.exs" => ~s([base: [shortdoc: "B", steps: []]])}
@@ -125,7 +125,7 @@ defmodule Mix.Tasks.Composer.GenTest do
     end
 
     for bad <- ["base", "a/b/c", "Ash/base"] do
-      assert_raise Mix.Error, ~r/Give it as group\/name/, fn ->
+      assert_raise Mix.Error, ~r/Give it as chapter\/name/, fn ->
         Igniter.compose_task(test_project(), "composer.gen.recipe", [bad])
       end
     end

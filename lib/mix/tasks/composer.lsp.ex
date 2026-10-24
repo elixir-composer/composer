@@ -2,7 +2,7 @@ defmodule Mix.Tasks.Composer.Lsp do
   @shortdoc "Starts the composer-ls language server (stdio)"
 
   @moduledoc """
-  Starts `composer-ls`, the language server for recipe group files, on
+  Starts `composer-ls`, the language server for chapter files, on
   stdio. Your editor runs it; see the Composer LSP guide.
 
       mix composer.lsp

@@ -4,7 +4,7 @@ defmodule Composer.LSP.Definition do
 
     * a step: its source file, at its `use Composer.Step` line (a cookbook
       under `deps/` included)
-    * a recipe: its name key in its group file
+    * a recipe: its name key in its chapter file
     * an alias: its entry in `aliases:`, or in the top-level binding that
       `aliases:` names
     * a `hex:` reference: a document link to its HexDocs

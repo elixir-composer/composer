@@ -63,7 +63,7 @@ A cookbook is a package's tree at `lib/composer/<name>/` declared by
 `lib/composer/<name>.ex` (`use Composer.Cookbook`); the name must equal the
 OTP app, except the built-in `cb_std` (`lib/composer/cb_std/`). Layout:
 `steps/` (each step's templates in the directory beside it, `steps/_<id>/`),
-`recipes/<group>.exs`, `manifest.exs`. There is no cookbook-level
+`recipes/<chapter>.exs`, `manifest.exs`. There is no cookbook-level
 `templates/`.
 
 - **Steps** (`use Composer.Step`) are `Igniter.Mix.Task` modules, *not* Mix
@@ -72,9 +72,9 @@ OTP app, except the built-in `cb_std` (`lib/composer/cb_std/`). Layout:
   `Composer.CbStd.Steps.Cluster.Gigalixir.Libcluster`) or compilation fails.
   Metadata vocabulary (action, phase, stability, frameworks, capability...) lives in
   `Composer.Facets`.
-- **Recipe groups** are `.exs` keyword lists evaluated as literal data and
-  validated by `Composer.Recipe.Group`; recipes are addressed
-  `cookbook:group/name`. Personal recipes live in an ordinary cookbook
+- **Chapters** are `.exs` keyword lists evaluated as literal data and
+  validated by `Composer.Recipe.Chapter`; recipes are addressed
+  `cookbook:chapter/name`. Personal recipes live in an ordinary cookbook
   added as a path dependency; `local` is only a reserved name.
 - **Templates**: `template("x.eex")` inside a step is relative to
   `steps/_<id>/` (`Composer.Step.template_dir/1`; step path segments never

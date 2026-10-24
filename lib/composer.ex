@@ -22,9 +22,9 @@ defmodule Composer do
       cookbook is discovered automatically. See `Composer.Cookbook`.
 
     * **Recipe** - a named list of steps with a shortdoc, an optional doc
-      and flags. Recipes live in groups: `recipes/<group>.exs` holds the
-      recipes `<cookbook>:<group>/<name>`. See `Composer.Recipe` and
-      `Composer.Recipe.Group`.
+      and flags. Recipes live in chapters: `recipes/<chapter>.exs` holds the
+      recipes `<cookbook>:<chapter>/<name>`. See `Composer.Recipe` and
+      `Composer.Recipe.Chapter`.
 
     * **Reference** - the string `"cookbook:path"` that names a step or a
       recipe, e.g. `"cb_std:setup/credo"` or `"cc_lab:ash/postgres"`. An unqualified
@@ -39,7 +39,7 @@ defmodule Composer do
 
   ## Recipe syntax
 
-  A group file holds recipes keyed by name; `default` below is
+  A chapter file holds recipes keyed by name; `default` below is
   `<cookbook>:app/default`.
 
       # recipes/app.exs
@@ -52,7 +52,7 @@ defmodule Composer do
             "setup/credo",                               # an unqualified step reference
             "hex:oban",                                  # a Hex package and its installer
             {"cb_std:oban_pro", if: :oban_pro},            # only with --oban-pro
-            {:use, "base"},                              # a recipe in this group, in place
+            {:use, "base"},                              # a recipe in this chapter, in place
             {:use, "cb_lab:deploy/gigalixir", if: :gigalixir},  # ... only with --gigalixir
             {:task, "ash.codegen", ["init"]},            # compose any Igniter task
             {:queue, "ecto.setup", []}                   # run a Mix task after changes apply

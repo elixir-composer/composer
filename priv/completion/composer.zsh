@@ -2,7 +2,7 @@
 # Zsh completion for composer's mix tasks, from `mix composer.completion zsh`.
 #
 # Completes step ids for `mix composer.step.{run,show,edit}`, recipe ids for
-# `mix composer.recipe.{run,show,edit}`, and cookbook and group names
+# `mix composer.recipe.{run,show,edit}`, and cookbook and chapter names
 # (`cb_lab`, `cb_lab:lv/`) for `mix composer.recipe.list`, from
 # _build/composer/index, without starting the BEAM, and hands every
 # other `mix` completion to mix_completions' _mix
@@ -33,14 +33,14 @@ _composer_mix() {
 
   if [[ -n $kind && $CURRENT -ge 3 && $PREFIX != -* ]]; then
     local index k id summary
-    local -a ids groups
+    local -a ids chapters
     index=$(__composer_index) || return 1
 
     while IFS=$'\t' read -r k id summary; do
       # _describe splits "value:description" on ':', so escape the ':' in ids.
       if [[ $kind == list ]]; then
         [[ $k == cookbook ]] && ids+=("${id//:/\\:}:$summary")
-        [[ $k == group ]] && groups+=("${id//:/\\:}:$summary")
+        [[ $k == chapter ]] && chapters+=("${id//:/\\:}:$summary")
       elif [[ $k == $kind ]]; then
         ids+=("${id//:/\\:}:$summary")
       fi
@@ -48,8 +48,8 @@ _composer_mix() {
 
     if [[ $kind == list ]]; then
       _describe -t cookbooks "composer cookbooks" ids
-      # A group is completed further, so no space after it.
-      _describe -t groups "composer recipe groups" groups -S ''
+      # A chapter is completed further, so no space after it.
+      _describe -t chapters "composer chapters" chapters -S ''
       return
     fi
 

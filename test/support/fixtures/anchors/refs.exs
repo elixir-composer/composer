@@ -24,5 +24,5 @@ aliases = [fb: "fake_book", gone: "not_installed", ob: "other_book"]
   install: [shortdoc: "x", steps: ["hex:oban", {"hex:oban", argv: ["--x"]}]],
   loop_a: [shortdoc: "x", steps: [{:use, "loop_b"}]],
   loop_b: [shortdoc: "x", steps: [{:use, "loop_a"}]],
-  keys: [shortdoc: "Named like a group", steps: []]
+  keys: [shortdoc: "Named like a chapter", steps: []]
 ]

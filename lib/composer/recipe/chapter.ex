@@ -1,6 +1,6 @@
-defmodule Composer.Recipe.Group do
+defmodule Composer.Recipe.Chapter do
   @moduledoc """
-  A recipe group: one `recipes/<group>.exs` file holding one or more
+  A chapter: one `recipes/<chapter>.exs` file holding one or more
   recipes, keyed by name.
 
       # recipes/ash.exs
@@ -15,17 +15,17 @@ defmodule Composer.Recipe.Group do
         ]
       ]
 
-  The file name is the group name, so `ecto` above is `<cookbook>:ash/ecto`.
-  Group and recipe names are lowercase `[a-z0-9_]` segments.
+  The file name is the chapter name, so `ecto` above is `<cookbook>:ash/ecto`.
+  Chapter and recipe names are lowercase `[a-z0-9_]` segments.
 
   ## Reading without evaluating
 
   `ids/1` reads the recipe names from the file's syntax tree, without
-  running it, so listing and completion never evaluate a group. That is why
+  running it, so listing and completion never evaluate a chapter. That is why
   the file must end in a **literal** keyword list (`[name: [...], ...]`).
   Bindings before it are fine; the values may be any expression.
 
-  The bindings are also how recipes in a group share settings, such as
+  The bindings are also how recipes in a chapter share settings, such as
   cookbook aliases (see `Composer.Recipe`):
 
       # recipes/auth.exs
@@ -56,16 +56,16 @@ defmodule Composer.Recipe.Group do
   @keys [:shortdoc, :doc, :flags, :aliases, :steps]
   @required [:shortdoc, :steps]
 
-  @doc "True for a valid group or recipe name."
+  @doc "True for a valid chapter or recipe name."
   @spec valid_name?(String.t()) :: boolean()
   def valid_name?(name) when is_binary(name), do: Regex.match?(@segment, name)
 
-  @doc "The group name of a group file: its base name without `.exs`."
+  @doc "The chapter name of a chapter file: its base name without `.exs`."
   @spec name(Path.t()) :: String.t()
   def name(path), do: Path.basename(path, ".exs")
 
   @doc """
-  Returns the recipe names in a group file, in file order, read from its
+  Returns the recipe names in a chapter file, in file order, read from its
   syntax tree. Duplicates are kept; see `duplicates/1`.
   """
   @spec names(Path.t()) :: {:ok, [String.t()]} | {:error, term()}
@@ -73,13 +73,13 @@ defmodule Composer.Recipe.Group do
     with {:ok, content} <- read(path), do: names(content, path)
   end
 
-  @doc "Like `names/1`, for a group file's source; `path` words errors."
+  @doc "Like `names/1`, for a chapter file's source; `path` words errors."
   @spec names(String.t(), Path.t()) :: {:ok, [String.t()]} | {:error, term()}
   def names(content, path) do
     with {:ok, quoted} <- parse(content, path) do
       case literal_keys(last_expression(quoted)) do
         {:ok, keys} -> {:ok, Enum.map(keys, &Atom.to_string/1)}
-        :error -> {:error, {:group_shape, path, :not_literal}}
+        :error -> {:error, {:chapter_shape, path, :not_literal}}
       end
     end
   end
@@ -97,7 +97,7 @@ defmodule Composer.Recipe.Group do
   end
 
   @doc """
-  Evaluates and validates the group file at `path`, in cookbook `cookbook`,
+  Evaluates and validates the chapter file at `path`, in cookbook `cookbook`,
   returning its recipes in file order. The first problem found is returned
   as the error; `check/3` returns all of them.
   """
@@ -111,7 +111,7 @@ defmodule Composer.Recipe.Group do
   end
 
   @doc """
-  Evaluates the group file at `path` and returns its valid recipes and
+  Evaluates the chapter file at `path` and returns its valid recipes and
   the problems of the others. A problem with the file as a whole is an
   error.
   """
@@ -153,10 +153,10 @@ defmodule Composer.Recipe.Group do
   end
 
   defp file_error?(error),
-    do: elem(error, 0) in [:group_shape, :invalid_group_name, :duplicate_recipe]
+    do: elem(error, 0) in [:chapter_shape, :invalid_chapter_name, :duplicate_recipe]
 
   @doc """
-  Validates an evaluated group term. Returns the valid recipes and every
+  Validates an evaluated chapter term. Returns the valid recipes and every
   problem found, as error reasons for `Composer.Error.message/1`.
   """
   @spec check(term(), Path.t(), String.t()) :: {[Recipe.t()], [term()]}
@@ -172,14 +172,14 @@ defmodule Composer.Recipe.Group do
   @spec check_tagged(term(), Path.t(), String.t()) ::
           {[Recipe.t()], [{term(), String.t() | nil}]}
   def check_tagged(term, path, cookbook) do
-    group = name(path)
+    chapter = name(path)
 
     cond do
-      not valid_name?(group) ->
-        {[], [{{:invalid_group_name, path}, nil}]}
+      not valid_name?(chapter) ->
+        {[], [{{:invalid_chapter_name, path}, nil}]}
 
       not (is_list(term) and Keyword.keyword?(term)) ->
-        {[], [{{:group_shape, path, term}, nil}]}
+        {[], [{{:chapter_shape, path, term}, nil}]}
 
       true ->
         duplicates =
@@ -189,7 +189,7 @@ defmodule Composer.Recipe.Group do
         {recipes, errors} =
           term
           |> Enum.uniq_by(&elem(&1, 0))
-          |> Enum.map(fn {name, value} -> recipe(cookbook, group, name, value, path) end)
+          |> Enum.map(fn {name, value} -> recipe(cookbook, chapter, name, value, path) end)
           |> Enum.split_with(&match?({:ok, _}, &1))
 
         errors = for {:error, ref, reasons} <- errors, reason <- reasons, do: {reason, ref}
@@ -197,8 +197,8 @@ defmodule Composer.Recipe.Group do
     end
   end
 
-  defp recipe(cookbook, group, name, value, path) do
-    id = "#{group}/#{name}"
+  defp recipe(cookbook, chapter, name, value, path) do
+    id = "#{chapter}/#{name}"
     ref = Composer.Ref.id(cookbook, id)
 
     errors =
@@ -215,7 +215,7 @@ defmodule Composer.Recipe.Group do
            id: id,
            ref: ref,
            cookbook: cookbook,
-           group: group,
+           chapter: chapter,
            name: Atom.to_string(name),
            path: path,
            shortdoc: value[:shortdoc],
@@ -294,7 +294,7 @@ defmodule Composer.Recipe.Group do
   defp read(path) do
     case File.read(path) do
       {:ok, content} -> {:ok, content}
-      {:error, reason} -> {:error, {:group_read, path, reason}}
+      {:error, reason} -> {:error, {:chapter_read, path, reason}}
     end
   end
 
@@ -304,7 +304,7 @@ defmodule Composer.Recipe.Group do
         {:ok, quoted}
 
       {:error, {location, message, token}} ->
-        {:error, {:group_parse, path, text(message) <> text(token), location_line(location)}}
+        {:error, {:chapter_parse, path, text(message) <> text(token), location_line(location)}}
     end
   end
 
@@ -327,7 +327,7 @@ defmodule Composer.Recipe.Group do
   defp literal_keys(_quoted), do: :error
 
   @doc false
-  # Evaluates a group file. A failure records the line in that file where
+  # Evaluates a chapter file. A failure records the line in that file where
   # it happened, when there is one: the parser's, or the stacktrace's.
   def eval(path, cookbook) do
     {term, _binding} = Code.eval_file(path)

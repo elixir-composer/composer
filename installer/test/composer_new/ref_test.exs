@@ -34,7 +34,7 @@ defmodule ComposerNew.RefTest do
   describe "archive rules" do
     test "a ref must name a cookbook" do
       assert {:error, message} = Ref.parse("lv/base")
-      assert message =~ "refs must name a cookbook (cookbook:group/recipe)"
+      assert message =~ "refs must name a cookbook (cookbook:chapter/recipe)"
       assert message =~ "shortnames aren't supported"
     end
 

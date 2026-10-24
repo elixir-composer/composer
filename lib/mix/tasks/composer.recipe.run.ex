@@ -10,8 +10,8 @@ defmodule Mix.Tasks.Composer.Recipe.Run do
       mix composer.recipe.run app/default --dry-run
       mix composer.recipe.run app/default --no-commit
 
-  The recipe reference is `"cookbook:group/name"` or an unqualified
-  `"group/name"`, which is looked up in the current project's cookbook
+  The recipe reference is `"cookbook:chapter/name"` or an unqualified
+  `"chapter/name"`, which is looked up in the current project's cookbook
   first, then in every cookbook.
   `mix composer.recipe.list` lists them.
 

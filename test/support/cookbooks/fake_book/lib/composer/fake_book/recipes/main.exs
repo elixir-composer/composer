@@ -1,4 +1,4 @@
-# The main fixture group.
+# The main fixture chapter.
 [
   base: [
     shortdoc: "The base recipe",

@@ -4,7 +4,7 @@ defmodule Composer.Manifest do
 
   The manifest is plain data - the cookbook's name and package, and
   every step's id, summary and facets, and every recipe's id
-  (`"group/name"`) and shortdoc - so tools such as shell completion can read a cookbook without
+  (`"chapter/name"`) and shortdoc - so tools such as shell completion can read a cookbook without
   running its code.
 
   It is written by `mix composer.cookbook.manifest` and committed. It is
@@ -31,9 +31,9 @@ defmodule Composer.Manifest do
   end
 
   @doc """
-  Returns `%{id: "group/name", shortdoc: "..."}` for every recipe of a
-  cookbook, sorted by id. A recipe whose group fails to load gets an empty
-  shortdoc; lint reports the group.
+  Returns `%{id: "chapter/name", shortdoc: "..."}` for every recipe of a
+  cookbook, sorted by id. A recipe whose chapter fails to load gets an empty
+  shortdoc; lint reports the chapter.
   """
   @spec recipes(Cookbook.t()) :: [%{id: String.t(), shortdoc: String.t()}]
   def recipes(%Cookbook{} = cookbook) do

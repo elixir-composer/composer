@@ -1,6 +1,6 @@
 defmodule Composer.LSP.Diagnostics do
   @moduledoc """
-  The diagnostics of a saved recipe group file and of the files that
+  The diagnostics of a saved chapter file and of the files that
   include its recipes, from disk.
 
   The file's recipes are read with `Composer.Recipe.Locator` (so even a
@@ -25,7 +25,7 @@ defmodule Composer.LSP.Diagnostics do
 
   @doc """
   Lints `path` and its dependents. Returns `:ignore` for a file that is
-  not a recipe group, or `{:ok, %{path => diagnostics}, dependents}`.
+  not a chapter, or `{:ok, %{path => diagnostics}, dependents}`.
   """
   @spec run(Path.t(), args()) ::
           :ignore | {:ok, %{Path.t() => [Composer.Lint.Diagnostic.t()]}, [Path.t()]}
@@ -56,13 +56,13 @@ defmodule Composer.LSP.Diagnostics do
 
   # The refs of the recipes written in the file, read without evaluating it.
   defp refs(owner, path) do
-    group = Path.basename(path, ".exs")
+    chapter = Path.basename(path, ".exs")
 
     case Locator.index_file(path) do
       {:ok, index} ->
         for recipe <- index.recipes,
             uniq: true,
-            do: Ref.id(owner.name, group <> "/" <> recipe.name)
+            do: Ref.id(owner.name, chapter <> "/" <> recipe.name)
 
       {:error, _} ->
         []

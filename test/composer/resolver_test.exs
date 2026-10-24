@@ -7,12 +7,12 @@ defmodule Composer.ResolverTest do
   @moduletag :tmp_dir
 
   # Cookbooks: cb_std, fake_book, other_book, and the cookbook mine built from
-  # `recipes`, a map of "group/name" => steps source. Every if: flag in the
+  # `recipes`, a map of "chapter/name" => steps source. Every if: flag in the
   # steps is declared.
   defp cookbooks(dir, recipes \\ %{}) do
     recipes
     |> Enum.group_by(fn {id, _} -> Path.dirname(id) end)
-    |> Enum.each(fn {group, entries} ->
+    |> Enum.each(fn {chapter, entries} ->
       body =
         Enum.map_join(entries, ",\n", fn {id, source} ->
           {steps, _} = Code.eval_string(source)
@@ -21,7 +21,7 @@ defmodule Composer.ResolverTest do
           "  #{Path.basename(id)}: [shortdoc: #{inspect(id)}, flags: #{inspect(flags)}, steps: #{source}]"
         end)
 
-      path = Path.join([dir, "recipes", group <> ".exs"])
+      path = Path.join([dir, "recipes", chapter <> ".exs"])
       File.mkdir_p!(Path.dirname(path))
       File.write!(path, "[\n" <> body <> "\n]\n")
     end)
@@ -354,8 +354,8 @@ defmodule Composer.ResolverTest do
     end
   end
 
-  describe "groups" do
-    test "an unqualified {:use, name} is the recipe in the same group", %{tmp_dir: dir} do
+  describe "chapters" do
+    test "an unqualified {:use, name} is the recipe in the same chapter", %{tmp_dir: dir} do
       books =
         cookbooks(dir, %{
           "ash/base" => ~s(["cb_std:setup/credo"]),
@@ -376,7 +376,7 @@ defmodule Composer.ResolverTest do
                ["mine:lv/app", "mine:lv/base", "mine:ash/ecto", "mine:ash/base"]
     end
 
-    test "an unqualified name missing from the group fails, suggesting its siblings", %{
+    test "an unqualified name missing from the chapter fails, suggesting its siblings", %{
       tmp_dir: dir
     } do
       books =
@@ -389,29 +389,29 @@ defmodule Composer.ResolverTest do
       assert {:error, {:missing_recipe, "bsae", "mine:ash/ecto", ["mine:ash/base"]} = reason} =
                resolve(books, "mine:ash/ecto")
 
-      assert Composer.Error.message(reason) =~ "refers to a recipe in the same group"
+      assert Composer.Error.message(reason) =~ "refers to a recipe in the same chapter"
 
-      # fake_book:main/base exists, but an ungrouped name never leaves the group.
+      # fake_book:main/base exists, but an unqualified name never leaves the chapter.
       books = cookbooks(dir, %{"main/x" => ~s([{:use, "nope"}])})
 
       assert {:error, {:missing_recipe, "nope", "mine:main/x", _}} =
                resolve(books, "mine:main/x")
     end
 
-    test "a same-group cycle reports its path", %{tmp_dir: dir} do
+    test "a same-chapter cycle reports its path", %{tmp_dir: dir} do
       books = cookbooks(dir, %{"g/a" => ~s([{:use, "b"}]), "g/b" => ~s([{:use, "a"}])})
 
       assert {:error, {:cycle, ["mine:g/a", "mine:g/b", "mine:g/a"]}} =
                resolve(books, "mine:g/a")
     end
 
-    test "an ungrouped CLI reference names no recipe", %{tmp_dir: dir} do
+    test "a CLI reference with no chapter names no recipe", %{tmp_dir: dir} do
       books = cookbooks(dir, %{"g/mine" => ~s(["cb_std:setup/credo"])})
 
       assert {:error, {:missing_recipe, "mine", nil, ["mine:g/mine"]} = reason} =
                resolve(books, "mine")
 
-      assert Composer.Error.message(reason) =~ ~s("cookbook:group/name")
+      assert Composer.Error.message(reason) =~ ~s("cookbook:chapter/name")
     end
 
     test "declared_flags/1 is the union over every recipe reached", %{tmp_dir: dir} do
@@ -429,7 +429,7 @@ defmodule Composer.ResolverTest do
       assert Resolver.declared_flags(result) == [own: "Own", gigalixir: "Gigalixir"]
     end
 
-    test "a group file that fails to load names the file", %{tmp_dir: dir} do
+    test "a chapter file that fails to load names the file", %{tmp_dir: dir} do
       File.mkdir_p!(Path.join(dir, "recipes"))
       File.write!(Path.join(dir, "recipes/g.exs"), "[a: [shortdoc: \"A\", steps: [], extra: 1]]")
       books = discover(dir, [])
@@ -589,7 +589,7 @@ defmodule Composer.ResolverTest do
   end
 
   describe "cookbook aliases" do
-    # A group file `g.exs` with the given recipes source.
+    # A chapter file `g.exs` with the given recipes source.
     defp aliased(dir, source) do
       path = Path.join([dir, "recipes", "g.exs"])
       File.mkdir_p!(Path.dirname(path))

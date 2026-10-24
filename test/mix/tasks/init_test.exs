@@ -41,16 +41,16 @@ defmodule Mix.Tasks.Composer.InitTest do
            ]
   end
 
-  test "the default recipe is a valid, formatted group with every flag declared" do
+  test "the default recipe is a valid, formatted chapter with every flag declared" do
     {_igniter, content} = generated()
 
-    {group, _binding} = Code.eval_string(content)
-    assert {[default], []} = Recipe.Group.check(group, @recipe, "test")
+    {chapter, _binding} = Code.eval_string(content)
+    assert {[default], []} = Recipe.Chapter.check(chapter, @recipe, "test")
     assert default.shortdoc == "Every built-in step, in a sensible order"
     assert default.doc =~ "Every built-in step"
     assert Keyword.keys(default.flags) == [:exsync, :mix_test_watch, :oban_pro, :gigalixir]
     assert content == content |> Code.format_string!() |> IO.iodata_to_binary() |> Kernel.<>("\n")
-    assert content =~ "This project's recipe group"
+    assert content =~ "This project's chapter"
   end
 
   test "every step carries its description from the step's summary" do
@@ -89,7 +89,7 @@ defmodule Mix.Tasks.Composer.InitTest do
 
   describe "--from" do
     @tag :tmp_dir
-    test "copies a recipe instead of the cookbook, qualifying same-group uses", %{
+    test "copies a recipe instead of the cookbook, qualifying same-chapter uses", %{
       tmp_dir: dir
     } do
       File.mkdir_p!(Path.join(dir, "recipes"))
@@ -115,9 +115,9 @@ defmodule Mix.Tasks.Composer.InitTest do
       assert content =~ "by `mix composer.init --from mine:mine/app`"
       refute content =~ "cb_std:phx/remove_daisy_ui"
 
-      {group, _} = Code.eval_string(content)
+      {chapter, _} = Code.eval_string(content)
 
-      assert group == [
+      assert chapter == [
                default: [
                  shortdoc: "Mine",
                  doc: "My app.",

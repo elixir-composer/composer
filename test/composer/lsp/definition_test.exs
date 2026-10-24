@@ -16,12 +16,12 @@ defmodule Composer.LSP.DefinitionTest do
   end
 
   @tag :tmp_dir
-  test "a recipe: its key in its group file", %{tmp_dir: dir} do
+  test "a recipe: its key in its chapter file", %{tmp_dir: dir} do
     {snapshot, path} = LSPFixtures.workspace(dir)
     result = LSPFixtures.app_source() |> Cursor.at(path, 13, 15) |> Lookup.resolve(path, snapshot)
 
-    assert {group, {{8, 3}, {8, 8}}} = Definition.target(result, snapshot.cookbooks, %{})
-    assert String.ends_with?(group, "fake_book/recipes/main.exs")
+    assert {chapter, {{8, 3}, {8, 8}}} = Definition.target(result, snapshot.cookbooks, %{})
+    assert String.ends_with?(chapter, "fake_book/recipes/main.exs")
   end
 
   test "an alias bound to a top-level variable: the binding's entry" do

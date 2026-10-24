@@ -50,7 +50,7 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
     book = Path.join(dir, "mine")
     File.mkdir_p!(Path.join(book, "recipes"))
 
-    # One group, t, declaring every flag its recipes use (except legacy,
+    # One chapter, t, declaring every flag its recipes use (except legacy,
     # which does not evaluate as a step list).
     entries =
       Enum.map_join(@recipes, ",\n", fn {name, body} ->

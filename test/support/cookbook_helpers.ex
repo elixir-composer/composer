@@ -1,7 +1,7 @@
 defmodule Composer.Test.Cookbooks do
   @moduledoc false
   # A code cookbook whose recipes live in a tmp dir, for tests that write
-  # their own group files.
+  # their own chapter files.
 
   alias Composer.{Cookbook, Lint, Manifest}
 

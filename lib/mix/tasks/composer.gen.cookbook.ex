@@ -64,13 +64,13 @@ defmodule Mix.Tasks.Composer.Gen.Cookbook do
     Your cookbook is lib/composer/#{name}/. Add steps and recipes with:
 
         mix composer.gen.step my_step
-        mix composer.gen.recipe my_group/my_recipe
+        mix composer.gen.recipe my_chapter/my_recipe
 
     and refresh the manifest with `mix composer.cookbook.manifest`.
     """)
   end
 
-  # The manifest lists the group's recipes with their shortdocs, read from
+  # The manifest lists the chapter's recipes with their shortdocs, read from
   # the file actually being written (mix composer.init writes its own first),
   # so the new cookbook passes mix composer.cookbook.lint. The file is our
   # own generated source (or a recipe the user chose to copy).
@@ -81,7 +81,7 @@ defmodule Mix.Tasks.Composer.Gen.Cookbook do
     recipes =
       try do
         {term, _binding} = Code.eval_string(content)
-        {loaded, _errors} = Composer.Recipe.Group.check(term, recipe, name)
+        {loaded, _errors} = Composer.Recipe.Chapter.check(term, recipe, name)
         loaded |> Enum.map(&%{id: &1.id, shortdoc: &1.shortdoc}) |> Enum.sort_by(& &1.id)
       rescue
         _ -> []
@@ -143,7 +143,7 @@ defmodule Mix.Tasks.Composer.Gen.Cookbook do
 
   defp default_recipe(name) do
     """
-    # The app recipe group of #{name}. Run its default recipe with:
+    # The app chapter of #{name}. Run its default recipe with:
     #
     #     mix composer.recipe.run #{name}:app/default
     #

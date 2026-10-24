@@ -36,9 +36,9 @@ defmodule Composer.Resolver do
   A step in the referring cookbook wins over a Hex package of the same name,
   so an unqualified name is never ambiguous with `hex:`.
 
-  `{:use, ref}` names a recipe, `"cookbook:group/name"`. An unqualified
+  `{:use, ref}` names a recipe, `"cookbook:chapter/name"`. An unqualified
   name without a `/` (`{:use, "base"}`) is the recipe of that name in the
-  same group as the referring recipe; nothing outside the group can match
+  same chapter as the referring recipe; nothing outside the chapter can match
   it. Any other reference is resolved like a step reference, except that
   there is no Hex fallback.
 
@@ -141,7 +141,7 @@ defmodule Composer.Resolver do
         entries: [],
         gates: [],
         visited: [],
-        groups: %{}
+        chapters: %{}
       }
 
       with {:ok, state} <- visit(root, [], state),
@@ -424,7 +424,7 @@ defmodule Composer.Resolver do
           suggestions = step_suggestions(index, path)
 
           cond do
-            Ref.grouped?(ref) -> {:error, {:missing_step, string, origin, suggestions}}
+            Ref.nested?(ref) -> {:error, {:missing_step, string, origin, suggestions}}
             suggestions != [] -> {:error, {:typo, string, origin, suggestions}}
             true -> {:ok, {:install, path, []}}
           end
@@ -506,9 +506,9 @@ defmodule Composer.Resolver do
   end
 
   # An unqualified {:use, "name"} is the recipe `name` in the referring
-  # recipe's group.
-  defp find_in_group(index, name, recipe) do
-    id = recipe.group <> "/" <> name
+  # recipe's chapter.
+  defp find_in_chapter(index, name, recipe) do
+    id = recipe.chapter <> "/" <> name
     ids = Map.get(index.recipes, recipe.cookbook, [])
 
     if id in ids do
@@ -516,7 +516,7 @@ defmodule Composer.Resolver do
     else
       siblings =
         for sibling <- ids,
-            Path.dirname(sibling) == recipe.group,
+            Path.dirname(sibling) == recipe.chapter,
             do: {Ref.id(recipe.cookbook, sibling), Path.basename(sibling)}
 
       suggestions =
@@ -558,7 +558,7 @@ defmodule Composer.Resolver do
     end
   end
 
-  # Each group file is evaluated once per resolution.
+  # Each chapter file is evaluated once per resolution.
   defp load(id, state) do
     %Ref{cookbook: name, path: path} = Ref.parse!(id)
     cookbook = Map.fetch!(state.index.by_name, name)
@@ -568,21 +568,21 @@ defmodule Composer.Resolver do
         {:error, {:missing_recipe, id, nil, []}}
 
       file ->
-        with {:ok, loaded, state} <- load_group(file, name, state),
-             {:ok, recipe} <- Recipe.Group.pick(loaded, file, name, Path.basename(path)) do
+        with {:ok, loaded, state} <- load_chapter(file, name, state),
+             {:ok, recipe} <- Recipe.Chapter.pick(loaded, file, name, Path.basename(path)) do
           {:ok, recipe, state}
         end
     end
   end
 
-  defp load_group(file, name, state) do
-    case state.groups do
+  defp load_chapter(file, name, state) do
+    case state.chapters do
       %{^file => loaded} ->
         {:ok, loaded, state}
 
       _ ->
-        with {:ok, loaded} <- Recipe.Group.load_all(file, name) do
-          {:ok, loaded, %{state | groups: Map.put(state.groups, file, loaded)}}
+        with {:ok, loaded} <- Recipe.Chapter.load_all(file, name) do
+          {:ok, loaded, %{state | chapters: Map.put(state.chapters, file, loaded)}}
         end
     end
   end
@@ -680,9 +680,9 @@ defmodule Composer.Resolver do
   defp find_included(index, ref, recipe) do
     case Ref.parse(ref) do
       {:ok, %Ref{cookbook: nil, path: name} = parsed} ->
-        if Ref.grouped?(parsed),
+        if Ref.nested?(parsed),
           do: find_recipe(index, ref, recipe.cookbook, recipe.ref),
-          else: find_in_group(index, name, recipe)
+          else: find_in_chapter(index, name, recipe)
 
       _ ->
         {lookup, via} = expand(ref, recipe)

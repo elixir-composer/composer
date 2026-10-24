@@ -6,14 +6,14 @@ defmodule Composer.LintTest do
 
   @moduletag :tmp_dir
 
-  @fixtures "test/support/fixtures/groups"
+  @fixtures "test/support/fixtures/chapters"
 
   setup do
     {:ok, cookbooks} = Discovery.cookbooks(apps: [])
     %{cookbooks: cookbooks}
   end
 
-  # Lints a cookbook dir holding the given fixture groups.
+  # Lints a cookbook dir holding the given fixture chapters.
   defp lint(dir, cookbooks, fixtures) do
     File.mkdir_p!(Path.join(dir, "recipes"))
 
@@ -33,11 +33,11 @@ defmodule Composer.LintTest do
              Enum.join(errors(result), "\n")
   end
 
-  test "a clean group passes", %{tmp_dir: dir, cookbooks: cookbooks} do
+  test "a clean chapter passes", %{tmp_dir: dir, cookbooks: cookbooks} do
     assert lint(dir, cookbooks, ["clean", "bindings"]).diagnostics == []
   end
 
-  test "each group rule fires on its fixture, naming the file and recipe", %{
+  test "each chapter rule fires on its fixture, naming the file and recipe", %{
     tmp_dir: dir,
     cookbooks: cookbooks
   } do
@@ -51,7 +51,7 @@ defmodule Composer.LintTest do
       {"undeclared_flag", ~r/Recipe mine:undeclared_flag\/base uses if: :credo/},
       {"reserved_flag", ~r/mine:reserved_flag\/base declares the flag :with/},
       {"duplicate", ~r/duplicate.exs defines the recipe base more than once/},
-      {"raises", ~r/Could not evaluate recipe group mine:raises\/.*boom/s},
+      {"raises", ~r/Could not evaluate chapter mine:raises\/.*boom/s},
       {"BadName", ~r/BadName.exs has an invalid name/},
       {"multiline", ~r/mine:multiline\/base has a shortdoc on more than one line/}
     ]
@@ -62,19 +62,19 @@ defmodule Composer.LintTest do
     end
   end
 
-  test "an empty group is a warning", %{tmp_dir: dir, cookbooks: cookbooks} do
+  test "an empty chapter is a warning", %{tmp_dir: dir, cookbooks: cookbooks} do
     result = lint(dir, cookbooks, ["empty"])
     assert errors(result) == []
     assert [warning] = warnings(result)
     assert warning =~ "empty.exs is empty"
   end
 
-  test "a recipe named like a group is an error", %{tmp_dir: dir, cookbooks: cookbooks} do
+  test "a recipe named like a chapter is an error", %{tmp_dir: dir, cookbooks: cookbooks} do
     File.mkdir_p!(Path.join(dir, "recipes"))
     File.write!(Path.join(dir, "recipes/ash.exs"), ~s([base: [shortdoc: "B", steps: []]]))
     File.write!(Path.join(dir, "recipes/lv.exs"), ~s([ash: [shortdoc: "A", steps: []]]))
 
-    assert_error(lint_recipes(dir, cookbooks), ~r/a recipe group ash and a recipe named ash/)
+    assert_error(lint_recipes(dir, cookbooks), ~r/a chapter ash and a recipe named ash/)
   end
 
   test "a subdirectory under recipes/ is an error", %{tmp_dir: dir, cookbooks: cookbooks} do
@@ -262,7 +262,7 @@ defmodule Composer.LintTest do
   end
 
   describe "cookbook aliases" do
-    defp lint_group(dir, source) do
+    defp lint_chapter(dir, source) do
       File.mkdir_p!(Path.join(dir, "recipes"))
       File.write!(Path.join([dir, "recipes", "g.exs"]), source)
       {:ok, cookbooks} = Discovery.cookbooks(apps: [:fake_book, :other_book])
@@ -270,12 +270,12 @@ defmodule Composer.LintTest do
     end
 
     test "a used, consistent alias is clean", %{tmp_dir: dir} do
-      assert lint_group(dir, File.read!(Path.join(@fixtures, "aliases.exs"))).diagnostics == []
+      assert lint_chapter(dir, File.read!(Path.join(@fixtures, "aliases.exs"))).diagnostics == []
     end
 
     test "unused and inconsistent aliases are warnings", %{tmp_dir: dir} do
       report =
-        lint_group(dir, """
+        lint_chapter(dir, """
         [
           a: [shortdoc: "x", aliases: [fb: "fake_book", ob: "other_book"], steps: ["fb:hello"]],
           b: [shortdoc: "x", aliases: [fb: "other_book"], steps: ["fb:hello"]]
@@ -298,7 +298,7 @@ defmodule Composer.LintTest do
 
     test "an alias colliding with a cookbook or reserved name is an error", %{tmp_dir: dir} do
       shadowing =
-        lint_group(Path.join(dir, "shadowing"), """
+        lint_chapter(Path.join(dir, "shadowing"), """
         [a: [shortdoc: "x", aliases: [other_book: "fake_book"], steps: ["other_book:hello"]]]
         """)
 
@@ -308,7 +308,7 @@ defmodule Composer.LintTest do
       )
 
       reserved =
-        lint_group(Path.join(dir, "reserved"), """
+        lint_chapter(Path.join(dir, "reserved"), """
         [b: [shortdoc: "x", aliases: [cb_std: "fake_book"], steps: []]]
         """)
 

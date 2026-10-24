@@ -8,11 +8,11 @@ defmodule Mix.Tasks.Composer.Cookbook.Lint do
     * every step has a test at `test/composer/<cookbook>/steps/<id>_test.exs`
     * every step reference in `requires` resolves
     * `lib/composer/<cookbook>/manifest.exs` is up to date
-    * every recipe group is well formed (see `Composer.Lint`)
+    * every chapter is well formed (see `Composer.Lint`)
     * every reference in every recipe resolves, and every recipe resolves
       as a whole
 
-  With `--file`, checks one recipe group file of any installed cookbook
+  With `--file`, checks one chapter file of any installed cookbook
   (found from its path), and reports only the problems in that file, plus one at
   each `{:use, ...}` of a recipe that has problems of its own. This is
   what an editor runs on save; see the lint guide.
@@ -40,7 +40,7 @@ defmodule Mix.Tasks.Composer.Cookbook.Lint do
 
   ## Options
 
-    * `--file PATH` - lint one recipe group file
+    * `--file PATH` - lint one chapter file
     * `--format FORMAT` - `text`, `compact`, `json` or `github`
   """
 

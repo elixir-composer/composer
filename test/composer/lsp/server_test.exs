@@ -73,7 +73,7 @@ defmodule Composer.LSP.ServerTest do
     assert [] = assert_diagnostics(Convert.path_to_uri(use))
   end
 
-  test "a file that is not a recipe group gets nothing", %{opts: opts} do
+  test "a file that is not a chapter gets nothing", %{opts: opts} do
     {client, _} = start_server(opts)
     open(client, Path.expand("mix.exs"))
     refute_receive %{"method" => "textDocument/publishDiagnostics"}, 500

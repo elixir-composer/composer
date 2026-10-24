@@ -7,7 +7,7 @@ defmodule Composer.Cookbook do
       lib/composer/cc_lab.ex                    # the cookbook module
       lib/composer/cc_lab/steps/astral/nav1.ex  # a step (use Composer.Step)
       lib/composer/cc_lab/steps/astral/_nav1/   # its templates
-      lib/composer/cc_lab/recipes/*.exs         # recipe groups (see Composer.Recipe.Group)
+      lib/composer/cc_lab/recipes/*.exs         # chapters (see Composer.Recipe.Chapter)
       lib/composer/cc_lab/manifest.exs          # written by mix composer.cookbook.manifest
 
   A step's templates live in the directory named after its file (see
@@ -40,11 +40,11 @@ defmodule Composer.Cookbook do
       the app
     * the name is reserved
     * the module is not defined in `lib/composer/<name>.ex`
-    * a group file under `recipes/` has an invalid name or does not parse
+    * a chapter file under `recipes/` has an invalid name or does not parse
     * a `.ex` file under `steps/` is not a step (a template stored as bare
       `.ex` would be compiled as part of the package; rename it `.ex.eex`)
 
-  Group files are external resources, and adding or removing a group or a
+  Chapter files are external resources, and adding or removing a chapter or a
   file under `steps/` triggers a recompile. The `.ex` check is textual (the
   file must `use Composer.Step` and be named for its path), since step
   modules may not be compiled yet; `mix composer.cookbook.lint` checks the
@@ -59,7 +59,7 @@ defmodule Composer.Cookbook do
   release is not supported.
   """
 
-  alias Composer.Recipe.Group
+  alias Composer.Recipe.Chapter
 
   defstruct [:name, :app, :module, :kind, :summary, :homepage, :source_dir]
 
@@ -198,52 +198,52 @@ defmodule Composer.Cookbook do
   end
 
   @doc """
-  Returns the cookbook's recipe ids (`"group/name"`), sorted.
+  Returns the cookbook's recipe ids (`"chapter/name"`), sorted.
 
-  Ids are read from each group file's syntax tree, without evaluating it.
-  A group file that cannot be read this way is skipped; `load_recipes/1`
+  Ids are read from each chapter file's syntax tree, without evaluating it.
+  A chapter file that cannot be read this way is skipped; `load_recipes/1`
   reports it.
   """
   @spec recipes(t()) :: [String.t()]
   def recipes(%__MODULE__{} = cookbook) do
-    for {group, path} <- groups(cookbook),
-        {:ok, names} <- [Group.ids(path)],
+    for {chapter, path} <- chapters(cookbook),
+        {:ok, names} <- [Chapter.ids(path)],
         name <- names,
-        do: group <> "/" <> name
+        do: chapter <> "/" <> name
   end
 
   @doc """
-  Returns the cookbook's group files as `{group, path}`, sorted by name.
-  Files with an invalid group name are left out.
+  Returns the cookbook's chapter files as `{chapter, path}`, sorted by name.
+  Files with an invalid chapter name are left out.
   """
-  @spec groups(t()) :: [{String.t(), Path.t()}]
-  def groups(%__MODULE__{kind: :virtual}), do: []
+  @spec chapters(t()) :: [{String.t(), Path.t()}]
+  def chapters(%__MODULE__{kind: :virtual}), do: []
 
-  def groups(%__MODULE__{} = cookbook) do
+  def chapters(%__MODULE__{} = cookbook) do
     case source_dir(cookbook) do
       nil -> []
-      dir -> dir |> group_files() |> Enum.filter(&Group.valid_name?(elem(&1, 0)))
+      dir -> dir |> chapter_files() |> Enum.filter(&Chapter.valid_name?(elem(&1, 0)))
     end
   end
 
-  @doc "Returns the path of group `group`, or `nil` when it does not exist."
-  @spec group_path(t(), String.t()) :: Path.t() | nil
-  def group_path(%__MODULE__{} = cookbook, group) do
-    case List.keyfind(groups(cookbook), group, 0) do
-      {_group, path} -> path
+  @doc "Returns the path of chapter `chapter`, or `nil` when it does not exist."
+  @spec chapter_path(t(), String.t()) :: Path.t() | nil
+  def chapter_path(%__MODULE__{} = cookbook, chapter) do
+    case List.keyfind(chapters(cookbook), chapter, 0) do
+      {_chapter, path} -> path
       nil -> nil
     end
   end
 
   @doc """
-  Returns the group file holding recipe `id` (`"group/name"`), or `nil`
-  when the group or the recipe does not exist.
+  Returns the chapter file holding recipe `id` (`"chapter/name"`), or `nil`
+  when the chapter or the recipe does not exist.
   """
   @spec recipe_path(t(), String.t()) :: Path.t() | nil
   def recipe_path(%__MODULE__{} = cookbook, id) do
-    with [group, name] <- String.split(id, "/"),
-         path when is_binary(path) <- group_path(cookbook, group),
-         {:ok, names} <- Group.ids(path),
+    with [chapter, name] <- String.split(id, "/"),
+         path when is_binary(path) <- chapter_path(cookbook, chapter),
+         {:ok, names} <- Chapter.ids(path),
          true <- name in names do
       path
     else
@@ -252,16 +252,16 @@ defmodule Composer.Cookbook do
   end
 
   @doc """
-  Evaluates every group file of the cookbook. Returns the valid recipes,
-  sorted by id, and `{path, reason}` for each group, or recipe, that
+  Evaluates every chapter file of the cookbook. Returns the valid recipes,
+  sorted by id, and `{path, reason}` for each chapter, or recipe, that
   failed to load.
   """
   @spec load_recipes(t()) :: {[Composer.Recipe.t()], [{Path.t(), term()}]}
   def load_recipes(%__MODULE__{name: name} = cookbook) do
     cookbook
-    |> groups()
-    |> Enum.reduce({[], []}, fn {_group, path}, {recipes, errors} ->
-      case Group.load_all(path, name) do
+    |> chapters()
+    |> Enum.reduce({[], []}, fn {_chapter, path}, {recipes, errors} ->
+      case Chapter.load_all(path, name) do
         {:ok, {loaded, problems}} ->
           {recipes ++ loaded, errors ++ Enum.map(problems, &{path, &1})}
 
@@ -273,7 +273,7 @@ defmodule Composer.Cookbook do
   end
 
   @doc false
-  # Every group file, including ones with invalid names, as {group, path};
+  # Every chapter file, including ones with invalid names, as {chapter, path};
   # and the subdirectories under recipes/. For lint.
   def recipe_entries(%__MODULE__{kind: :virtual}), do: {[], []}
 
@@ -297,7 +297,7 @@ defmodule Composer.Cookbook do
               []
           end
 
-        {group_files(dir), subdirs}
+        {chapter_files(dir), subdirs}
     end
   end
 
@@ -364,7 +364,7 @@ defmodule Composer.Cookbook do
   def source_dir(%__MODULE__{source_dir: dir}), do: dir
 
   @doc false
-  # A hash of the group files and the files under steps/ in `dir`, used by
+  # A hash of the chapter files and the files under steps/ in `dir`, used by
   # __mix_recompile__?/0 to notice added and removed files.
   def listing_hash(dir) do
     dir
@@ -386,18 +386,18 @@ defmodule Composer.Cookbook do
     check_file!(env, name)
 
     source_dir = Path.rootname(env.file)
-    groups = group_files(source_dir)
+    chapters = chapter_files(source_dir)
 
-    Enum.each(groups, fn {group, path} ->
-      check_group_name!(env, group, path)
+    Enum.each(chapters, fn {chapter, path} ->
+      check_chapter_name!(env, chapter, path)
       check_recipe_parses!(path)
     end)
 
     recipes =
-      for {group, path} <- groups,
-          {:ok, names} <- [Group.ids(path)],
+      for {chapter, path} <- chapters,
+          {:ok, names} <- [Chapter.ids(path)],
           name <- names,
-          do: group <> "/" <> name
+          do: chapter <> "/" <> name
 
     source_dir
     |> Path.join("steps")
@@ -410,7 +410,7 @@ defmodule Composer.Cookbook do
       app: app,
       source_dir: source_dir,
       recipes: recipes,
-      resources: Enum.map(groups, &elem(&1, 1)),
+      resources: Enum.map(chapters, &elem(&1, 1)),
       hash: listing_hash(source_dir)
     }
   end
@@ -484,10 +484,10 @@ defmodule Composer.Cookbook do
     end
   end
 
-  defp check_group_name!(env, group, path) do
-    unless Group.valid_name?(group) do
+  defp check_chapter_name!(env, chapter, path) do
+    unless Chapter.valid_name?(chapter) do
       compile_error!(env, """
-      Recipe group #{Path.relative_to_cwd(path)} has an invalid name. A group \
+      Chapter #{Path.relative_to_cwd(path)} has an invalid name. A chapter \
       name is a lowercase [a-z0-9_] segment; rename the file (for example \
       lv-base.exs to lv_base.exs).
       """)
@@ -507,7 +507,7 @@ defmodule Composer.Cookbook do
           file: path,
           line: line,
           description:
-            "recipe group #{Path.relative_to_cwd(path)} does not parse: " <>
+            "chapter #{Path.relative_to_cwd(path)} does not parse: " <>
               error_text(message) <> error_text(token)
     end
   end
@@ -551,13 +551,13 @@ defmodule Composer.Cookbook do
 
   # -- files --------------------------------------------------------------
 
-  # Groups are the .exs files directly under recipes/.
-  defp group_files(dir) do
+  # Chapters are the .exs files directly under recipes/.
+  defp chapter_files(dir) do
     dir
     |> Path.join("recipes/*.exs")
     |> Path.wildcard()
     |> Enum.filter(&File.regular?/1)
-    |> Enum.map(&{Group.name(&1), &1})
+    |> Enum.map(&{Chapter.name(&1), &1})
     |> Enum.sort()
   end
 

@@ -44,7 +44,7 @@ from proven recipes instead of from scratch.
 
 ### Concepts
 
-With composer, a cookbook contains recipes; recipes are lists of steps, organized in groups;
+With composer, a cookbook contains recipes; recipes are lists of steps, organized in chapters;
 steps make changes and can render templates.
 
 - A **step** is an atomic/composable Igniter task.  For search and discovery,
@@ -52,8 +52,8 @@ steps make changes and can render templates.
   `frameworks: [:phoenix]`, tags, and what it `requires`. Addressed as
   `"cookbook:step"`.
 - A **recipe** is a named, ordered list of steps, with a shortdoc, optional
-  doc and flags. Recipes live in **groups**, one `.exs` file per group, and
-  are addressed as `"cookbook:group/name"`.
+  doc and flags. Recipes live in **chapters**, one `.exs` file per chapter, and
+  are addressed as `"cookbook:chapter/name"`.
 - A **cookbook** is a self-contained collection of steps (with their
   templates) and recipes, shipped by a framework, a standalone package, or your own app.
   Composer ships a built-in `cb_std` cookbook; your personal recipes live in
@@ -411,7 +411,7 @@ entry, `argv:` goes to the package's installer.
 Recipes compose: `{:use, "cb_mine:dev/tools"}` includes another recipe's
 steps in place, to any depth, optionally behind a flag (`{:use,
 "deploy/gigalixir", if: :gigalixir}`); `{:use, "base"}` names a recipe in
-the same group. At run time the tree is flattened into one ordered step
+the same chapter. At run time the tree is flattened into one ordered step
 list — packages from the whole tree are deduped and fetched up front, a
 single diff covers the entire run, and flags declared anywhere in the tree
 surface on the task you invoke (any other `--flag` is rejected). See the

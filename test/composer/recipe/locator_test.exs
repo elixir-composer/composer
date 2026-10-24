@@ -106,7 +106,7 @@ defmodule Composer.Recipe.LocatorTest do
   end
 
   test "a source that does not parse is an error, with its line" do
-    assert {:error, {:group_parse, "x.exs", _description, 1}} =
+    assert {:error, {:chapter_parse, "x.exs", _description, 1}} =
              Locator.index("[a: [steps: [\"x\"]", "x.exs")
   end
 end

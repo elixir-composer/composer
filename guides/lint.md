@@ -6,7 +6,7 @@ in the format each understands.
 
 ```bash
 mix composer.cookbook.lint                     # this project's cookbook
-mix composer.cookbook.lint --file PATH         # one recipe group file
+mix composer.cookbook.lint --file PATH         # one chapter file
 mix composer.cookbook.lint --format compact    # text | compact | json | github
 ```
 
@@ -94,7 +94,7 @@ Editors lint the file you just saved:
 mix composer.cookbook.lint --format compact --file lib/composer/my_app/recipes/auth.exs
 ```
 
-`--file` takes one recipe group file and finds its cookbook from the path:
+`--file` takes one chapter file and finds its cookbook from the path:
 a file under a cookbook's `lib/composer/<name>/recipes/` is that
 cookbook's, whether it is the project's own or a dependency's. Every
 cookbook is still loaded, since includes cross files, but only that file's
@@ -109,7 +109,7 @@ fine from the including file.
 ## The host project is your editor's working directory
 
 Lint runs inside a Mix project, which provides the installed cookbooks
-your recipes refer to. A recipe group file lives in a cookbook, so the
+your recipes refer to. A chapter file lives in a cookbook, so the
 host is that cookbook's project. From an editor, it is the editor's
 working directory: start the editor there,
 
@@ -244,10 +244,10 @@ scripts may match on them.
 | `reserved_flag` | a declared flag with a reserved name (`Composer.Recipe.reserved_flags/0`) |
 | `invalid_alias`, `reserved_alias`, `duplicate_alias`, `alias_atom_target`, `invalid_alias_target`, `alias_shadows_cookbook` | a bad cookbook alias |
 | `unused_alias` (warning) | an alias none of the recipe's references use |
-| `inconsistent_alias` (warning) | one alias naming different cookbooks in one group |
-| `duplicate_recipe`, `invalid_recipe_name`, `group_recipe_clash` | recipe names |
-| `group_parse`, `recipe_eval`, `group_shape`, `group_read` | a group file that does not parse, raises, or is not a keyword list |
-| `invalid_group_name`, `recipes_subdir`, `empty_group` (warning) | group files |
+| `inconsistent_alias` (warning) | one alias naming different cookbooks in one chapter |
+| `duplicate_recipe`, `invalid_recipe_name`, `chapter_recipe_clash` | recipe names |
+| `chapter_parse`, `recipe_eval`, `chapter_shape`, `chapter_read` | a chapter file that does not parse, raises, or is not a keyword list |
+| `invalid_chapter_name`, `recipes_subdir`, `empty_chapter` (warning) | chapter files |
 | `legacy_recipes_dir` | a leftover `profiles/` directory in the cookbook |
 | `step_missing_meta`, `missing_step_test`, `requires_unresolved` | a step's metadata, test and `requires` |
 | `manifest_missing`, `manifest_stale` | the cookbook's manifest |
@@ -264,8 +264,8 @@ in question.
 
 `Composer.Lint` is a set of plain functions over discovered cookbooks;
 it prints nothing and returns `%{diagnostics: [Composer.Lint.Diagnostic.t()]}`
-(`run/3`), or per-file results for a set of group files
-(`files/3`). `Lint.owner/2` finds the cookbook a group file belongs to,
+(`run/3`), or per-file results for a set of chapter files
+(`files/3`). `Lint.owner/2` finds the cookbook a chapter file belongs to,
 `Lint.dependents/2` lists the recipes that include a recipe, directly or
-not, and `Composer.Recipe.Locator` indexes a group file's
+not, and `Composer.Recipe.Locator` indexes a chapter file's
 source (without evaluating it) for forward and cursor lookups.

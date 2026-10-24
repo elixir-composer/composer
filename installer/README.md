@@ -38,7 +38,7 @@ directory part (`/tmp/my_app`); its last segment must be a valid app name.
 ### REF
 
 ```
-REF    = COOKBOOK:GROUP/RECIPE[@SOURCE]
+REF    = COOKBOOK:CHAPTER/RECIPE[@SOURCE]
 SOURCE = <requirement>                 hex, kept as written: @~> 0.3, @>= 0.3.1
        | <version>                     hex: @0.3.1 is == 0.3.1, @0.3 is ~> 0.3 (no @: the latest)
        | github:OWNER/REPO[@GITREF]
@@ -46,7 +46,7 @@ SOURCE = <requirement>                 hex, kept as written: @~> 0.3, @>= 0.3.1
        | path:PATH
 ```
 
-REF is split on its first `@`: `COOKBOOK:GROUP/RECIPE` goes to
+REF is split on its first `@`: `COOKBOOK:CHAPTER/RECIPE` goes to
 `mix composer.recipe.run`, and `COOKBOOK@SOURCE` to
 `mix composer_new.install` (see [What it runs](#what-it-runs)).
 
@@ -69,7 +69,7 @@ Rules:
 
 - REF must name its cookbook: `lv/base` alone is an error (there are no
   shortnames).
-- `cb_std:GROUP/RECIPE` installs no cookbook (`cb_std` ships with composer), so
+- `cb_std:CHAPTER/RECIPE` installs no cookbook (`cb_std` ships with composer), so
   it takes no `@SOURCE`.
 - `hex:` refs name packages, not cookbooks, and are rejected.
 - Without REF, the app gets composer and nothing else. Run
@@ -123,7 +123,7 @@ printed first, every time. `--dry-run` stops there.
 3. **Record**: in APP, `git init`, `git add -A`, and a commit whose message
    is the `mix composer.new` command line. `git log --reverse` shows how to
    rebuild the app, and `recipe.run` gets the clean tree it needs.
-4. **Run**: in APP, `mix composer.recipe.run COOKBOOK:GROUP/RECIPE
+4. **Run**: in APP, `mix composer.recipe.run COOKBOOK:CHAPTER/RECIPE
    [RECIPE-FLAGS]`, which commits the recipe's changes. Skipped without a
    REF, or with `--no-recipe`.
 

@@ -2,7 +2,7 @@
 
 WARNING: this is experimental.  Proceed at your own risk! 
 
-`composer-ls` is a language server for recipe group files. It runs
+`composer-ls` is a language server for chapter files. It runs
 *beside* your Elixir language server (ElixirLS, Next LS, Expert), handles
 only recipe references, and replaces nothing. It keeps your cookbooks
 loaded in one BEAM, so there is no `mix` startup on each save.
@@ -19,7 +19,7 @@ It gives the editor:
   name that falls through to Hex) does, or an alias's target cookbook. A
   reference that doesn't resolve shows why.
 - **Goto-definition**: a step's source (also under `deps/`), a recipe's
-  key in its group file, or an alias's entry in `aliases:` (or the
+  key in its chapter file, or an alias's entry in `aliases:` (or the
   top-level binding it names). `hex:` references link to HexDocs.
 - **Completion** of step ids, recipe ids and the recipe's alias prefixes
   in `steps:`, and of recipe ids in `{:use, "`, even while the buffer
@@ -41,7 +41,7 @@ starts the server on stdio. Your editor runs this for you.
 
 Recipes refer to the cookbooks installed in a project, so the server
 needs one: the **host project** is the directory the server starts in.
-A recipe group file lives in a cookbook, `lib/composer/<name>/recipes/`,
+A chapter file lives in a cookbook, `lib/composer/<name>/recipes/`,
 inside that cookbook's Mix project, so the host is the nearest `mix.exs`
 above the file. Open the recipe in its project:
 
@@ -123,7 +123,7 @@ same diagnostics, and both together show each problem twice.
 
 ### Reload after editing step code
 
-Recipe edits need nothing: group files are read again on every lint.
+Recipe edits need nothing: chapter files are read again on every lint.
 Steps are compiled code, though, so after editing a step in a path-dep
 cookbook, run the `composer.reload` command. It recompiles the project
 and rediscovers the cookbooks, then reports "composer-ls: reloaded N
@@ -155,7 +155,7 @@ project.
 
 **The server died at startup, or garbage in the log.** Only protocol
 messages may go to stdout. The server sends its own logging, and any
-output from steps, cookbooks or recipe group files, to stderr, which
+output from steps, cookbooks or chapter files, to stderr, which
 Neovim writes to its LSP log (`:lua vim.cmd.tabnew(vim.lsp.log.get_filename())`).
 Mix itself prints dependency compilation on stdout before the server
 starts; `MIX_QUIET=1` (in the `cmd` function above) silences it.

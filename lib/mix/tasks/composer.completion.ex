@@ -9,7 +9,7 @@ defmodule Mix.Tasks.Composer.Completion do
       mix composer.completion fish > ~/.config/fish/completions/mix.fish
 
   The script completes step ids for `mix composer.step.{run,show,edit}`, recipe
-  ids for `mix composer.recipe.{run,show,edit}`, and cookbook and group names
+  ids for `mix composer.recipe.{run,show,edit}`, and cookbook and chapter names
   (`cb_lab`, `cb_lab:lv/`) for `mix composer.recipe.list`, from
   `_build/composer/index`
   without starting the BEAM, and hands every other `mix` completion to

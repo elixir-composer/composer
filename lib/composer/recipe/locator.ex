@@ -1,9 +1,9 @@
 defmodule Composer.Recipe.Locator do
   @moduledoc """
-  Finds where things are written in a recipe group file, without
+  Finds where things are written in a chapter file, without
   evaluating it.
 
-  `index/2` parses a group's source and records, for each recipe in the
+  `index/2` parses a chapter's source and records, for each recipe in the
   final keyword list:
 
     * `key` - the range of its name key (`auth:`)
@@ -73,8 +73,8 @@ defmodule Composer.Recipe.Locator do
   def encode_literal(literal, meta), do: {:ok, {:__block__, meta, [literal]}}
 
   @doc """
-  Indexes a group file's `source`; `path` is recorded and words errors.
-  Returns `{:error, {:group_parse, path, description, line}}` when the
+  Indexes a chapter file's `source`; `path` is recorded and words errors.
+  Returns `{:error, {:chapter_parse, path, description, line}}` when the
   source does not parse.
   """
   @spec index(String.t(), Path.t()) :: {:ok, t()} | {:error, term()}
@@ -84,16 +84,16 @@ defmodule Composer.Recipe.Locator do
         {:ok, build(quoted, source, path)}
 
       {:error, {location, message, token}} ->
-        {:error, {:group_parse, path, text(message) <> text(token), location_line(location)}}
+        {:error, {:chapter_parse, path, text(message) <> text(token), location_line(location)}}
     end
   end
 
-  @doc "Reads and indexes the group file at `path`."
+  @doc "Reads and indexes the chapter file at `path`."
   @spec index_file(Path.t()) :: {:ok, t()} | {:error, term()}
   def index_file(path) do
     case File.read(path) do
       {:ok, source} -> index(source, path)
-      {:error, reason} -> {:error, {:group_read, path, reason}}
+      {:error, reason} -> {:error, {:chapter_read, path, reason}}
     end
   end
 

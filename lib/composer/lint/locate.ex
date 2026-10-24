@@ -1,7 +1,7 @@
 defmodule Composer.Lint.Locate do
   @moduledoc false
   # Turns an anchor (`Composer.Error.anchor/1`) into a place: a file, a
-  # range in it (or nil) and related places. Group files are indexed with
+  # range in it (or nil) and related places. Chapter files are indexed with
   # `Composer.Recipe.Locator` once each, and step sources parsed once each;
   # `place/3` returns the updated struct holding those caches.
 
@@ -131,7 +131,7 @@ defmodule Composer.Lint.Locate do
     end
   end
 
-  @doc "The reference of a recipe named `name` in any group of `cookbook`, or nil."
+  @doc "The reference of a recipe named `name` in any chapter of `cookbook`, or nil."
   def recipe_named(locate, cookbook, name) do
     with %Cookbook{} = book <- locate.cookbooks[cookbook],
          id when is_binary(id) <- Enum.find(Cookbook.recipes(book), &(Path.basename(&1) == name)) do
@@ -139,7 +139,7 @@ defmodule Composer.Lint.Locate do
     end
   end
 
-  @doc "The group file of recipe `ref`, or nil."
+  @doc "The chapter file of recipe `ref`, or nil."
   def recipe_path(locate, ref) do
     case recipe_file(locate, ref) do
       {path, _name} -> path
@@ -147,7 +147,7 @@ defmodule Composer.Lint.Locate do
     end
   end
 
-  # The group file and recipe name of a recipe reference.
+  # The chapter file and recipe name of a recipe reference.
   defp recipe_file(locate, ref) do
     case locate.recipes[ref] do
       %{path: path, name: name} ->
@@ -156,8 +156,8 @@ defmodule Composer.Lint.Locate do
       nil ->
         with {:ok, %Ref{cookbook: cookbook, path: id}} <- Ref.parse(ref),
              %Cookbook{} = book <- locate.cookbooks[cookbook],
-             [group, name] <- String.split(id, "/"),
-             path when is_binary(path) <- Cookbook.group_path(book, group) do
+             [chapter, name] <- String.split(id, "/"),
+             path when is_binary(path) <- Cookbook.chapter_path(book, chapter) do
           {path, name}
         else
           _ -> nil

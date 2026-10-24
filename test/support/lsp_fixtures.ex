@@ -27,7 +27,7 @@ defmodule Composer.Test.LSPFixtures do
   @doc "The text of `recipes/app.exs`; positions in it are asserted by tests."
   def app_source, do: @app
 
-  @doc "Writes the cookbook `mine` in `dir`; returns the snapshot and the group's path."
+  @doc "Writes the cookbook `mine` in `dir`; returns the snapshot and the chapter's path."
   def workspace(dir) do
     File.mkdir_p!(Path.join(dir, "recipes"))
     path = Path.join(dir, "recipes/app.exs")

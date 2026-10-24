@@ -8,9 +8,9 @@ defmodule Composer.CompletionTest do
   @script Path.expand("priv/completion/composer.bash")
 
   @index """
-  group\tcc_lab:lv/\t1 recipe
-  group\tmine:ash/\t2 recipes
-  group\tmine:lv/\t1 recipe
+  chapter\tcc_lab:lv/\t1 recipe
+  chapter\tmine:ash/\t2 recipes
+  chapter\tmine:lv/\t1 recipe
   recipe\tcc_lab:lv/base\tLiveView base
   recipe\tmine:ash/auth\tAsh with auth
   recipe\tmine:ash/base\tAsh core
@@ -83,17 +83,17 @@ defmodule Composer.CompletionTest do
            ]
   end
 
-  test "recipe tasks complete recipe ids, group by group", %{tmp_dir: dir} do
+  test "recipe tasks complete recipe ids, chapter by chapter", %{tmp_dir: dir} do
     assert complete(dir, "mix composer.recipe.run mi") ==
              ["mine:ash/auth", "mine:ash/base", "mine:lv/base"]
 
-    # Together with "mine:" on the line: the recipes in the ash group.
+    # Together with "mine:" on the line: the recipes in the ash chapter.
     assert complete(dir, "mix composer.recipe.show mine:ash/") == ["ash/auth", "ash/base"]
     assert complete(dir, "mix composer.recipe.edit mine:lv/") == ["lv/base"]
     assert complete(dir, "mix composer.recipe.help mine:lv/") == ["lv/base"]
   end
 
-  test "recipe.list completes cookbooks and groups, in every position", %{tmp_dir: dir} do
+  test "recipe.list completes cookbooks and chapters, in every position", %{tmp_dir: dir} do
     assert complete(dir, "mix composer.recipe.list mi") ==
              ["mine:ash/", "mine:lv/", "mine"]
 

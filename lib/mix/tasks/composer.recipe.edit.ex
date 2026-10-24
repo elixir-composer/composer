@@ -1,8 +1,8 @@
 defmodule Mix.Tasks.Composer.Recipe.Edit do
-  @shortdoc "Opens a recipe's group file in your editor"
+  @shortdoc "Opens a recipe's chapter file in your editor"
 
   @moduledoc """
-  Opens the group file that holds a recipe in your editor, at the line
+  Opens the chapter file that holds a recipe in your editor, at the line
   where the recipe starts.
 
       $ mix composer.recipe.edit my_app:phx/app
@@ -19,7 +19,7 @@ defmodule Mix.Tasks.Composer.Recipe.Edit do
 
   The recipe is found as `mix composer.recipe.run` finds it, but is not
   evaluated, so a recipe that fails to load can still be opened, as long
-  as its group file parses. A recipe from a dependency's cookbook opens
+  as its chapter file parses. A recipe from a dependency's cookbook opens
   too, with a warning: edits under `deps/` are lost when the dependency
   is updated.
 

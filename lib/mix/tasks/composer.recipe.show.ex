@@ -70,7 +70,7 @@ defmodule Mix.Tasks.Composer.Recipe.Show do
     if opts[:json] do
       CLI.json(%{
         "recipe" => result.root,
-        "group" => recipe.group,
+        "chapter" => recipe.chapter,
         "name" => recipe.name,
         "path" => recipe.path,
         "shortdoc" => recipe.shortdoc,

@@ -1,4 +1,4 @@
-# A clean group: every rule passes.
+# A clean chapter: every rule passes.
 [
   base: [
     shortdoc: "The base",

@@ -12,10 +12,10 @@ defmodule Composer.Integration.LspStdioTest do
 
   @root File.cwd!()
 
-  # A group file that prints when it is evaluated, which lint does on
+  # A chapter file that prints when it is evaluated, which lint does on
   # every save: the output must not reach stdout.
   @recipe """
-  IO.puts("stray output from a recipe group")
+  IO.puts("stray output from a chapter")
 
   [
     app: [shortdoc: "App", steps: ["fake_dep:hi", "credoo"]]
@@ -57,7 +57,7 @@ defmodule Composer.Integration.LspStdioTest do
     File.write!(recipe, @recipe)
 
     # The manifest gives the server its completion entries without
-    # evaluating the group, which prints.
+    # evaluating the chapter, which prints.
     env = [{"MIX_ENV", "dev"}]
 
     for args <- [["compile"], ["composer.cookbook.manifest"]] do
@@ -107,7 +107,7 @@ defmodule Composer.Integration.LspStdioTest do
 
     state = drain(state)
     assert state.buffer == "", "stdout held more than protocol frames: #{inspect(state.buffer)}"
-    assert File.read!(context.stderr) =~ "stray output from a recipe group"
+    assert File.read!(context.stderr) =~ "stray output from a chapter"
   end
 
   defp start(%{app: app, env: env, stderr: stderr}) do

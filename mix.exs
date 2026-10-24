@@ -73,7 +73,7 @@ defmodule Composer.MixProject do
         Definitions: [Composer.Step, Composer.Step.Meta, Composer.Cookbook, Composer.Facets],
         "Recipes and references": [
           Composer.Recipe,
-          Composer.Recipe.Group,
+          Composer.Recipe.Chapter,
           Composer.Ref,
           Composer.Resolver,
           Composer.Discovery

@@ -126,7 +126,7 @@ defmodule Mix.Tasks.Composer.ListTest do
              %{
                "ref" => "mine:phx/standard_app",
                "cookbook" => "mine",
-               "group" => "phx",
+               "chapter" => "phx",
                "name" => "standard_app",
                "shortdoc" => "My usual setup"
              }
@@ -134,7 +134,7 @@ defmodule Mix.Tasks.Composer.ListTest do
              Enum.filter(json("composer.recipe.list", [])["recipes"], &(&1["cookbook"] == "mine"))
   end
 
-  test "recipe.list takes cookbooks and groups" do
+  test "recipe.list takes cookbooks and chapters" do
     refs =
       &Enum.map(json("composer.recipe.list", &1)["recipes"], fn p ->
         p["ref"]
@@ -153,7 +153,7 @@ defmodule Mix.Tasks.Composer.ListTest do
     assert refs.(["cb_std"]) == ["cb_std:debug/echo"]
   end
 
-  test "recipe.list --only-leaves hides recipes included within their group", %{tmp_dir: dir} do
+  test "recipe.list --only-leaves hides recipes included within their chapter", %{tmp_dir: dir} do
     File.write!(Path.join(dir, "recipes/site.exs"), """
     [
       ui: [shortdoc: "UI", steps: ["cb_std:setup/gitignore"]],
@@ -165,7 +165,7 @@ defmodule Mix.Tasks.Composer.ListTest do
     refs = &Enum.map(json("composer.recipe.list", &1)["recipes"], fn p -> p["ref"] end)
 
     # Unqualified and self-qualified includes both count; phx/standard_app
-    # and fake_book:nested/extra are only used from other groups.
+    # and fake_book:nested/extra are only used from other chapters.
     assert refs.(["mine:site/", "--only-leaves"]) == ["mine:site/app"]
     assert refs.(["mine", "--only-leaves"]) == ["mine:phx/standard_app", "mine:site/app"]
 
@@ -184,7 +184,7 @@ defmodule Mix.Tasks.Composer.ListTest do
     refute output =~ "mine:site/ui"
   end
 
-  test "recipe.list rejects commas, unknown cookbooks and groups" do
+  test "recipe.list rejects commas, unknown cookbooks and chapters" do
     assert_raise Mix.Error,
                  ~r/separate arguments.*mix composer.recipe.list mine fake_book/s,
                  fn ->
@@ -200,7 +200,7 @@ defmodule Mix.Tasks.Composer.ListTest do
     end
 
     assert_raise Mix.Error,
-                 ~r/fake_book has no recipe group "ash".*fake_book:main\/, fake_book:nested\//s,
+                 ~r/fake_book has no chapter "ash".*fake_book:main\/, fake_book:nested\//s,
                  fn ->
                    run("composer.recipe.list", ["fake_book:ash/"])
                  end
@@ -210,12 +210,12 @@ defmodule Mix.Tasks.Composer.ListTest do
     end
   end
 
-  test "recipe.list warns about a group that does not load", %{tmp_dir: dir} do
+  test "recipe.list warns about a chapter that does not load", %{tmp_dir: dir} do
     File.write!(Path.join(dir, "recipes/old.exs"), ~s(["cb_std:setup/credo"]\n))
 
     output = run("composer.recipe.list", ["mine"])
     assert output =~ "mine:phx/standard_app"
-    assert output =~ ~r/warning: Recipe group .*old.exs must evaluate to a keyword list/
+    assert output =~ ~r/warning: Chapter .*old.exs must evaluate to a keyword list/
 
     assert [warning] = json("composer.recipe.list", ["mine"])["warnings"]
     assert warning =~ "old.exs"
@@ -239,7 +239,7 @@ defmodule Mix.Tasks.Composer.ListTest do
     assert data["recipe"] == "mine:phx/standard_app"
     assert data["shortdoc"] == "My usual setup"
     assert data["doc"] == "Builds on fake_book:main/full."
-    assert data["group"] == "phx"
+    assert data["chapter"] == "phx"
     assert data["name"] == "standard_app"
 
     assert data["flags"] == [

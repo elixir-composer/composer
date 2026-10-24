@@ -14,9 +14,9 @@ defmodule Composer.Lint.DiagnosticsTest do
     %{cookbooks: cookbooks}
   end
 
-  defp config(dir, groups) do
+  defp config(dir, chapters) do
     File.mkdir_p!(Path.join(dir, "recipes"))
-    for {name, source} <- groups, do: File.write!(Path.join([dir, "recipes", name]), source)
+    for {name, source} <- chapters, do: File.write!(Path.join([dir, "recipes", name]), source)
     dir
   end
 
@@ -52,7 +52,7 @@ defmodule Composer.Lint.DiagnosticsTest do
            git_option_without_git multiple_git_refs source_conflict repo_source invalid_ref
            recipe_eval inconsistent_alias missing_step typo unknown_cookbook
            ambiguous dep_opts_on_step unknown_alias_target via_alias missing_recipe
-           alias_shadows_cookbook unused_alias conflicting_install cycle group_recipe_clash
+           alias_shadows_cookbook unused_alias conflicting_install cycle chapter_recipe_clash
            reserved_flag)a
 
       assert expected -- Enum.map(diagnostics, & &1.code) == []
@@ -80,7 +80,7 @@ defmodule Composer.Lint.DiagnosticsTest do
       assert at(find(diagnostics, :inconsistent_alias)) == {"refs.exs", 2, 12}
       # {:recipe, ref} and {:recipe_named, cookbook, name}: the name key.
       assert at(find(diagnostics, :recipe_shape)) == {"keys.exs", 8, 3}
-      assert at(find(diagnostics, :group_recipe_clash)) == {"refs.exs", 27, 3}
+      assert at(find(diagnostics, :chapter_recipe_clash)) == {"refs.exs", 27, 3}
       # {:file, path, line}: the whole line the exception names.
       eval = Enum.find(diagnostics, &(&1.code == :recipe_eval and &1.file =~ "raises"))
       assert {at(eval), eval.end_column} == {{"raises.exs", 3, 1}, 18}

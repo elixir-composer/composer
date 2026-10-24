@@ -1,8 +1,8 @@
 defmodule Composer.Recipe do
   @moduledoc """
   A recipe: a named, self-describing list of steps. Recipes live in
-  group files (see `Composer.Recipe.Group`), `recipes/<group>.exs`, and
-  are addressed as `<cookbook>:<group>/<name>`.
+  chapter files (see `Composer.Recipe.Chapter`), `recipes/<chapter>.exs`, and
+  are addressed as `<cookbook>:<chapter>/<name>`.
 
       # recipes/ash.exs
       [
@@ -60,7 +60,7 @@ defmodule Composer.Recipe do
       names a step rather than a package.
     * `{:use, "ref"}` / `{:use, "ref", if: :flag}` - another recipe's
       steps, in place. An unqualified name without a `/` (`{:use, "base"}`)
-      is the recipe of that name in the same group.
+      is the recipe of that name in the same chapter.
     * `{:task, "x.y", argv}` - compose any Igniter-aware Mix task
     * `{:queue, "x.y", argv}` - run a Mix task after the changes apply
 
@@ -81,8 +81,8 @@ defmodule Composer.Recipe do
       and `local`, and must not be the name of an installed cookbook
     * resolved entries, listings and `--json` show the real cookbook name
 
-  To share aliases across the recipes of a group, bind them before the
-  final list (see `Composer.Recipe.Group`).
+  To share aliases across the recipes of a chapter, bind them before the
+  final list (see `Composer.Recipe.Chapter`).
 
   ## Reserved flags
 
@@ -102,7 +102,7 @@ defmodule Composer.Recipe do
 
   > #### Warning {: .warning}
   >
-  > A group file is Elixir code, evaluated with `Code.eval_file/1`. Only
+  > A chapter file is Elixir code, evaluated with `Code.eval_file/1`. Only
   > use recipes you wrote or trust.
   """
 
@@ -110,7 +110,7 @@ defmodule Composer.Recipe do
     :id,
     :ref,
     :cookbook,
-    :group,
+    :chapter,
     :name,
     :path,
     :shortdoc,
@@ -140,7 +140,7 @@ defmodule Composer.Recipe do
           id: String.t(),
           ref: String.t(),
           cookbook: String.t(),
-          group: String.t(),
+          chapter: String.t(),
           name: String.t(),
           path: Path.t(),
           shortdoc: String.t(),
@@ -151,12 +151,12 @@ defmodule Composer.Recipe do
         }
 
   @doc """
-  Loads recipe `name` from the group file at `path`, in `cookbook`.
+  Loads recipe `name` from the chapter file at `path`, in `cookbook`.
   """
   @spec load(Path.t(), String.t(), String.t()) :: {:ok, t()} | {:error, term()}
   def load(path, cookbook, name) do
-    with {:ok, loaded} <- Composer.Recipe.Group.load_all(path, cookbook) do
-      Composer.Recipe.Group.pick(loaded, path, cookbook, name)
+    with {:ok, loaded} <- Composer.Recipe.Chapter.load_all(path, cookbook) do
+      Composer.Recipe.Chapter.pick(loaded, path, cookbook, name)
     end
   end
 

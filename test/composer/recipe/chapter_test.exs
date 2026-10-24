@@ -1,22 +1,22 @@
-defmodule Composer.Recipe.GroupTest do
+defmodule Composer.Recipe.ChapterTest do
   use ExUnit.Case, async: true
 
   alias Composer.{Error, Recipe}
-  alias Composer.Recipe.Group
+  alias Composer.Recipe.Chapter
 
-  @fixtures "test/support/fixtures/groups"
+  @fixtures "test/support/fixtures/chapters"
 
   defp fixture(name), do: Path.join(@fixtures, name <> ".exs")
-  defp load(name), do: Group.load(fixture(name), "mine")
+  defp load(name), do: Chapter.load(fixture(name), "mine")
 
-  test "loads every recipe of a group, with its metadata" do
+  test "loads every recipe of a chapter, with its metadata" do
     assert {:ok, [base, app]} = load("clean")
 
     assert %Recipe{
              id: "clean/base",
              ref: "mine:clean/base",
              cookbook: "mine",
-             group: "clean",
+             chapter: "clean",
              name: "base",
              shortdoc: "The base",
              doc: nil,
@@ -30,34 +30,34 @@ defmodule Composer.Recipe.GroupTest do
   end
 
   test "ids/1 reads names from the syntax tree, matching load/2" do
-    assert Group.ids(fixture("clean")) == {:ok, ["app", "base"]}
+    assert Chapter.ids(fixture("clean")) == {:ok, ["app", "base"]}
     {:ok, recipes} = load("clean")
     assert Enum.sort(Enum.map(recipes, & &1.name)) == ["app", "base"]
 
     # Never evaluated.
-    assert Group.ids(fixture("raises")) ==
-             {:error, {:group_shape, fixture("raises"), :not_literal}}
+    assert Chapter.ids(fixture("raises")) ==
+             {:error, {:chapter_shape, fixture("raises"), :not_literal}}
 
     # Bindings before a literal list are fine.
-    assert Group.ids(fixture("bindings")) == {:ok, ["base"]}
+    assert Chapter.ids(fixture("bindings")) == {:ok, ["base"]}
     assert {:ok, [%{steps: ["cb_std:setup/gitignore"]}]} = load("bindings")
   end
 
   test "a non-literal top level cannot be listed" do
     path = fixture("not_literal")
-    assert Group.ids(path) == {:error, {:group_shape, path, :not_literal}}
-    assert Error.message({:group_shape, path, :not_literal}) =~ "literal keyword list"
+    assert Chapter.ids(path) == {:error, {:chapter_shape, path, :not_literal}}
+    assert Error.message({:chapter_shape, path, :not_literal}) =~ "literal keyword list"
   end
 
-  test "an empty group has no recipes" do
+  test "an empty chapter has no recipes" do
     assert load("empty") == {:ok, []}
-    assert Group.ids(fixture("empty")) == {:ok, []}
+    assert Chapter.ids(fixture("empty")) == {:ok, []}
   end
 
-  test "an old single-recipe file points at the group format" do
+  test "an old single-recipe file points at the chapter format" do
     path = fixture("old_format")
 
-    assert {:error, {:group_shape, ^path, ["cb_std:setup/credo", _]} = reason} =
+    assert {:error, {:chapter_shape, ^path, ["cb_std:setup/credo", _]} = reason} =
              load("old_format")
 
     message = Error.message(reason)
@@ -68,7 +68,7 @@ defmodule Composer.Recipe.GroupTest do
 
   test "shape errors name the file and recipe" do
     path = fixture("not_keyword")
-    assert {:error, {:group_shape, ^path, %{}}} = load("not_keyword")
+    assert {:error, {:chapter_shape, ^path, %{}}} = load("not_keyword")
 
     assert {:error, {:recipe_missing_key, "mine:missing_shortdoc/base", :shortdoc}} =
              load("missing_shortdoc")
@@ -94,7 +94,7 @@ defmodule Composer.Recipe.GroupTest do
     assert Error.message(reason) =~ "--with is reserved by mix composer.new"
 
     {term, _} = Code.eval_file(fixture("reserved_flag"))
-    {[], errors} = Group.check(term, fixture("reserved_flag"), "mine")
+    {[], errors} = Chapter.check(term, fixture("reserved_flag"), "mine")
 
     assert Enum.sort(errors) == [
              {:reserved_flag, "mine:reserved_flag/base", :extra_dep},
@@ -117,7 +117,7 @@ defmodule Composer.Recipe.GroupTest do
 
   test "check/3 reports every problem" do
     {term, _} = Code.eval_file(fixture("bad_value"))
-    {[], errors} = Group.check(term, fixture("bad_value"), "mine")
+    {[], errors} = Chapter.check(term, fixture("bad_value"), "mine")
 
     assert {:bad_recipe_value, "mine:bad_value/base", :shortdoc, ""} in errors
     assert {:bad_recipe_value, "mine:bad_value/base", :flags, [credo: 1]} in errors
@@ -127,8 +127,8 @@ defmodule Composer.Recipe.GroupTest do
     path = fixture("duplicate")
     assert {:error, {:duplicate_recipe, ^path, "base"} = reason} = load("duplicate")
     assert Error.message(reason) =~ "defines the recipe base more than once"
-    assert {:ok, names} = Group.names(path)
-    assert Group.duplicates(names) == ["base"]
+    assert {:ok, names} = Chapter.names(path)
+    assert Chapter.duplicates(names) == ["base"]
   end
 
   test "a raising file and a syntax error are reported" do
@@ -136,15 +136,15 @@ defmodule Composer.Recipe.GroupTest do
     assert {:error, {:recipe_eval, "mine:raises/", _, %RuntimeError{}, 1}} = load("raises")
 
     path = "test/support/fixtures/syntax_error.exs"
-    assert {:error, {:group_parse, ^path, _, 1}} = Group.ids(path)
-    assert {:error, {:recipe_eval, _, ^path, _, 1}} = Group.load(path, "mine")
+    assert {:error, {:chapter_parse, ^path, _, 1}} = Chapter.ids(path)
+    assert {:error, {:recipe_eval, _, ^path, _, 1}} = Chapter.load(path, "mine")
   end
 
-  test "group names are lowercase segments" do
-    assert {:error, {:invalid_group_name, _}} = load("BadName")
-    assert Group.valid_name?("lv_base")
-    refute Group.valid_name?("lv-base")
-    refute Group.valid_name?("My Group")
+  test "chapter names are lowercase segments" do
+    assert {:error, {:invalid_chapter_name, _}} = load("BadName")
+    assert Chapter.valid_name?("lv_base")
+    refute Chapter.valid_name?("lv-base")
+    refute Chapter.valid_name?("My Chapter")
   end
 
   describe "aliases" do
@@ -154,13 +154,13 @@ defmodule Composer.Recipe.GroupTest do
       assert app.aliases == [fb: "fake_book"]
       assert {:ok, %{aliases: []}} = Recipe.load(fixture("clean"), "mine", "base")
 
-      assert Group.names(fixture("aliases")) == {:ok, ["base", "app"]}
-      assert Group.ids(fixture("aliases")) == {:ok, ["app", "base"]}
+      assert Chapter.names(fixture("aliases")) == {:ok, ["base", "app"]}
+      assert Chapter.ids(fixture("aliases")) == {:ok, ["app", "base"]}
     end
 
     test "invalid aliases are per-recipe errors; siblings still load" do
       path = fixture("bad_aliases")
-      assert {:ok, {[good], errors}} = Group.load_all(path, "mine")
+      assert {:ok, {[good], errors}} = Chapter.load_all(path, "mine")
       assert good.name == "good"
 
       assert {:reserved_alias, "mine:bad_aliases/reserved", :cb_std} in errors
@@ -173,7 +173,7 @@ defmodule Composer.Recipe.GroupTest do
       end
 
       assert {:error, {:alias_atom_target, _, _, _} = reason} =
-               Group.pick({[good], errors}, path, "mine", "atom")
+               Chapter.pick({[good], errors}, path, "mine", "atom")
 
       assert Error.message(reason) =~ ~s(aliases: [fb: "fake_book"])
       assert Error.message({:reserved_alias, "r", :cb_std}) =~ "reserved"

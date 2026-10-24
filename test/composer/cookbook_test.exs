@@ -88,16 +88,16 @@ defmodule Composer.CookbookTest do
     end
   end
 
-  test "a group file with an invalid name fails", %{tmp_dir: dir} do
-    assert_raise CompileError, ~r/Recipe group .*lv-base.exs has an invalid name/, fn ->
-      compile(dir, "Composer.Badgroup", "badgroup", :badgroup, %{
+  test "a chapter file with an invalid name fails", %{tmp_dir: dir} do
+    assert_raise CompileError, ~r/Chapter .*lv-base.exs has an invalid name/, fn ->
+      compile(dir, "Composer.Badchapter", "badchapter", :badchapter, %{
         "recipes/lv-base.exs" => "[]"
       })
     end
   end
 
-  test "recipes are group/name ids read from group files", %{tmp_dir: dir} do
-    name = unique("grouped")
+  test "recipes are chapter/name ids read from chapter files", %{tmp_dir: dir} do
+    name = unique("chaptered")
 
     [{mod, _}] =
       compile(dir, "Composer." <> Macro.camelize(name), name, String.to_atom(name), %{
@@ -108,7 +108,7 @@ defmodule Composer.CookbookTest do
     assert mod.__composer_cookbook__().recipes == ["ash/auth", "ash/base"]
   end
 
-  test "groups under a leftover profiles/ directory are not read", %{tmp_dir: dir} do
+  test "chapters under a leftover profiles/ directory are not read", %{tmp_dir: dir} do
     name = unique("legacy")
 
     [{mod, _}] =
@@ -125,7 +125,7 @@ defmodule Composer.CookbookTest do
   end
 
   test "a recipe that does not parse fails", %{tmp_dir: dir} do
-    assert_raise CompileError, ~r/recipe .*broken.exs does not parse/, fn ->
+    assert_raise CompileError, ~r/chapter .*broken.exs does not parse/, fn ->
       compile(dir, "Composer.Parsefail", "parsefail", :parsefail, %{
         "recipes/broken.exs" => File.read!("test/support/fixtures/syntax_error.exs")
       })

@@ -127,16 +127,16 @@ defmodule Composer.Integration.HostAppTest do
     assert status != 0
   end
 
-  test "a grouped recipe in a path-dep cookbook uses a sibling and takes a declared flag",
+  test "a recipe in a path-dep cookbook's chapter uses a sibling and takes a declared flag",
        %{app: app} do
-    group = Path.join(@root, "test/fixtures/fake_dep/lib/composer/fake_dep/recipes/mine.exs")
+    chapter = Path.join(@root, "test/fixtures/fake_dep/lib/composer/fake_dep/recipes/mine.exs")
 
     # Compiling has work to do, yet stdout holds nothing but the JSON:
     # MIX_QUIET silences the dependencies Mix compiles before the task can
     # start; the task compiles the project quietly itself.
     lint_json = fn env ->
       {json, 0} =
-        System.cmd("mix", ["composer.cookbook.lint", "--format", "json", "--file", group],
+        System.cmd("mix", ["composer.cookbook.lint", "--format", "json", "--file", chapter],
           cd: app,
           env: [{"MIX_ENV", "dev"} | env]
         )
@@ -149,7 +149,7 @@ defmodule Composer.Integration.HostAppTest do
     assert lint_json.([]) == []
 
     mix!(app, ["compile"])
-    assert mix!(app, ["composer.cookbook.lint", "--file", group]) =~ "mine.exs is valid."
+    assert mix!(app, ["composer.cookbook.lint", "--file", chapter]) =~ "mine.exs is valid."
 
     show = mix!(app, ["composer.recipe.show", "fake_dep:mine/app"])
     assert show =~ ~r/--ignore\s+Add macOS files/

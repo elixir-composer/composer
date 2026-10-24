@@ -1,7 +1,7 @@
 # Cookbooks
 
 A **cookbook** is one package's tree of steps and recipes. A cookbook
-contains recipes; recipes are lists of steps, filed in groups; steps render
+contains recipes; recipes are lists of steps, filed in chapters; steps render
 templates, which live beside them. Every cookbook has the same layout:
 
 ```
@@ -12,7 +12,7 @@ lib/composer/cc_lab/
     ash/postgres.ex                             #   cc_lab:ash/postgres
     astral/nav1.ex                              #   cc_lab:astral/nav1
     astral/_nav1/navbar.astral                  #   its template: template("navbar.astral")
-  recipes/                                      # recipe groups
+  recipes/                                      # chapters
     lv.exs                                      #   cc_lab:lv/base, cc_lab:lv/auth, ...
   manifest.exs                                  # written by mix composer.cookbook.manifest
 test/composer/cc_lab/steps/
@@ -167,12 +167,12 @@ entry. See [Hex packages](recipes.md#hex-packages).
 
 ## Recipes
 
-Recipe groups are the `.exs` files directly under `recipes/`; each holds
-one or more recipes, addressed as `<cookbook>:<group>/<name>`. See the
+Chapters are the `.exs` files directly under `recipes/`; each holds
+one or more recipes, addressed as `<cookbook>:<chapter>/<name>`. See the
 [recipes guide](recipes.md). Inside a cookbook, unqualified references in
 a recipe resolve to the cookbook's own steps and recipes first, and an
-unqualified `{:use, "name"}` is the recipe `name` in the same group. A
-group file with an invalid name (`lv-base.exs`) or that does not parse is a
+unqualified `{:use, "name"}` is the recipe `name` in the same chapter. A
+chapter file with an invalid name (`lv-base.exs`) or that does not parse is a
 compile error.
 
 ## Templates
@@ -196,7 +196,7 @@ Hex packages ship only the files listed in `package: [files: ...]` in
 
 `mix composer.cookbook.manifest` writes `manifest.exs`: plain data with the
 cookbook's name, package, and every step's id, summary and facets, and every
-recipe's id (`group/name`) and shortdoc. Tools such as shell completion read it without
+recipe's id (`chapter/name`) and shortdoc. Tools such as shell completion read it without
 running your code. Commit it; it is never written at compile time, and
 `mix composer.cookbook.lint` fails when it is stale.
 
@@ -209,10 +209,10 @@ exits non-zero on failure so it can run in CI:
   * every step has a test at `test/composer/<cookbook>/steps/<id>_test.exs`
   * every step reference in `requires` resolves
   * the manifest is up to date
-  * every recipe group is well formed: a keyword list of recipes with a
+  * every chapter is well formed: a keyword list of recipes with a
     one-line `shortdoc`, `steps`, no unknown keys, no duplicate names, every
     `if:` flag declared, no reserved flag name, no subdirectory under
-    `recipes/`, and no recipe named like a group
+    `recipes/`, and no recipe named like a chapter
   * every recipe resolves
   * there is no cookbook-level `templates/` directory, every file under
     `steps/` belongs to a step, every `.ex` file there is a step, and every
@@ -223,7 +223,7 @@ whose path is computed at run time are not checked), and about a path
 dependency in a project with a `package:` section (see "Publishing a
 cookbook" below).
 
-`mix composer.cookbook.lint --file PATH` checks one group file of any
+`mix composer.cookbook.lint --file PATH` checks one chapter file of any
 installed cookbook, which is what an editor runs on save. Every problem is reported at its file, line and column;
 `--format github` turns them into pull request annotations. See the
 [lint guide](lint.md) for the formats, the diagnostic codes and editor
@@ -245,7 +245,7 @@ mix composer.gen.cookbook
 rm lib/composer/cb_mine/recipes/app.exs   # the generated sample recipe
 ```
 
-Add your groups under `lib/composer/cb_mine/recipes/` (or with
+Add your chapters under `lib/composer/cb_mine/recipes/` (or with
 `mix composer.gen.recipe lv/base`), then refresh the manifest and lint:
 
 ```bash
@@ -270,7 +270,7 @@ references (`cb_lab:lv/base`) need those cookbooks at lint and run time.
 Mix leaves a dependency's own `only:` dependencies out of the app that
 uses it, so with `only: :dev` an app installing `cb_mine` would not get
 `cb_lab`, and every `cb_lab:` reference would name an unknown cookbook.
-An unqualified `group/name` in your groups resolves against your own
+An unqualified `chapter/name` in your chapters resolves against your own
 cookbook first.
 
 Install it into an app as a dev and test dependency:
@@ -330,7 +330,7 @@ whose composer dependency is dev-only needs the same guard, which is why
 
 ## Files your tools will see
 
-Recipe group files are `.exs` files under `lib/`, so editors, Credo and
+Chapter files are `.exs` files under `lib/`, so editors, Credo and
 the formatter see them. That is harmless: they are plain keyword lists of
 data.
 Template files are copied verbatim. `.eex` files are not formatter

@@ -7,7 +7,7 @@ defmodule Composer.LSP.CompleteTest do
     {"cookbook", "fake_book", "A fixture cookbook"},
     {"step", "fake_book:hello", "Writes hello.txt"},
     {"recipe", "fake_book:main/base", "The base recipe"},
-    {"group", "fake_book:main/", "2 recipes"}
+    {"chapter", "fake_book:main/", "2 recipes"}
   ]
 
   # Does not parse: completion works by line scan.

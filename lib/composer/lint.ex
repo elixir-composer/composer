@@ -16,7 +16,7 @@ defmodule Composer.Lint do
     * every step has a test at `test/composer/<cookbook>/steps/<id>_test.exs`
     * every step reference in `requires` resolves
     * the committed manifest holds the same data as a freshly built one
-    * the recipe group rules below
+    * the chapter rules below
     * every recipe resolves (with every include followed); this also
       reports a cookbook alias named like an installed cookbook
     * a leftover cookbook-level `templates/` directory
@@ -28,12 +28,12 @@ defmodule Composer.Lint do
 
   Files under `steps/` that git ignores are skipped.
 
-  Recipe group rules:
+  Chapter rules:
 
-    * a subdirectory under `recipes/` (groups are files)
-    * a group file with an invalid name
-    * a group file that is not a keyword list of recipes
-    * a duplicate recipe name within a group
+    * a subdirectory under `recipes/` (chapters are files)
+    * a chapter file with an invalid name
+    * a chapter file that is not a keyword list of recipes
+    * a duplicate recipe name within a chapter
     * a recipe missing `shortdoc` or `steps`, with an unknown key, or with
       a value of the wrong type; a `shortdoc` on more than one line
     * an `if:` flag that the recipe does not declare in its own `flags`
@@ -41,13 +41,13 @@ defmodule Composer.Lint do
     * an invalid, reserved (`cb_std`, `hex`, `local`), duplicate or
       atom-valued cookbook alias, or one whose target is not a package
       cookbook name
-    * a recipe named like a group of the same cookbook
+    * a recipe named like a chapter of the same cookbook
 
   Warnings:
 
-    * an empty group
+    * an empty chapter
     * a cookbook alias that none of the recipe's own references use
-    * an alias that names different cookbooks in two recipes of one group
+    * an alias that names different cookbooks in two recipes of one chapter
     * a step and a recipe share an id, which is allowed but confusing
     * a file in a step's template directory that its `template/1` calls
       never refer to (skipped for a step whose `template/1` path is
@@ -64,7 +64,7 @@ defmodule Composer.Lint do
 
   alias Composer.{Error, Manifest, Ref, Cookbook, Resolver}
   alias Composer.Lint.{Diagnostic, Locate}
-  alias Composer.Recipe.Group
+  alias Composer.Recipe.Chapter
 
   @type result :: %{diagnostics: [Diagnostic.t()]}
 
@@ -106,10 +106,10 @@ defmodule Composer.Lint do
   end
 
   @doc """
-  Lints recipe group files: for each of `paths`, the diagnostics located
+  Lints chapter files: for each of `paths`, the diagnostics located
   in it.
 
-  Every cookbook's groups are checked, since includes cross files, but
+  Every cookbook's chapters are checked, since includes cross files, but
   only the recipes in `paths` are resolved as a whole. Each
   `{:use, ...}` in those files whose target, or anything it includes,
   has problems gets one `:include_problems` diagnostic, with the problems
@@ -154,7 +154,7 @@ defmodule Composer.Lint do
   @doc """
   Returns the recipes that include recipe `ref` (or any of a list of
   refs), directly or through other includes, as
-  `%{ref: ref, path: group_file}`, sorted by ref. The given refs are left
+  `%{ref: ref, path: chapter_file}`, sorted by ref. The given refs are left
   out.
   """
   @spec dependents([Cookbook.t()], String.t() | [String.t()]) ::
@@ -185,7 +185,7 @@ defmodule Composer.Lint do
   end
 
   @doc """
-  Finds the cookbook a recipe group file belongs to: the one in
+  Finds the cookbook a chapter file belongs to: the one in
   `cookbooks` whose `recipes/` holds it.
   """
   @spec owner([Cookbook.t()], Path.t()) :: {:ok, Cookbook.t()} | {:error, term()}
@@ -320,7 +320,7 @@ defmodule Composer.Lint do
 
   # One diagnostic at each {:use, ...} of `recipe` whose target, or what
   # it includes, has problems: those in the included recipes, and those
-  # about no recipe in particular in their group files.
+  # about no recipe in particular in their chapter files.
   defp summaries(recipe, index, graph, located, locate) do
     for {written, {:ok, target}} <- Resolver.included(index, recipe),
         reached = closure(graph, [target]),
@@ -367,27 +367,27 @@ defmodule Composer.Lint do
     end)
   end
 
-  # -- recipe groups -----------------------------------------------------
+  # -- chapters ----------------------------------------------------------
 
-  # The group checks of `cookbook` and the shallow pass: each entry of each
+  # The chapter checks of `cookbook` and the shallow pass: each entry of each
   # loaded recipe checked on its own, so every bad reference is reported.
   defp recipes(cookbook, index) do
     {files, subdirs} = Cookbook.recipe_entries(cookbook)
 
     results =
-      for {group, path} <- files do
-        if Group.valid_name?(group),
-          do: group(path, cookbook.name),
-          else: %{problems: [{:error, {:invalid_group_name, path}, nil}], loaded: []}
+      for {chapter, path} <- files do
+        if Chapter.valid_name?(chapter),
+          do: chapter(path, cookbook.name),
+          else: %{problems: [{:error, {:invalid_chapter_name, path}, nil}], loaded: []}
       end
 
     loaded = Enum.flat_map(results, & &1.loaded)
-    group_names = for {group, _path} <- files, Group.valid_name?(group), do: group
+    chapter_names = for {chapter, _path} <- files, Chapter.valid_name?(chapter), do: chapter
 
     clashes =
       for name <- loaded |> Enum.map(& &1.name) |> Enum.uniq(),
-          name in group_names,
-          do: {:error, {:group_recipe_clash, cookbook.name, name}, nil}
+          name in chapter_names,
+          do: {:error, {:chapter_recipe_clash, cookbook.name, name}, nil}
 
     shallow =
       for recipe <- loaded,
@@ -405,7 +405,7 @@ defmodule Composer.Lint do
     }
   end
 
-  # Recipe groups used to live under profiles/, which is no longer read.
+  # Chapters used to live under profiles/, which is no longer read.
   defp legacy_dir(%Cookbook{kind: :code} = cookbook) do
     with dir when is_binary(dir) <- Cookbook.source_dir(cookbook),
          path = Path.join(dir, "profiles"),
@@ -419,14 +419,14 @@ defmodule Composer.Lint do
   defp legacy_dir(_cookbook), do: []
 
   # Evaluated first, so the shape error shows what the file holds; the
-  # syntax-tree check (names must be literal) only runs on a valid group.
-  defp group(path, cookbook) do
-    case Group.eval(path, cookbook) do
+  # syntax-tree check (names must be literal) only runs on a valid chapter.
+  defp chapter(path, cookbook) do
+    case Chapter.eval(path, cookbook) do
       {:ok, term} ->
-        {loaded, errors} = Group.check_tagged(term, path, cookbook)
+        {loaded, errors} = Chapter.check_tagged(term, path, cookbook)
 
         errors =
-          case errors == [] && Group.names(path) do
+          case errors == [] && Chapter.names(path) do
             {:error, reason} -> [{reason, nil}]
             _ -> errors
           end
@@ -436,9 +436,9 @@ defmodule Composer.Lint do
               String.contains?(String.trim(recipe.shortdoc), "\n"),
               do: {:error, {:multiline_shortdoc, recipe.ref}, recipe.ref}
 
-        empty = if term == [], do: [{:warning, {:empty_group, path}, nil}], else: []
+        empty = if term == [], do: [{:warning, {:empty_chapter, path}, nil}], else: []
 
-        # A group with problems is not resolved, to avoid repeating them.
+        # A chapter with problems is not resolved, to avoid repeating them.
         loaded = if errors == [], do: loaded, else: []
 
         %{

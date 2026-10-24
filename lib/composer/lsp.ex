@@ -1,6 +1,6 @@
 defmodule Composer.LSP do
   @moduledoc """
-  `composer-ls`, the language server for recipe group files, started by
+  `composer-ls`, the language server for chapter files, started by
   `mix composer.lsp`. See the Composer LSP guide.
 
   The server runs beside the Elixir language server and handles recipe

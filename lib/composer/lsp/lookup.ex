@@ -40,12 +40,12 @@ defmodule Composer.LSP.Lookup do
     resolve(cursor, cookbooks, owner, Path.basename(path, ".exs"))
   end
 
-  defp resolve(%{kind: :alias, value: name, aliases: aliases}, _cookbooks, _owner, _group) do
+  defp resolve(%{kind: :alias, value: name, aliases: aliases}, _cookbooks, _owner, _chapter) do
     name = to_string(name)
     {:alias, name, Map.get(aliases, name)}
   end
 
-  defp resolve(%{kind: :ref, value: written} = cursor, cookbooks, owner, _group)
+  defp resolve(%{kind: :ref, value: written} = cursor, cookbooks, owner, _chapter)
        when is_binary(written) do
     case Resolver.find_step(cookbooks, expand(written, cursor.aliases), owner && owner.name) do
       {:ok, {:step, meta}} -> {:step, meta}
@@ -54,16 +54,16 @@ defmodule Composer.LSP.Lookup do
     end
   end
 
-  defp resolve(%{kind: :use, value: written} = cursor, cookbooks, owner, group)
+  defp resolve(%{kind: :use, value: written} = cursor, cookbooks, owner, chapter)
        when is_binary(written) do
     context = owner && owner.name
 
     found =
       case Ref.parse(written) do
         {:ok, %Ref{cookbook: nil} = ref} when context != nil ->
-          if Ref.grouped?(ref),
+          if Ref.nested?(ref),
             do: Resolver.find_recipe(cookbooks, written, context),
-            else: in_group(cookbooks, context, group, written)
+            else: in_chapter(cookbooks, context, chapter, written)
 
         _ ->
           Resolver.find_recipe(cookbooks, expand(written, cursor.aliases), context)
@@ -72,10 +72,10 @@ defmodule Composer.LSP.Lookup do
     with {:ok, id} <- found, do: load(cookbooks, id)
   end
 
-  defp resolve(%{kind: :recipe, value: name}, cookbooks, owner, group) when owner != nil,
-    do: load(cookbooks, Ref.id(owner.name, group <> "/" <> name))
+  defp resolve(%{kind: :recipe, value: name}, cookbooks, owner, chapter) when owner != nil,
+    do: load(cookbooks, Ref.id(owner.name, chapter <> "/" <> name))
 
-  defp resolve(_cursor, _cookbooks, _owner, _group), do: nil
+  defp resolve(_cursor, _cookbooks, _owner, _chapter), do: nil
 
   @doc """
   The cookbooks a lookup resolves against: the snapshot's.
@@ -90,9 +90,9 @@ defmodule Composer.LSP.Lookup do
     end
   end
 
-  # An unqualified {:use, "name"} is the recipe `name` in the same group.
-  defp in_group(cookbooks, context, group, name) do
-    id = group <> "/" <> name
+  # An unqualified {:use, "name"} is the recipe `name` in the same chapter.
+  defp in_chapter(cookbooks, context, chapter, name) do
+    id = chapter <> "/" <> name
     book = Enum.find(cookbooks, &(&1.name == context))
 
     if book && id in Cookbook.recipes(book),

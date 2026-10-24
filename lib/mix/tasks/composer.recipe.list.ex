@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.Composer.Recipe.List do
-  @shortdoc "Lists recipes, by cookbook or group"
+  @shortdoc "Lists recipes, by cookbook or chapter"
 
   @moduledoc """
   Lists every cookbook's recipes with their shortdocs, in discovery order.
@@ -11,18 +11,18 @@ defmodule Mix.Tasks.Composer.Recipe.List do
       mix composer.recipe.list                 # every cookbook
       mix composer.recipe.list cb_lab          # one cookbook
       mix composer.recipe.list cb_lab cb_mine  # several cookbooks
-      mix composer.recipe.list cb_lab:base/    # one group (note the slash)
+      mix composer.recipe.list cb_lab:base/    # one chapter (note the slash)
 
-  Cookbooks are separate arguments, not a comma-separated list. A group
+  Cookbooks are separate arguments, not a comma-separated list. A chapter
   file that cannot be loaded is reported as a warning, with its path.
 
   ## Leaf recipes
 
-  A recipe is a *leaf* when no other recipe in its own group includes it
+  A recipe is a *leaf* when no other recipe in its own chapter includes it
   with `{:use, ...}`. Leaves are the recipes meant to be run directly; the
   others are building blocks for them. Only includes within the same
-  cookbook and group count: a recipe that another group or cookbook uses is
-  still a leaf in its own group. An include that does not resolve is
+  cookbook and chapter count: a recipe that another chapter or cookbook uses is
+  still a leaf in its own chapter. An include that does not resolve is
   ignored.
 
       mix composer.recipe.list cb_lab:base/ --only-leaves
@@ -40,7 +40,7 @@ defmodule Mix.Tasks.Composer.Recipe.List do
   use Mix.Task
 
   alias Composer.{CLI, Error, Recipe, Cookbook, Resolver}
-  alias Composer.Recipe.Group
+  alias Composer.Recipe.Chapter
 
   @impl Mix.Task
   def run(argv) do
@@ -61,11 +61,11 @@ defmodule Mix.Tasks.Composer.Recipe.List do
       end
 
     {recipes, problems} =
-      Enum.reduce(selected, {[], []}, fn {cookbook, group}, {recipes, problems} ->
+      Enum.reduce(selected, {[], []}, fn {cookbook, chapter}, {recipes, problems} ->
         {loaded, errors} = Cookbook.load_recipes(cookbook)
-        included = included_in_group(index, loaded)
+        included = included_in_chapter(index, loaded)
 
-        loaded = if group, do: Enum.filter(loaded, &(&1.group == group)), else: loaded
+        loaded = if chapter, do: Enum.filter(loaded, &(&1.chapter == chapter)), else: loaded
 
         loaded =
           loaded
@@ -73,7 +73,9 @@ defmodule Mix.Tasks.Composer.Recipe.List do
           |> Enum.filter(fn {_recipe, leaf} -> leaf or !opts[:only_leaves] end)
 
         errors =
-          if group, do: Enum.filter(errors, &(Group.name(elem(&1, 0)) == group)), else: errors
+          if chapter,
+            do: Enum.filter(errors, &(Chapter.name(elem(&1, 0)) == chapter)),
+            else: errors
 
         {recipes ++ Enum.map(loaded, &data/1), problems ++ errors}
       end)
@@ -89,7 +91,7 @@ defmodule Mix.Tasks.Composer.Recipe.List do
         Mix.shell().info("""
         No recipes found. Create one in this project's cookbook with:
 
-            mix composer.gen.recipe my_group/my_recipe
+            mix composer.gen.recipe my_chapter/my_recipe
         """)
 
         print_warnings(warnings)
@@ -108,12 +110,12 @@ defmodule Mix.Tasks.Composer.Recipe.List do
     end
   end
 
-  # The refs of the recipes that a recipe in their own group includes.
-  defp included_in_group(index, recipes) do
+  # The refs of the recipes that a recipe in their own chapter includes.
+  defp included_in_chapter(index, recipes) do
     for recipe <- recipes,
         {_written, {:ok, ref}} <- Resolver.included(index, recipe),
         ref != recipe.ref,
-        Path.dirname(ref) == recipe.cookbook <> ":" <> recipe.group,
+        Path.dirname(ref) == recipe.cookbook <> ":" <> recipe.chapter,
         into: MapSet.new(),
         do: ref
   end
@@ -122,7 +124,7 @@ defmodule Mix.Tasks.Composer.Recipe.List do
     %{
       "ref" => recipe.ref,
       "cookbook" => recipe.cookbook,
-      "group" => recipe.group,
+      "chapter" => recipe.chapter,
       "name" => recipe.name,
       "id" => recipe.id,
       "shortdoc" => recipe.shortdoc,
@@ -148,41 +150,44 @@ defmodule Mix.Tasks.Composer.Recipe.List do
     end
   end
 
-  # An argument is a cookbook name, or "cookbook:group/" for one group.
+  # An argument is a cookbook name, or "cookbook:chapter/" for one chapter.
   defp select!(arg, cookbooks) do
     case String.split(arg, ":", parts: 2) do
       [name] ->
         {cookbook!(name, arg, cookbooks), nil}
 
-      [name, group_slash] ->
-        group =
-          case String.split(group_slash, "/") do
-            [group, ""] -> group
+      [name, chapter_slash] ->
+        chapter =
+          case String.split(chapter_slash, "/") do
+            [chapter, ""] -> chapter
             _ -> nil
           end
 
-        unless group && Group.valid_name?(group) do
+        unless chapter && Chapter.valid_name?(chapter) do
           Mix.raise("""
-          Invalid argument #{inspect(arg)}. List a group as "cookbook:group/", with a \
+          Invalid argument #{inspect(arg)}. List a chapter as "cookbook:chapter/", with a \
           trailing slash (e.g. cb_lab:base/), or a whole cookbook by name.
           """)
         end
 
         cookbook = cookbook!(name, arg, cookbooks)
 
-        unless Cookbook.group_path(cookbook, group) do
-          groups = Enum.map(Cookbook.groups(cookbook), &elem(&1, 0))
+        unless Cookbook.chapter_path(cookbook, chapter) do
+          chapters = Enum.map(Cookbook.chapters(cookbook), &elem(&1, 0))
 
           known =
-            case groups do
-              [] -> "#{name} has no recipe groups."
-              groups -> "Groups in #{name}: " <> Enum.map_join(groups, ", ", &"#{name}:#{&1}/")
+            case chapters do
+              [] ->
+                "#{name} has no chapters."
+
+              chapters ->
+                "Chapters in #{name}: " <> Enum.map_join(chapters, ", ", &"#{name}:#{&1}/")
             end
 
-          Mix.raise("#{name} has no recipe group #{inspect(group)}.\n\n#{known}")
+          Mix.raise("#{name} has no chapter #{inspect(chapter)}.\n\n#{known}")
         end
 
-        {cookbook, group}
+        {cookbook, chapter}
     end
   end
 

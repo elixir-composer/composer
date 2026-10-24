@@ -102,7 +102,7 @@ defmodule Mix.Tasks.Composer.Cookbook.LintTest do
   end
 
   test "--file: a file of no cookbook is an error" do
-    assert_raise Mix.Error, ~r/is not a recipe group of an installed cookbook/, fn ->
+    assert_raise Mix.Error, ~r/is not a chapter of an installed cookbook/, fn ->
       lint(["--format", "compact", "--file", "mix.exs"])
     end
   end

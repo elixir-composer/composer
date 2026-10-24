@@ -1,23 +1,23 @@
 defmodule Mix.Tasks.Composer.Gen.Recipe do
-  @shortdoc "Adds a recipe to a recipe group"
+  @shortdoc "Adds a recipe to a chapter"
 
   @moduledoc """
-  Adds a recipe stub to a recipe group, creating the group file when it
+  Adds a recipe stub to a chapter, creating the chapter file when it
   does not exist.
 
       mix composer.gen.recipe ash/base
 
   adds the recipe `base` to `lib/composer/<app>/recipes/ash.exs` in the
-  current project's cookbook. The argument is always `group/name`.
+  current project's cookbook. The argument is always `chapter/name`.
 
-  A new group file starts with a comment listing the entry forms. Adding
-  to an existing group appends to its keyword list; a recipe of the same
+  A new chapter file starts with a comment listing the entry forms. Adding
+  to an existing chapter appends to its keyword list; a recipe of the same
   name is an error.
   """
 
   use Igniter.Mix.Task
 
-  alias Composer.Recipe.Group
+  alias Composer.Recipe.Chapter
   alias Mix.Tasks.Composer.Gen.Cookbook, as: GenCookbook
 
   @impl Igniter.Mix.Task
@@ -32,11 +32,11 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
   def igniter(igniter) do
     arg = igniter.args.positional.path
 
-    {group, name} =
+    {chapter, name} =
       case String.split(arg, "/") do
-        [group, name] ->
-          if Group.valid_name?(group) and Group.valid_name?(name),
-            do: {group, name},
+        [chapter, name] ->
+          if Chapter.valid_name?(chapter) and Chapter.valid_name?(name),
+            do: {chapter, name},
             else: invalid!(arg)
 
         _ ->
@@ -44,13 +44,13 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
       end
 
     cookbook = igniter |> Igniter.Project.Application.app_name() |> GenCookbook.cookbook_name()
-    file = "lib/composer/#{cookbook}/recipes/#{group}.exs"
-    ref = "#{cookbook}:#{group}/#{name}"
+    file = "lib/composer/#{cookbook}/recipes/#{chapter}.exs"
+    ref = "#{cookbook}:#{chapter}/#{name}"
 
     igniter =
       if Igniter.exists?(igniter, file),
         do: append(igniter, file, name, ref),
-        else: Igniter.create_new_file(igniter, file, source(group, name, ref))
+        else: Igniter.create_new_file(igniter, file, source(chapter, name, ref))
 
     Igniter.add_notice(igniter, """
     Preview and run the recipe with:
@@ -62,8 +62,8 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
 
   defp invalid!(arg) do
     Mix.raise("""
-    Invalid recipe #{inspect(arg)}. Give it as group/name (e.g. ash/base): \
-    the recipe name in the group file recipes/<group>.exs. Both are \
+    Invalid recipe #{inspect(arg)}. Give it as chapter/name (e.g. ash/base): \
+    the recipe name in the chapter file recipes/<chapter>.exs. Both are \
     lowercase [a-z0-9_] segments.
     """)
   end
@@ -72,7 +72,7 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
     igniter = Igniter.include_existing_file(igniter, file)
     content = igniter.rewrite |> Rewrite.source!(file) |> Rewrite.Source.get(:content)
 
-    case Group.names(content, file) do
+    case Chapter.names(content, file) do
       {:ok, names} ->
         if name in names, do: Mix.raise("#{ref} already exists in #{file}.")
 
@@ -113,9 +113,9 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
     """
   end
 
-  defp source(group, name, ref) do
+  defp source(chapter, name, ref) do
     """
-    # Recipe group #{group}. Each recipe here is addressed as
+    # Chapter #{chapter}. Each recipe here is addressed as
     # #{String.replace_suffix(ref, "/" <> name, "/<name>")}; run one with:
     #
     #     mix composer.recipe.run #{ref}
@@ -133,8 +133,8 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
     #   "cb_std:setup/credo"             a step ("cookbook:path", or "path")
     #   "hex:oban"                     a Hex package and its own installer
     #   {"cb_std:oban_pro", if: :flag}   only with --flag
-    #   {:use, "other"}                another recipe in this group, in place
-    #   {:use, "cb_lab:lv/base"}       a recipe in another group or cookbook
+    #   {:use, "other"}                another recipe in this chapter, in place
+    #   {:use, "cb_lab:lv/base"}       a recipe in another chapter or cookbook
     #   {:task, "x.y", ["arg"]}        compose an Igniter-aware Mix task
     #   {:queue, "x.y", ["arg"]}       run a Mix task after changes apply
     #

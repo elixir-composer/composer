@@ -1,6 +1,6 @@
 defmodule Composer.LSP.Cursor do
   @moduledoc """
-  What is under the cursor in a recipe group buffer.
+  What is under the cursor in a chapter buffer.
 
   When the buffer parses, `Composer.Recipe.Locator` answers. Otherwise a
   line scan finds the string literal enclosing the cursor: a `{:use, ...}`
