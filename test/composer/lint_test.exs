@@ -62,11 +62,10 @@ defmodule Composer.LintTest do
     end
   end
 
-  test "an empty chapter is a warning", %{tmp_dir: dir, cookbooks: cookbooks} do
+  test "an empty chapter is an error", %{tmp_dir: dir, cookbooks: cookbooks} do
     result = lint(dir, cookbooks, ["empty"])
-    assert errors(result) == []
-    assert [warning] = warnings(result)
-    assert warning =~ "empty.exs is empty"
+    assert [error] = errors(result)
+    assert error =~ "empty.exs holds no recipes"
   end
 
   test "a recipe named like a chapter is an error", %{tmp_dir: dir, cookbooks: cookbooks} do
@@ -77,9 +76,34 @@ defmodule Composer.LintTest do
     assert_error(lint_recipes(dir, cookbooks), ~r/a chapter ash and a recipe named ash/)
   end
 
-  test "a subdirectory under recipes/ is an error", %{tmp_dir: dir, cookbooks: cookbooks} do
-    File.mkdir_p!(Path.join(dir, "recipes/nested"))
-    assert_error(lint_recipes(dir, cookbooks), ~r/recipes\/nested is a directory/)
+  test "chapters may be nested in directories", %{tmp_dir: dir, cookbooks: cookbooks} do
+    File.mkdir_p!(Path.join(dir, "recipes/ash/ui"))
+    File.write!(Path.join(dir, "recipes/ash.exs"), ~s([core: [shortdoc: "C", steps: []]]))
+    File.write!(Path.join(dir, "recipes/ash/ui.exs"), ~s([buttons: [shortdoc: "B", steps: []]]))
+    File.write!(Path.join(dir, "recipes/ash/ui/tw.exs"), ~s([base: [shortdoc: "T", steps: []]]))
+
+    assert lint_recipes(dir, cookbooks).diagnostics == []
+
+    assert Cookbook.recipes(code_cookbook(dir)) == [
+             "ash/core",
+             "ash/ui/buttons",
+             "ash/ui/tw/base"
+           ]
+  end
+
+  test "a directory or chapter under recipes/ with an invalid name is an error", %{
+    tmp_dir: dir,
+    cookbooks: cookbooks
+  } do
+    File.mkdir_p!(Path.join(dir, "recipes/Ash-UI/deep"))
+    File.write!(Path.join(dir, "recipes/Ash-UI/deep/x.exs"), ~s([x: [shortdoc: "X", steps: []]]))
+    File.mkdir_p!(Path.join(dir, "recipes/ok"))
+    File.write!(Path.join(dir, "recipes/ok/Bad.exs"), ~s([x: [shortdoc: "X", steps: []]]))
+
+    errors = errors(lint_recipes(dir, cookbooks))
+    assert Enum.count(errors, &(&1 =~ "recipes/Ash-UI has an invalid name")) == 1
+    assert Enum.any?(errors, &(&1 =~ "recipes/ok/Bad.exs has an invalid name"))
+    refute Enum.any?(errors, &(&1 =~ "deep/x.exs"))
   end
 
   test "a leftover profiles/ directory in a package cookbook is an error", %{

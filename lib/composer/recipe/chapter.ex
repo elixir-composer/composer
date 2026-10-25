@@ -1,7 +1,7 @@
 defmodule Composer.Recipe.Chapter do
   @moduledoc """
-  A chapter: one `recipes/<chapter>.exs` file holding one or more
-  recipes, keyed by name.
+  A chapter: one `recipes/**/*.exs` file holding one or more recipes,
+  keyed by name.
 
       # recipes/ash.exs
       [
@@ -15,8 +15,12 @@ defmodule Composer.Recipe.Chapter do
         ]
       ]
 
-  The file name is the chapter name, so `ecto` above is `<cookbook>:ash/ecto`.
-  Chapter and recipe names are lowercase `[a-z0-9_]` segments.
+  A chapter's **path** is its file's path under `recipes/` without
+  `.exs`, so `ecto` above is `<cookbook>:ash/ecto`, and a recipe in
+  `recipes/ash/ui/tailwind.exs` is `<cookbook>:ash/ui/tailwind/<name>`.
+  `recipes/ash/ui.exs` and the directory `recipes/ash/ui/` may coexist: the
+  last segment of a recipe id is always its name. Every directory, chapter
+  and recipe name is a lowercase `[a-z0-9_]` segment.
 
   ## Reading without evaluating
 
@@ -56,13 +60,46 @@ defmodule Composer.Recipe.Chapter do
   @keys [:shortdoc, :doc, :flags, :aliases, :steps]
   @required [:shortdoc, :steps]
 
-  @doc "True for a valid chapter or recipe name."
+  @doc "True for a valid recipe name, or one segment of a chapter path."
   @spec valid_name?(String.t()) :: boolean()
   def valid_name?(name) when is_binary(name), do: Regex.match?(@segment, name)
 
-  @doc "The chapter name of a chapter file: its base name without `.exs`."
-  @spec name(Path.t()) :: String.t()
-  def name(path), do: Path.basename(path, ".exs")
+  @doc "True for a valid chapter path: `/`-separated valid names."
+  @spec valid_path?(String.t()) :: boolean()
+  def valid_path?(path) when is_binary(path),
+    do: path |> String.split("/") |> Enum.all?(&valid_name?/1)
+
+  @doc """
+  The chapter path of chapter file `file` under `recipes_dir`: its relative
+  path without `.exs`, e.g. `"ash/ui/tailwind"`.
+  """
+  @spec path(Path.t(), Path.t()) :: String.t()
+  def path(recipes_dir, file),
+    do: file |> Path.relative_to(recipes_dir) |> Path.rootname(".exs")
+
+  @doc """
+  The chapter path of chapter file `file`, found from its place in a
+  cookbook (`lib/composer/<cookbook>/recipes/...`, or else the last
+  `recipes/` directory on its path), or its base name without `.exs` for a
+  file outside one.
+  """
+  @spec path(Path.t()) :: String.t()
+  def path(file) do
+    expanded = Path.expand(file)
+
+    case Regex.run(~r{/composer/[a-z0-9_]+/recipes/(.+)\.exs\z}, expanded,
+           capture: :all_but_first
+         ) do
+      [chapter] ->
+        chapter
+
+      nil ->
+        case String.split(expanded, "/recipes/") do
+          [_] -> Path.basename(file, ".exs")
+          parts -> parts |> List.last() |> Path.rootname(".exs")
+        end
+    end
+  end
 
   @doc """
   Returns the recipe names in a chapter file, in file order, read from its
@@ -135,7 +172,7 @@ defmodule Composer.Recipe.Chapter do
   @spec pick({[Recipe.t()], [term()]}, Path.t(), String.t(), String.t()) ::
           {:ok, Recipe.t()} | {:error, term()}
   def pick({recipes, errors}, path, cookbook, name) do
-    ref = Composer.Ref.Legacy.id(cookbook, name(path) <> "/" <> name)
+    ref = Composer.Ref.Legacy.id(cookbook, path(path) <> "/" <> name)
 
     cond do
       recipe = Enum.find(recipes, &(&1.name == name)) ->
@@ -153,7 +190,7 @@ defmodule Composer.Recipe.Chapter do
   end
 
   defp file_error?(error),
-    do: elem(error, 0) in [:chapter_shape, :invalid_chapter_name, :duplicate_recipe]
+    do: elem(error, 0) in [:chapter_shape, :invalid_chapter_path, :duplicate_recipe]
 
   @doc """
   Validates an evaluated chapter term. Returns the valid recipes and every
@@ -172,11 +209,11 @@ defmodule Composer.Recipe.Chapter do
   @spec check_tagged(term(), Path.t(), String.t()) ::
           {[Recipe.t()], [{term(), String.t() | nil}]}
   def check_tagged(term, path, cookbook) do
-    chapter = name(path)
+    chapter = path(path)
 
     cond do
-      not valid_name?(chapter) ->
-        {[], [{{:invalid_chapter_name, path}, nil}]}
+      not valid_path?(chapter) ->
+        {[], [{{:invalid_chapter_path, path}, nil}]}
 
       not (is_list(term) and Keyword.keyword?(term)) ->
         {[], [{{:chapter_shape, path, term}, nil}]}
@@ -335,7 +372,7 @@ defmodule Composer.Recipe.Chapter do
   rescue
     exception ->
       line = eval_line(exception, __STACKTRACE__, path)
-      {:error, {:recipe_eval, "#{cookbook}:#{name(path)}/", path, exception, line}}
+      {:error, {:recipe_eval, "#{cookbook}:#{path(path)}/", path, exception, line}}
   end
 
   defp eval_line(exception, stacktrace, path) do

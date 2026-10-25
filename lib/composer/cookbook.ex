@@ -7,7 +7,7 @@ defmodule Composer.Cookbook do
       lib/composer/cc_lab.ex                    # the cookbook module
       lib/composer/cc_lab/steps/astral/nav1.ex  # a step (use Composer.Step)
       lib/composer/cc_lab/steps/astral/_nav1/   # its templates
-      lib/composer/cc_lab/recipes/*.exs         # chapters (see Composer.Recipe.Chapter)
+      lib/composer/cc_lab/recipes/**/*.exs      # chapters (see Composer.Recipe.Chapter)
       lib/composer/cc_lab/manifest.exs          # written by mix composer.cookbook.manifest
 
   A step's templates live in the directory named after its file (see
@@ -206,15 +206,18 @@ defmodule Composer.Cookbook do
   """
   @spec recipes(t()) :: [String.t()]
   def recipes(%__MODULE__{} = cookbook) do
-    for {chapter, path} <- chapters(cookbook),
-        {:ok, names} <- [Chapter.ids(path)],
-        name <- names,
-        do: chapter <> "/" <> name
+    ids =
+      for {chapter, path} <- chapters(cookbook),
+          {:ok, names} <- [Chapter.ids(path)],
+          name <- names,
+          do: chapter <> "/" <> name
+
+    Enum.sort(ids)
   end
 
   @doc """
-  Returns the cookbook's chapter files as `{chapter, path}`, sorted by name.
-  Files with an invalid chapter name are left out.
+  Returns the cookbook's chapter files as `{chapter_path, file}`, sorted by
+  chapter path. Files with an invalid chapter path are left out.
   """
   @spec chapters(t()) :: [{String.t(), Path.t()}]
   def chapters(%__MODULE__{kind: :virtual}), do: []
@@ -222,11 +225,14 @@ defmodule Composer.Cookbook do
   def chapters(%__MODULE__{} = cookbook) do
     case source_dir(cookbook) do
       nil -> []
-      dir -> dir |> chapter_files() |> Enum.filter(&Chapter.valid_name?(elem(&1, 0)))
+      dir -> dir |> chapter_files() |> Enum.filter(&Chapter.valid_path?(elem(&1, 0)))
     end
   end
 
-  @doc "Returns the path of chapter `chapter`, or `nil` when it does not exist."
+  @doc """
+  Returns the file of chapter `chapter` (a chapter path such as
+  `"ash/ui"`), or `nil` when it does not exist.
+  """
   @spec chapter_path(t(), String.t()) :: Path.t() | nil
   def chapter_path(%__MODULE__{} = cookbook, chapter) do
     case List.keyfind(chapters(cookbook), chapter, 0) do
@@ -236,12 +242,14 @@ defmodule Composer.Cookbook do
   end
 
   @doc """
-  Returns the chapter file holding recipe `id` (`"chapter/name"`), or `nil`
-  when the chapter or the recipe does not exist.
+  Returns the chapter file holding recipe `id` (`"chapter/path/name"`), or
+  `nil` when the chapter or the recipe does not exist. The last segment is
+  the recipe name and the rest the chapter path; the filesystem is never
+  probed to split it another way.
   """
   @spec recipe_path(t(), String.t()) :: Path.t() | nil
   def recipe_path(%__MODULE__{} = cookbook, id) do
-    with [chapter, name] <- String.split(id, "/"),
+    with {chapter, name} when chapter != "." <- {Path.dirname(id), Path.basename(id)},
          path when is_binary(path) <- chapter_path(cookbook, chapter),
          {:ok, names} <- Chapter.ids(path),
          true <- name in names do
@@ -273,8 +281,8 @@ defmodule Composer.Cookbook do
   end
 
   @doc false
-  # Every chapter file, including ones with invalid names, as {chapter, path};
-  # and the subdirectories under recipes/. For lint.
+  # Every chapter file, including ones with invalid paths, as {chapter, path};
+  # and every directory under recipes/, as {relative path, path}. For lint.
   def recipe_entries(%__MODULE__{kind: :virtual}), do: {[], []}
 
   def recipe_entries(%__MODULE__{} = cookbook) do
@@ -285,19 +293,16 @@ defmodule Composer.Cookbook do
       dir ->
         root = Path.join(dir, "recipes")
 
-        subdirs =
-          case File.ls(root) do
-            {:ok, entries} ->
-              for entry <- Enum.sort(entries),
-                  not String.starts_with?(entry, "."),
-                  File.dir?(Path.join(root, entry)),
-                  do: Path.join(root, entry)
+        dirs =
+          root
+          |> Path.join("**")
+          |> Path.wildcard()
+          |> Enum.filter(&File.dir?/1)
+          |> Enum.reject(&(&1 == root))
+          |> Enum.sort()
+          |> Enum.map(&{Path.relative_to(&1, root), &1})
 
-            {:error, _} ->
-              []
-          end
-
-        {chapter_files(dir), subdirs}
+        {chapter_files(dir), dirs}
     end
   end
 
@@ -485,11 +490,11 @@ defmodule Composer.Cookbook do
   end
 
   defp check_chapter_name!(env, chapter, path) do
-    unless Chapter.valid_name?(chapter) do
+    unless Chapter.valid_path?(chapter) do
       compile_error!(env, """
-      Chapter #{Path.relative_to_cwd(path)} has an invalid name. A chapter \
-      name is a lowercase [a-z0-9_] segment; rename the file (for example \
-      lv-base.exs to lv_base.exs).
+      Chapter #{Path.relative_to_cwd(path)} has an invalid name. Every \
+      directory and file name under recipes/ is a lowercase [a-z0-9_] \
+      segment; rename it (for example lv-base.exs to lv_base.exs).
       """)
     end
   end
@@ -551,18 +556,17 @@ defmodule Composer.Cookbook do
 
   # -- files --------------------------------------------------------------
 
-  # Chapters are the .exs files directly under recipes/.
+  # Chapters are the .exs files anywhere under recipes/.
   defp chapter_files(dir) do
+    root = Path.join(dir, "recipes")
+
     dir
-    |> Path.join("recipes/*.exs")
-    |> Path.wildcard()
+    |> recipe_listing()
     |> Enum.filter(&File.regular?/1)
-    |> Enum.map(&{Chapter.name(&1), &1})
+    |> Enum.map(&{Chapter.path(root, &1), &1})
     |> Enum.sort()
   end
 
-  # Includes files in subdirectories, so adding one recompiles and lint
-  # then reports it.
   defp recipe_listing(dir) do
     dir
     |> Path.join("recipes/**/*.exs")

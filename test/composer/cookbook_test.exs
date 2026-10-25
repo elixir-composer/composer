@@ -35,6 +35,54 @@ defmodule Composer.CookbookTest do
     assert String.ends_with?(info.source_dir, "cookbooks/fake_book/lib/composer/fake_book")
   end
 
+  describe "nested chapters" do
+    setup do
+      %{book: Cookbook.from_module(Composer.NestedBook)}
+    end
+
+    test "are discovered under recipes/**, by chapter path", %{book: book} do
+      assert Enum.map(Cookbook.chapters(book), &elem(&1, 0)) ==
+               ["ash", "ash/ui", "ash/ui/tailwind", "ash/ui/tailwind/forms"]
+
+      assert Cookbook.recipes(book) == [
+               "ash/core",
+               "ash/ui/buttons",
+               "ash/ui/tailwind/base",
+               "ash/ui/tailwind/forms/inputs",
+               "ash/ui/tailwind/full"
+             ]
+
+      assert "ash/ui/tailwind/forms/inputs" in Composer.NestedBook.__composer_cookbook__().recipes
+    end
+
+    test "a recipe's file is found by splitting off its last segment", %{book: book} do
+      assert Cookbook.recipe_path(book, "ash/ui/buttons") =~ ~r{recipes/ash/ui\.exs\z}
+
+      assert Cookbook.recipe_path(book, "ash/ui/tailwind/base") =~
+               ~r{recipes/ash/ui/tailwind\.exs\z}
+
+      assert Cookbook.recipe_path(book, "ash/ui/tailwind") == nil
+      assert Cookbook.recipe_path(book, "core") == nil
+    end
+
+    test "recipes know their chapter path", %{book: book} do
+      {recipes, []} = Cookbook.load_recipes(book)
+      inputs = Enum.find(recipes, &(&1.name == "inputs"))
+      assert inputs.chapter == "ash/ui/tailwind/forms"
+      assert inputs.id == "ash/ui/tailwind/forms/inputs"
+    end
+  end
+
+  test "a chapter in a directory with an invalid name fails", %{tmp_dir: dir} do
+    name = unique("bad_dir")
+
+    assert_raise CompileError, ~r/invalid name/, fn ->
+      compile(dir, "Composer.#{Macro.camelize(name)}", name, String.to_atom(name), %{
+        "recipes/Ui/base.exs" => "[a: [shortdoc: \"x\", steps: []]]"
+      })
+    end
+  end
+
   test "steps are enumerated from the cookbook's modules, sorted by id" do
     ids = Composer.FakeBook |> Cookbook.from_module() |> Cookbook.steps() |> Enum.map(& &1.id)
     assert ids == Enum.sort(ids)
@@ -96,7 +144,7 @@ defmodule Composer.CookbookTest do
     end
   end
 
-  test "recipes are chapter/name ids read from chapter files", %{tmp_dir: dir} do
+  test "recipes are chapter-path/name ids read from chapter files, nested too", %{tmp_dir: dir} do
     name = unique("chaptered")
 
     [{mod, _}] =
@@ -105,7 +153,7 @@ defmodule Composer.CookbookTest do
         "recipes/nested/x.exs" => "[x: []]"
       })
 
-    assert mod.__composer_cookbook__().recipes == ["ash/auth", "ash/base"]
+    assert mod.__composer_cookbook__().recipes == ["ash/auth", "ash/base", "nested/x/x"]
   end
 
   test "chapters under a leftover profiles/ directory are not read", %{tmp_dir: dir} do
@@ -183,7 +231,7 @@ defmodule Composer.CookbookTest do
       for module <- modules,
           ["Composer", segment | _] <- [Module.split(module)],
           name = Macro.underscore(segment),
-          name not in ["fake_book", "other_book", "test"],
+          name not in ["fake_book", "other_book", "nested_book", "test"],
           uniq: true,
           do: name
 

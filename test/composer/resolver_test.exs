@@ -34,6 +34,16 @@ defmodule Composer.ResolverTest do
   defp refs({:ok, %{steps: entries}}), do: Enum.map(entries, & &1.label)
   defp refs(entries) when is_list(entries), do: Enum.map(entries, & &1.label)
 
+  test "recipes in nested chapters resolve", %{tmp_dir: dir} do
+    books = discover(dir, [:nested_book])
+
+    assert refs(resolve(books, "nested_book:ash/ui/tailwind/full")) == [
+             "nested_book:cluster/dns",
+             "nested_book:ui/button",
+             "nested_book:echo"
+           ]
+  end
+
   describe "step references" do
     test "qualified references resolve exactly", %{tmp_dir: dir} do
       books =

@@ -74,7 +74,7 @@ defmodule Mix.Tasks.Composer.Recipe.List do
 
         errors =
           if chapter,
-            do: Enum.filter(errors, &(Chapter.name(elem(&1, 0)) == chapter)),
+            do: Enum.filter(errors, &(Chapter.path(elem(&1, 0)) == chapter)),
             else: errors
 
         {recipes ++ Enum.map(loaded, &data/1), problems ++ errors}

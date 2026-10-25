@@ -141,7 +141,7 @@ defmodule Composer.Recipe.ChapterTest do
   end
 
   test "chapter names are lowercase segments" do
-    assert {:error, {:invalid_chapter_name, _}} = load("BadName")
+    assert {:error, {:invalid_chapter_path, _}} = load("BadName")
     assert Chapter.valid_name?("lv_base")
     refute Chapter.valid_name?("lv-base")
     refute Chapter.valid_name?("My Chapter")

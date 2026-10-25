@@ -30,8 +30,9 @@ defmodule Composer.Lint do
 
   Chapter rules:
 
-    * a subdirectory under `recipes/` (chapters are files)
-    * a chapter file with an invalid name
+    * a chapter file or a directory under `recipes/` with an invalid name
+      (`invalid_chapter_path`); chapters may be nested in directories
+    * a chapter file that holds no recipes (`empty_chapter`)
     * a chapter file that is not a keyword list of recipes
     * a duplicate recipe name within a chapter
     * a recipe missing `shortdoc` or `steps`, with an unknown key, or with
@@ -45,7 +46,6 @@ defmodule Composer.Lint do
 
   Warnings:
 
-    * an empty chapter
     * a cookbook alias that none of the recipe's own references use
     * an alias that names different cookbooks in two recipes of one chapter
     * a step and a recipe share an id, which is allowed but confusing
@@ -207,8 +207,15 @@ defmodule Composer.Lint do
 
   defp in_recipes?(_path, nil), do: false
 
-  defp in_recipes?(path, dir),
-    do: same_file?(Path.dirname(path), Path.join(dir, "recipes"))
+  defp in_recipes?(path, dir) do
+    recipes = Path.join(dir, "recipes")
+
+    path
+    |> Path.dirname()
+    |> Stream.iterate(&Path.dirname/1)
+    |> Enum.take_while(&(&1 != Path.dirname(&1)))
+    |> Enum.any?(&same_file?(&1, recipes))
+  end
 
   # -- building diagnostics -------------------------------------------------
 
@@ -372,14 +379,30 @@ defmodule Composer.Lint do
   # The chapter checks of `cookbook` and the shallow pass: each entry of each
   # loaded recipe checked on its own, so every bad reference is reported.
   defp recipes(cookbook, index) do
-    {files, subdirs} = Cookbook.recipe_entries(cookbook)
+    {files, dirs} = Cookbook.recipe_entries(cookbook)
 
     results =
       for {chapter, path} <- files do
-        if Chapter.valid_name?(chapter),
+        if Chapter.valid_path?(chapter),
           do: chapter(path, cookbook.name),
-          else: %{problems: [{:error, {:invalid_chapter_name, path}, nil}], loaded: []}
+          else: %{problems: [{:error, {:invalid_chapter_path, path}, nil}], loaded: []}
       end
+
+    # A bad directory is reported once, not again for each file below it.
+    bad_dirs =
+      for {relative, path} <- dirs,
+          not Chapter.valid_name?(Path.basename(relative)),
+          Path.dirname(relative) == "." or Chapter.valid_path?(Path.dirname(relative)),
+          do: {:invalid_chapter_path, path}
+
+    results =
+      Enum.reject(results, fn
+        %{problems: [{:error, {:invalid_chapter_path, path}, nil}]} ->
+          Enum.any?(bad_dirs, fn {_, dir} -> String.starts_with?(path, dir <> "/") end)
+
+        _ ->
+          false
+      end)
 
     loaded = Enum.flat_map(results, & &1.loaded)
     chapter_names = for {chapter, _path} <- files, Chapter.valid_name?(chapter), do: chapter
@@ -397,7 +420,7 @@ defmodule Composer.Lint do
     %{
       problems:
         errors(legacy_dir(cookbook)) ++
-          errors(Enum.map(subdirs, &{:recipes_subdir, &1})) ++
+          errors(bad_dirs) ++
           Enum.flat_map(results, & &1.problems) ++ clashes ++ shallow,
       loaded: loaded,
       shallow: MapSet.new(shallow, &elem(&1, 1)),
@@ -436,7 +459,7 @@ defmodule Composer.Lint do
               String.contains?(String.trim(recipe.shortdoc), "\n"),
               do: {:error, {:multiline_shortdoc, recipe.ref}, recipe.ref}
 
-        empty = if term == [], do: [{:warning, {:empty_chapter, path}, nil}], else: []
+        empty = if term == [], do: [{:error, {:empty_chapter, path}, nil}], else: []
 
         # A chapter with problems is not resolved, to avoid repeating them.
         loaded = if errors == [], do: loaded, else: []

@@ -64,10 +64,11 @@ defmodule Composer.Error do
     """
   end
 
-  def message({:invalid_chapter_name, path}) do
+  def message({:invalid_chapter_path, path}) do
     """
-    Chapter #{path} has an invalid name. A chapter name is a lowercase \
-    [a-z0-9_] segment; rename the file (for example lv-base.exs to lv_base.exs).
+    #{path} has an invalid name. Every directory and chapter file under \
+    recipes/ is named with a lowercase [a-z0-9_] segment; rename it (for \
+    example lv-base.exs to lv_base.exs).
     """
   end
 
@@ -182,10 +183,6 @@ defmodule Composer.Error do
 
     See them with: mix composer.recipe.show #{root}
     """
-  end
-
-  def message({:recipes_subdir, path}) do
-    "#{path} is a directory. Chapters are .exs files directly under recipes/; nested chapters are not supported."
   end
 
   def message({:legacy_recipes_dir, path}) do
@@ -486,7 +483,7 @@ defmodule Composer.Error do
   end
 
   def message({:empty_chapter, path}) do
-    "Chapter #{path} is empty."
+    "Chapter #{path} holds no recipes. Add one, or delete the file."
   end
 
   def message({:unused_alias, recipe_ref, name, target}) do
@@ -579,7 +576,7 @@ defmodule Composer.Error do
   def anchor({:chapter_read, path, _reason}), do: {:file, path}
   def anchor({:chapter_parse, path, _description, line}), do: {:file, path, line}
   def anchor({:chapter_shape, path, _term}), do: {:file, path}
-  def anchor({:invalid_chapter_name, path}), do: {:file, path}
+  def anchor({:invalid_chapter_path, path}), do: {:file, path}
   def anchor({:invalid_recipe_name, path, name}), do: {:recipe_name, path, name}
   def anchor({:recipe_shape, ref, _term}), do: {:recipe, ref}
   def anchor({:recipe_missing_key, ref, key}), do: {:recipe_key, ref, key}
@@ -607,7 +604,6 @@ defmodule Composer.Error do
   def anchor({:undeclared_flag, ref, flag}), do: {:recipe_key, ref, {:if, flag}}
   def anchor({:reserved_flag, ref, _flag}), do: {:recipe_key, ref, :flags}
   def anchor({:path_dep_in_package, _app, {mix_exs, line}}), do: {:file, mix_exs, line}
-  def anchor({:recipes_subdir, path}), do: {:file, path}
   def anchor({:legacy_recipes_dir, path}), do: {:file, path}
   def anchor({:legacy_templates_dir, path}), do: {:file, path}
   def anchor({:orphaned_templates, dir, _step}), do: {:file, dir}
