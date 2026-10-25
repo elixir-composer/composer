@@ -9,11 +9,11 @@ lib/composer/cc_lab.ex                    # the cookbook module
 lib/composer/cc_lab/
   steps/                                        # step modules
     ash.ex                                      #   cc_lab:ash
-    ash/postgres.ex                             #   cc_lab:ash/postgres
-    astral/nav1.ex                              #   cc_lab:astral/nav1
+    ash/postgres.ex                             #   cc_lab:ash:postgres
+    astral/nav1.ex                              #   cc_lab:astral:nav1
     astral/_nav1/navbar.astral                  #   its template: template("navbar.astral")
   recipes/                                      # chapters
-    lv.exs                                      #   cc_lab:lv/base, cc_lab:lv/auth, ...
+    lv.exs                                      #   cc_lab/lv/base, cc_lab/lv/auth, ...
   manifest.exs                                  # written by mix composer.cookbook.manifest
 test/composer/cc_lab/steps/
   ash_test.exs                                  # one test per step
@@ -53,7 +53,7 @@ error that says how to fix it.
 The one exception is composer itself, whose built-in cookbook is `cb_std`.
 
 Cookbook packages are usually named `composer_<x>`, which makes qualified
-references long (`cc_lab:auth/passkeys`). Recipes can declare short
+references long (`cc_lab:auth:passkeys`). Recipes can declare short
 cookbook aliases (`aliases: [lab: "cc_lab"]`) for their own
 references; see "Cookbook aliases" in the recipes guide. An alias never
 changes the cookbook's name.
@@ -167,13 +167,14 @@ entry. See [Hex packages](recipes.md#hex-packages).
 
 ## Recipes
 
-Chapters are the `.exs` files directly under `recipes/`; each holds
-one or more recipes, addressed as `<cookbook>:<chapter>/<name>`. See the
-[recipes guide](recipes.md). Inside a cookbook, unqualified references in
-a recipe resolve to the cookbook's own steps and recipes first, and an
-unqualified `{:use, "name"}` is the recipe `name` in the same chapter. A
-chapter file with an invalid name (`lv-base.exs`) or that does not parse is a
-compile error.
+Chapters are the `.exs` files under `recipes/`, nested in directories if
+you like; each holds one or more recipes, addressed as
+`<cookbook>/<chapter path>/<name>`. See the [recipes guide](recipes.md).
+Inside a cookbook, a recipe addresses the cookbook's own steps and recipes
+from its root (`:setup:thing`, `/ash/base`) or relative to its chapter
+(`./base`, `../ui/buttons`); a bare name is never searched. A chapter file
+or directory with an invalid name (`lv-base.exs`), or a chapter that does
+not parse, is a compile error.
 
 ## Templates
 
@@ -266,18 +267,19 @@ end
 ```
 
 The cookbook is compiled wherever it is used, and its cross-cookbook
-references (`cb_lab:lv/base`) need those cookbooks at lint and run time.
+references (`cb_lab/lv/base`) need those cookbooks at lint and run time.
 Mix leaves a dependency's own `only:` dependencies out of the app that
 uses it, so with `only: :dev` an app installing `cb_mine` would not get
 `cb_lab`, and every `cb_lab:` reference would name an unknown cookbook.
-An unqualified `chapter/name` in your chapters resolves against your own
-cookbook first.
+Your own recipes and steps are addressed from the cookbook root
+(`/lv/base`, `:tools:thing`), so they never depend on what else is
+installed.
 
 Install it into an app as a dev and test dependency:
 
 ```bash
 mix igniter.install cb_mine@path:../cb_mine --only dev,test
-mix composer.recipe.run cb_mine:lv/base
+mix composer.recipe.run cb_mine/lv/base
 ```
 
 Keep the cookbook in git and sync it between machines with `git pull`;
@@ -295,7 +297,7 @@ When an app also gets one of your cookbook's dependencies from Hex (say
 ## Publishing a cookbook
 
 A cookbook installed from Hex or git, for example with
-`mix composer.new my_app cb_mine:lv/base@github:me/cb_mine`, must declare
+`mix composer.new my_app cb_mine/lv/base@github:me/cb_mine`, must declare
 Hex or git dependencies, not path dependencies. Mix resolves a path
 relative to the cookbook, which is now a checkout in the app's `deps/`, so
 `path: "../composer"` points at nothing. `mix composer.cookbook.lint`

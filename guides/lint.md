@@ -10,8 +10,8 @@ mix composer.cookbook.lint --file PATH         # one chapter file
 mix composer.cookbook.lint --format compact    # text | compact | json | github
 ```
 
-Each problem is reported where it is written: a bad reference at its
-string, a broken `{:use, ...}` at its target, an alias at its name, a
+Each problem is reported where it is written: a bad address at its
+string, an old `{:use, ...}` entry as a whole, an alias at its name, a
 missing key at the recipe's name. A recipe with three typos shows three
 diagnostics. A problem in a recipe that others include is reported once,
 in the recipe that has it.
@@ -25,8 +25,8 @@ task fail.
 **compact** prints one line per diagnostic, for editors:
 
 ```
-/home/me/src/my_app/lib/composer/my_app/recipes/auth.exs:15:8: error: In recipe my_app:auth/passkeys: no step matches "credoo". Did you mean: cb_std:setup/credo? ... [typo]
-/home/me/src/my_app/lib/composer/my_app/recipes/auth.exs:13:15: warning: my_app:auth/magic: alias lab (= cb_lab) is never used. Remove it, or use it. [unused_alias]
+/home/me/src/my_app/lib/composer/my_app/recipes/auth.exs:15:8: error: In recipe my_app/auth/passkeys: "credoo" is not an address; did you mean "cb_std:setup:credo"? ... [bare_word]
+/home/me/src/my_app/lib/composer/my_app/recipes/auth.exs:13:15: warning: my_app/auth/magic: alias lab (= cb_lab) is never used. Remove it, or use it. [unused_alias]
 ```
 
 That is `file:line:col: severity: message [code]`, the shape of GCC and of
@@ -43,12 +43,13 @@ at `:1:1` of the file most related to it, or of the cookbook's
 [
   {
     "severity": "error",
-    "code": "typo",
+    "code": "bare_word",
     "file": "/home/me/src/my_app/lib/composer/my_app/recipes/auth.exs",
     "line": 15, "column": 8, "end_line": 15, "end_column": 16,
-    "message": "In recipe my_app:auth/passkeys: no step matches \"credoo\".\n\n...",
-    "suggestions": ["cb_std:setup/credo"],
-    "related": []
+    "message": "In recipe my_app/auth/passkeys: \"credoo\" is not an address; ...",
+    "suggestions": ["cb_std:setup:credo"],
+    "related": [],
+    "fix": null
   }
 ]
 ```
@@ -101,8 +102,8 @@ cookbook is still loaded, since includes cross files, but only that file's
 diagnostics are printed, and lint exits zero when it has none, whatever
 other files hold.
 
-A `{:use, ...}` of a recipe that has problems of its own gets one summary
-diagnostic, `include_problems` ("my_app:ash/base has 2 problems."), with
+An include of a recipe that has problems of its own gets one summary
+diagnostic, `include_problems` ("my_app/ash/base has 2 problems."), with
 those problems as related locations. Otherwise a broken include would look
 fine from the including file.
 
@@ -216,6 +217,14 @@ languages:
         - "%f:%l:%c: %tarning: %m"
 ```
 
+## Rewriting the old address syntax
+
+`mix composer.cookbook.lint --fix` rewrites, in place, every diagnostic
+that carries a `fix`: old-syntax addresses, `{:use, ...}` entries, a bare
+word with one meaning and a kind mismatch, in chapter files and in step
+modules' `requires:`. It lints again until nothing is left to fix, then
+reports the rest. See [Migrating](recipes.md#migrating-to-the-current-address-syntax).
+
 ## Diagnostic codes
 
 The code is the reason's tag. Codes are stable: editor configs and
@@ -223,14 +232,23 @@ scripts may match on them.
 
 | Code | Problem |
 |------|---------|
-| `typo` | an unqualified name close to a step id (`suggestions` holds the candidates) |
-| `missing_step` | no step matches a reference |
-| `missing_recipe` | no recipe matches a `{:use, ...}` |
-| `ambiguous` | an unqualified name matches in several cookbooks |
-| `unknown_cookbook` | a reference names a cookbook that is not installed |
+| `missing_step` | no step matches an address (`suggestions` holds the close ones) |
+| `missing_recipe` | no recipe matches an include |
+| `bare_word` | a bare name, which is never searched in source (`suggestions` holds what it could mean; one candidate is a fix) |
+| `kind_mismatch` | a recipe address where a step exists, or the reverse (`cb_std/echo` for `cb_std:echo`; a fix) |
+| `old_syntax` | an address in the old syntax (`"cb_std:setup/credo"`, an unqualified `"a/b"` step; a fix when it has one rewrite) |
+| `use_entry` | a `{:use, ...}` entry, which is gone (a fix when it has one rewrite) |
+| `old_requires` | a step's `requires` in the old syntax (a fix) |
+| `old_doc_address` (warning) | an old-syntax address shown in a `shortdoc:` or `doc:` |
+| `relative_step` | a relative step address (`.:dns`), reserved and not supported yet |
+| `above_root` | a relative address that climbs above `recipes/` |
+| `include_options` | an include with an option other than `if:` |
+| `short_recipe` | a recipe address with no chapter (`cb/name`) |
+| `not_a_cookbook`, `no_chapter` | a root address with no cookbook, or a relative one with no chapter |
+| `unknown_cookbook` | an address names a cookbook that is not installed |
 | `unknown_alias_target` | a cookbook alias names a cookbook that is not installed |
 | `via_alias` | a problem with a reference written through an alias |
-| `invalid_ref` | a malformed reference string |
+| `invalid_ref` | a malformed address |
 | `dep_opts_on_step` | package options on a reference that names a step |
 | `conflicting_install` | one package installed with different options |
 | `cycle` | recipes that include each other |
@@ -245,9 +263,9 @@ scripts may match on them.
 | `invalid_alias`, `reserved_alias`, `duplicate_alias`, `alias_atom_target`, `invalid_alias_target`, `alias_shadows_cookbook` | a bad cookbook alias |
 | `unused_alias` (warning) | an alias none of the recipe's references use |
 | `inconsistent_alias` (warning) | one alias naming different cookbooks in one chapter |
-| `duplicate_recipe`, `invalid_recipe_name`, `chapter_recipe_clash` | recipe names |
+| `duplicate_recipe`, `invalid_recipe_name` | recipe names |
 | `chapter_parse`, `recipe_eval`, `chapter_shape`, `chapter_read` | a chapter file that does not parse, raises, or is not a keyword list |
-| `invalid_chapter_name`, `recipes_subdir`, `empty_chapter` (warning) | chapter files |
+| `invalid_chapter_path`, `empty_chapter` | a chapter file or directory with an invalid name; a chapter with no recipes |
 | `legacy_recipes_dir` | a leftover `profiles/` directory in the cookbook |
 | `step_missing_meta`, `missing_step_test`, `requires_unresolved` | a step's metadata, test and `requires` |
 | `manifest_missing`, `manifest_stale` | the cookbook's manifest |

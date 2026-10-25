@@ -49,11 +49,12 @@ steps make changes and can render templates.
 
 - A **step** is an atomic/composable Igniter task.  For search and discovery,
   steps also contain metadata: a summary, facets such as `action: :remove` or
-  `frameworks: [:phoenix]`, tags, and what it `requires`. Addressed as
-  `"cookbook:step"`.
+  `frameworks: [:phoenix]`, tags, and what it `requires`. Addressed with
+  `:`, as `"cookbook:path:to:step"` (`"cb_std:setup:credo"`).
 - A **recipe** is a named, ordered list of steps, with a shortdoc, optional
-  doc and flags. Recipes live in **chapters**, one `.exs` file per chapter, and
-  are addressed as `"cookbook:chapter/name"`.
+  doc and flags. Recipes live in **chapters**, one `.exs` file per chapter
+  (chapters may be nested in directories), and are addressed with `/`, as
+  `"cookbook/chapter/name"` (`"cb_lab/lv/base"`).
 - A **cookbook** is a self-contained collection of steps (with their
   templates) and recipes, shipped by a framework, a standalone package, or your own app.
   Composer ships a built-in `cb_std` cookbook; your personal recipes live in
@@ -84,15 +85,15 @@ A recipe is plain data. `mix composer.init` generates one; edit it to taste:
     shortdoc: "My app's setup",
     flags: [oban: "Add Oban"],
     steps: [
-      "cb_std:phx/remove_daisy_ui",                # undo a phx.new default
-      "cb_std:phx/remove_topbar",
-      "cb_std:setup/gitignore",                    # project hygiene
-      "cb_std:setup/credo",                        # add a package
-      {"cc_lab:ash/postgres", argv: ["--all"]},  # a step with arguments
+      "cb_std:phx:remove_daisy_ui",                # undo a phx.new default
+      "cb_std:phx:remove_topbar",
+      "cb_std:setup:gitignore",                    # project hygiene
+      "cb_std:setup:credo",                        # add a package
+      {"cc_lab:ash:postgres", argv: ["--all"]},  # a step with arguments
       "hex:ash",                                 # a Hex package's own installer
       {"hex:oban", if: :oban},                   # optional, behind --oban
-      "my_app:deploy_config",                    # your own step
-      {:use, "cb_mine:dev/tools"}                # include another recipe
+      ":deploy_config",                          # your own step, in this cookbook
+      "cb_mine/dev/tools"                        # include another recipe
     ]
   ]
 ]
@@ -101,7 +102,7 @@ A recipe is plain data. `mix composer.init` generates one; edit it to taste:
 It runs as one diff, with the flags it declares:
 
 ```console
-$ mix composer.recipe.run app/default --oban
+$ mix composer.recipe.run /app/default --oban
 ```
 
 ## Getting started
@@ -114,7 +115,7 @@ command:
 ```bash
 mix archive.install hex igniter_new     # 0.5.32 or later
 mix archive.install hex composer_new
-mix composer.new my_app cb_lab:base/completions --with phx.new
+mix composer.new my_app cb_lab/base/completions --with phx.new
 ```
 
 It runs `igniter.new`, installs composer and the cookbook as dev/test deps,
@@ -156,8 +157,8 @@ mix composer.init
 
 This makes your app a cookbook and writes
 **`lib/composer/my_app/recipes/app.exs`**, holding the recipe
-`app/default`: every built-in step in a sensible order, each with a one-line
-description. Open it (`mix composer.recipe.edit app/default`) and make it
+`/app/default`: every built-in step in a sensible order, each with a one-line
+description. Open it (`mix composer.recipe.edit /app/default`) and make it
 yours:
 
 - **Delete** any step you don't want — the file is yours.
@@ -168,8 +169,8 @@ yours:
 ### 3. Run it
 
 ```bash
-mix composer.recipe.show app/default     # preview: docs, flags, resolved steps, warnings
-mix composer.recipe.run app/default
+mix composer.recipe.show /app/default     # preview: docs, flags, resolved steps, warnings
+mix composer.recipe.run /app/default
 ```
 
 Nothing is applied blindly. Every reference is resolved and every step's
@@ -201,8 +202,8 @@ up, and you'll copy it into your next project.
 Every step also works on its own, no recipe required:
 
 ```bash
-mix composer.step.run cb_std:setup/credo,cb_std:setup/quokka
-mix composer.step.run phx/remove_daisy_ui    # unqualified names work too
+mix composer.step.run cb_std:setup:credo,cb_std:setup:quokka
+mix composer.step.run remove_daisy_ui        # a bare name searches every cookbook
 mix composer.step.run hex:oban               # a package's own installer
 mix composer.step.run hex:ash@github:ash-project/ash   # ... from GitHub
 mix composer.step.run hex:my_lib@path:../my_lib        # ... from a local path
@@ -216,8 +217,8 @@ mix composer.step.run hex:ash_authentication -- --auth-strategy password  # ... 
 mix composer.cookbook.list                   # cookbooks, with step and recipe counts
 mix composer.step.list --action remove       # also --cookbook, --framework, --tag
 mix composer.step.find tailwind
-mix composer.step.show cb_std:phx/bun          # facets, requires, and a dry run
-mix composer.step.edit cb_std:phx/bun          # open its source in your editor
+mix composer.step.show cb_std:phx:bun          # facets, requires, and a dry run
+mix composer.step.edit cb_std:phx:bun          # open its source in your editor
 mix composer.recipe.list
 ```
 
@@ -245,25 +246,30 @@ mix composer.init --yes && mix composer.recipe.run default --no-commit
   rot. A recipe replays your preferences on top of whatever `phx.new`
   currently generates.
 
-## References and Hex packages
+## Addresses and Hex packages
 
-An unqualified name is looked up in the referring recipe's own cookbook
-first, then in every cookbook. If it matches nothing, it is a Hex package:
-`"oban"` means `"hex:oban"` — add the package and run its own installer.
-Which of the two applies is upstream's business, and each run prints a plan
-telling you which it was:
+Every address says what it is and where it resolves: `/` addresses a
+recipe and `:` a step; a cookbook name in front qualifies it
+(`cb_lab/lv/base`, `cb_std:setup:credo`), a leading `/` or `:` means the
+recipe's own cookbook (`/lv/base`, `:deploy_config`), and `./`, `../`
+are relative to the recipe's chapter (`./base`, `../ui/buttons`). A
+package is `"hex:oban"`: add the package and run its own installer. Each
+run prints a plan telling you what every entry was:
 
 ```console
 Composer plan
-  cb_std:setup/credo
+  cb_std:setup:credo
   hex:oban — oban.install
   hex:nimble_options — dependency only, ships no installer
-  cb_std:setup/sort_deps
+  cb_std:setup:sort_deps
 ```
 
-A name that matches steps in two cookbooks is an error that lists both, and
-a name that looks like a typo of a step is reported rather than looked up on
-Hex. Qualify the reference (`"cb_std:setup/credo"`) to be exact.
+Cookbook source never searches and never falls back to Hex, so installing
+another cookbook cannot change what a recipe means: a bare `"oban"` in a
+recipe is an error that says to write `"hex:oban"`. On the command line a
+bare name searches every cookbook (`mix composer.step.run credo`), and two
+matches are an error listing both. See
+[Addressing](guides/recipes.md#addressing).
 
 A `hex:` entry can pass arguments to the installer, set dependency options,
 and install from a version, GitHub, git or a local path:
@@ -290,8 +296,9 @@ installer would do if it existed.
 ## Built-in steps
 
 All built-in steps live in the `cb_std` cookbook, grouped by directory
-(`phx/`, `setup/`, `ecto/`, `pg/`, `cluster/`, `tidewave/`): reference them
-as `"cb_std:<id>"`, e.g. `"cb_std:setup/credo"`. `mix composer.step.list
+(`phx/`, `setup/`, `ecto/`, `pg/`, `cluster/`, `tidewave/`): address them
+as `"cb_std:<group>:<name>"`, e.g. `"cb_std:setup:credo"` for the id
+`setup/credo`. `mix composer.step.list
 --cookbook cb_std` lists them with their facets.
 
 | Id                             | Action | What it does                                                                                                                               |
@@ -388,8 +395,8 @@ one up.
 ```bash
 mix igniter.install cb_mine@path:../cb_mine --only dev,test
 mix composer.recipe.list cb_mine              # every recipe in it, with its shortdoc
-mix composer.recipe.run cb_mine:dev/tools
-mix composer.init --from cb_lab:lv/base       # start a new app from a shared recipe
+mix composer.recipe.run cb_mine/dev/tools
+mix composer.init --from cb_lab/lv/base       # start a new app from a shared recipe
 ```
 
 Lint reports every problem at its place in the file, and speaks the
@@ -408,9 +415,9 @@ arguments to the step, as `--` does on `mix composer.step.run`, and combines
 with `if:` (`{"cc_lab:x", argv: ["--all"], if: :x}`). On a `hex:`
 entry, `argv:` goes to the package's installer.
 
-Recipes compose: `{:use, "cb_mine:dev/tools"}` includes another recipe's
-steps in place, to any depth, optionally behind a flag (`{:use,
-"deploy/gigalixir", if: :gigalixir}`); `{:use, "base"}` names a recipe in
+Recipes compose: a recipe address in `steps:` (`"cb_mine/dev/tools"`)
+includes another recipe's steps in place, to any depth, optionally behind a
+flag (`{"/deploy/gigalixir", if: :gigalixir}`); `"./base"` names a recipe in
 the same chapter. At run time the tree is flattened into one ordered step
 list — packages from the whole tree are deduped and fetched up front, a
 single diff covers the entire run, and flags declared anywhere in the tree

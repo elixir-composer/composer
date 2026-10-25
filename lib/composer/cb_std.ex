@@ -1,6 +1,6 @@
 # This is composer's built-in cookbook, `cb_std`. It is laid out exactly like
 # any package's cookbook (lib/composer/cb_std/{steps,recipes}), and
-# its steps are referenced as "cb_std:<id>", e.g. "cb_std:setup/credo".
+# its steps are addressed as "cb_std:<path>", e.g. "cb_std:setup:credo".
 #
 # `cb_std` is the one exception to the rule that a cookbook is named after its
 # package's OTP app (:composer). The name is reserved, so no other package

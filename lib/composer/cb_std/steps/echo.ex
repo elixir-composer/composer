@@ -9,7 +9,7 @@ defmodule Composer.CbStd.Steps.Echo do
 
       steps: [
         {"cb_std:echo", argv: ["Before credo"]},
-        "cb_std:setup/credo"
+        "cb_std:setup:credo"
       ]
 
   The words of the message are joined with spaces, so

@@ -22,25 +22,27 @@ defmodule Composer do
       cookbook is discovered automatically. See `Composer.Cookbook`.
 
     * **Recipe** - a named list of steps with a shortdoc, an optional doc
-      and flags. Recipes live in chapters: `recipes/<chapter>.exs` holds the
-      recipes `<cookbook>:<chapter>/<name>`. See `Composer.Recipe` and
+      and flags. Recipes live in chapters: `recipes/<chapter path>.exs`
+      (chapters may be nested in directories) holds the recipes
+      `<cookbook>/<chapter path>/<name>`. See `Composer.Recipe` and
       `Composer.Recipe.Chapter`.
 
-    * **Reference** - the string `"cookbook:path"` that names a step or a
-      recipe, e.g. `"cb_std:setup/credo"` or `"cc_lab:ash/postgres"`. An unqualified
-      `"path"` is looked up in the referring recipe's own cookbook first,
-      then everywhere; a name that matches no step is a Hex package
-      (`"oban"` is `"hex:oban"`). See `Composer.Resolver`.
+    * **Address** - the string that names a step or a recipe. `/` addresses
+      a recipe and `:` a step (`"cb_lab/lv/base"`, `"cb_std:setup:credo"`);
+      a leading `/` or `:` is the recipe's own cookbook, `./` and `../` are
+      relative to its chapter, and `"hex:oban"` is a Hex package. A bare
+      name is a search, on the command line only. See `Composer.Ref` and
+      `Composer.Resolver`.
 
   ## Quick start
 
       mix composer.init                       # writes lib/composer/<app>/recipes/app.exs
-      mix composer.recipe.run app/default    # runs its default recipe
+      mix composer.recipe.run /app/default   # runs its default recipe
 
   ## Recipe syntax
 
   A chapter file holds recipes keyed by name; `default` below is
-  `<cookbook>:app/default`.
+  `<cookbook>/app/default`.
 
       # recipes/app.exs
       [
@@ -48,12 +50,12 @@ defmodule Composer do
           shortdoc: "My usual setup",
           flags: [oban_pro: "Add Oban Pro", gigalixir: "Deploy to Gigalixir"],
           steps: [
-            "cb_std:phx/remove_daisy_ui",                  # a step
-            "setup/credo",                               # an unqualified step reference
+            "cb_std:phx:remove_daisy_ui",                # a step
+            ":tools:thing",                              # a step of this cookbook
             "hex:oban",                                  # a Hex package and its installer
-            {"cb_std:oban_pro", if: :oban_pro},            # only with --oban-pro
-            {:use, "base"},                              # a recipe in this chapter, in place
-            {:use, "cb_lab:deploy/gigalixir", if: :gigalixir},  # ... only with --gigalixir
+            {"cb_std:oban_pro", if: :oban_pro},          # only with --oban-pro
+            "./base",                                    # a recipe in this chapter, in place
+            {"cb_lab/deploy/gigalixir", if: :gigalixir}, # ... only with --gigalixir
             {:task, "ash.codegen", ["init"]},            # compose any Igniter task
             {:queue, "ecto.setup", []}                   # run a Mix task after changes apply
           ]

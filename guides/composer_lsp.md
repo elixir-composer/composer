@@ -12,19 +12,23 @@ It gives the editor:
 - **Diagnostics** on open and on save: the same diagnostics as
   `mix composer.cookbook.lint --file` (see the [lint guide](lint.md)), in
   the saved file *and* in the files that include its recipes. When you fix
-  a typo in `cb_mine:ash/base`, the "has 1 problem" summary disappears from
+  a typo in `cb_mine/ash/base`, the "has 1 problem" summary disappears from
   `app.exs` without opening it.
-- **Hover** on a reference: a step's metadata and docs, a recipe's
-  shortdoc, flags and entries, what a `hex:` package (or an unqualified
-  name that falls through to Hex) does, or an alias's target cookbook. A
-  reference that doesn't resolve shows why.
+- **Hover** on an address: a step's metadata and docs, a recipe's
+  canonical address, shortdoc, flags and entries, what a `hex:` package
+  does, or an alias's target cookbook. Relative (`./base`, `../buttons`)
+  and root (`/ash/core`) addresses resolve from the buffer's cookbook and
+  chapter. An address that doesn't resolve shows why.
 - **Goto-definition**: a step's source (also under `deps/`), a recipe's
   key in its chapter file, or an alias's entry in `aliases:` (or the
   top-level binding it names). `hex:` references link to HexDocs.
-- **Completion** of step ids, recipe ids and the recipe's alias prefixes
-  in `steps:`, and of recipe ids in `{:use, "`, even while the buffer
-  doesn't parse.
-- **Quick fixes** that replace a typo with lint's suggestion.
+- **Completion** one segment at a time, as the shell completes: cookbook
+  and alias names, `./`, `../`, `/` and `:` at the start of an address,
+  then the next chapter, directory, group, recipe or step; only steps in a
+  step's `requires:`. It works even while the buffer doesn't parse.
+- **Quick fixes**: the one rewrite of an old-syntax address, a
+  `{:use, ...}` entry, a bare word with one match or a kind mismatch, and
+  lint's suggestions for a typo.
 
 ## Install
 

@@ -118,10 +118,10 @@ defmodule Composer.Lint do
   in it.
 
   Every cookbook's chapters are checked, since includes cross files, but
-  only the recipes in `paths` are resolved as a whole. Each
-  `{:use, ...}` in those files whose target, or anything it includes,
-  has problems gets one `:include_problems` diagnostic, with the problems
-  as related locations.
+  only the recipes in `paths` are resolved as a whole. Each recipe
+  include in those files whose target, or anything it includes, has
+  problems gets one `:include_problems` diagnostic, with the problems as
+  related locations.
 
   Files are matched by path, following symbolic links; results are keyed,
   and their `file`s given, as in `paths`.
@@ -361,7 +361,7 @@ defmodule Composer.Lint do
       else: closure(graph, Map.get(graph, id, []) ++ rest, MapSet.put(seen, id))
   end
 
-  # One diagnostic at each {:use, ...} of `recipe` whose target, or what
+  # One diagnostic at each include in `recipe` whose target, or what
   # it includes, has problems: those in the included recipes, and those
   # about no recipe in particular in their chapter files.
   defp summaries(recipe, index, graph, located, locate) do
