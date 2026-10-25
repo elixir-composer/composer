@@ -246,6 +246,19 @@ defmodule Composer.ResolverTest do
       assert Composer.Error.message(reason) =~ ~s(did you mean "cb_std:setup:credo" or)
     end
 
+    test "a bare word naming one of the cookbook's own steps has one rewrite", %{tmp_dir: dir} do
+      books = discover(dir, [:nested_book])
+
+      context = %{cookbook: "nested_book", chapter: "ash", cli?: false}
+
+      # cb_std has an echo step and recipe too, but echo meant this one.
+      assert {:error, {:bare_word, "echo", nil, [":echo"], []}} =
+               Resolver.find_step(books, "echo", context)
+
+      assert {:error, {:bare_word, "button", nil, ["nested_book:ui:button"], []}} =
+               Resolver.find_step(books, "button", context)
+    end
+
     test "a bare typo suggests the close step, not a Hex package", %{tmp_dir: dir} do
       books = cookbooks(dir, %{"g/p" => ~s(["gitignroe"])})
 

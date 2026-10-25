@@ -80,9 +80,11 @@ defmodule Mix.Tasks.Composer.Cookbook.Lint do
     CLI.require_project!()
     {opts, _args} = CLI.parse!(argv, format: :string, file: :string, fix: :boolean)
     format = format!(opts[:format])
-    cookbooks = CLI.cookbooks!(quiet: format != :text)
+    CLI.cookbooks!(quiet: format != :text)
 
     lint = fn ->
+      cookbooks = CLI.cookbooks!(quiet: format != :text)
+
       if opts[:file],
         do: lint_file(opts[:file], cookbooks),
         else: lint_cookbook(cookbooks)
@@ -115,8 +117,15 @@ defmodule Mix.Tasks.Composer.Cookbook.Lint do
         result = lint.()
 
         case Fix.apply(result.diagnostics) do
-          %{fixed: []} -> {:halt, {result, fixed}}
-          %{fixed: more} -> {:cont, {result, fixed ++ more}}
+          %{fixed: []} ->
+            {:halt, {result, fixed}}
+
+          %{fixed: more} ->
+            # A rewritten step module is read from its compiled metadata.
+            if Enum.any?(more, &(Path.extname(&1.file) == ".ex")),
+              do: CLI.cookbooks!(quiet: format != :text, refresh: true)
+
+            {:cont, {nil, fixed ++ more}}
         end
       end)
 

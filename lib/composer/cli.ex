@@ -67,11 +67,17 @@ defmodule Composer.CLI do
 
   With `quiet: true` (for `--json`), compiling prints nothing on stdout, so
   the output parses even when the build was stale. Compile errors still
-  raise.
+  raise. With `refresh: true`, the project is compiled again and the
+  cookbooks rediscovered, after a task has rewritten its source.
   """
   def cookbooks!(opts \\ []) do
     discovery = Application.get_env(:composer, :discovery, [])
     key = {__MODULE__, :cookbooks, discovery}
+
+    if opts[:refresh] do
+      Process.delete(key)
+      for task <- ~w(compile compile.all compile.elixir), do: Mix.Task.reenable(task)
+    end
 
     case Process.get(key) do
       nil ->

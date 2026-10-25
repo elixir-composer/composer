@@ -686,19 +686,17 @@ defmodule Composer.Resolver do
     end
   end
 
-  # What a bare word in source could have meant: its old meaning first,
-  # then every step or recipe it matches. When nothing does, it is the Hex
-  # package of that name, unless it is close to a step name (a typo).
+  # What a bare word in source could have meant: what it meant before
+  # addressing schemes (the cookbook's own step first, then the one step of
+  # that id), else every step or recipe it names. When nothing does, it is
+  # the Hex package of that name, unless it is close to a step name.
   defp bare_candidates(index, word, context) do
-    old =
-      case context.cookbook && legacy_rewrite(index, context, :step, word) do
-        {:ok, "hex:" <> _} -> []
-        {:ok, new} -> [new]
-        {:ambiguous, ids} -> ids
-        _ -> []
-      end
-
-    Enum.uniq(old ++ search(index, word))
+    case context.cookbook && legacy_rewrite(index, context, :step, word) do
+      {:ok, "hex:" <> _} -> search(index, word)
+      {:ok, new} -> [new]
+      {:ambiguous, ids} -> ids
+      _ -> search(index, word)
+    end
   end
 
   defp cookbook?(index, word), do: Map.has_key?(index.by_name, word)
