@@ -34,6 +34,9 @@ defmodule Mix.Tasks.Composer.Completion do
         |> File.read!()
         |> IO.write()
 
+      [] ->
+        Composer.CLI.help("composer.completion")
+
       _ ->
         Mix.raise("Usage: mix composer.completion bash|zsh|fish")
     end

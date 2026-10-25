@@ -95,7 +95,7 @@ defmodule Mix.Tasks.Composer.New do
 
   @impl Mix.Task
   def run(argv) do
-    if Enum.any?(argv, &(&1 in ["--help", "-h"])) and "--" not in argv do
+    if argv == [] or (Enum.any?(argv, &(&1 in ["--help", "-h"])) and "--" not in argv) do
       Mix.Task.run("help", ["composer.new"])
     else
       new(argv)

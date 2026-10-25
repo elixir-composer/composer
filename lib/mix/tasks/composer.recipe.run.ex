@@ -90,11 +90,15 @@ defmodule Mix.Tasks.Composer.Recipe.Run do
   # argv. A dry run is left alone: under --yes Igniter doesn't print the diff.
   @impl Mix.Task
   def run(argv) do
-    CLI.require_project!()
+    if CLI.prescan(argv) == [] do
+      CLI.help("composer.recipe.run")
+    else
+      CLI.require_project!()
 
-    if Enum.any?(argv, &(&1 in ["--yes", "--dry-run"])),
-      do: super(argv),
-      else: super(argv ++ ["--yes"])
+      if Enum.any?(argv, &(&1 in ["--yes", "--dry-run"])),
+        do: super(argv),
+        else: super(argv ++ ["--yes"])
+    end
   end
 
   @impl Igniter.Mix.Task

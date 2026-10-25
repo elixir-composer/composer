@@ -107,6 +107,12 @@ defmodule Composer.CLI do
     %{cookbook: own, chapter: nil, cli?: true}
   end
 
+  @doc """
+  Prints `task`'s `mix help` page. A task given none of its required
+  arguments shows this rather than raising a usage error.
+  """
+  def help(task), do: Mix.Task.rerun("help", [task])
+
   @doc "Raises unless running inside a Mix project."
   def require_project! do
     unless Mix.Project.get(), do: Mix.raise(Error.message(:not_in_project))

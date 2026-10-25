@@ -74,6 +74,9 @@ steps make changes and can render templates.
 | `composer.completion`, `composer.index`   | Shell completion                                 |
 | `composer.lsp`                            | Language server for recipe files                 |
 
+Run `mix composer` to list them all with a one-line summary. A task run
+without its required arguments prints its `mix help` page.
+
 ### Recipes
 
 A recipe is plain data. `mix composer.init` generates one; edit it to taste:

@@ -35,14 +35,14 @@ defmodule Mix.Tasks.Composer.Recipe.Edit do
 
   @impl Mix.Task
   def run(argv) do
-    {opts, args} = CLI.parse!(argv, print: :boolean)
+    case CLI.parse!(argv, print: :boolean) do
+      {_opts, []} -> CLI.help("composer.recipe.edit")
+      {opts, [ref]} -> edit(ref, opts)
+      _ -> Mix.raise("Usage: mix composer.recipe.edit RECIPE")
+    end
+  end
 
-    ref =
-      case args do
-        [ref] -> ref
-        _ -> Mix.raise("Usage: mix composer.recipe.edit RECIPE")
-      end
-
+  defp edit(ref, opts) do
     cookbooks = CLI.cookbooks!()
     id = CLI.ok!(Resolver.find_recipe(cookbooks, ref, CLI.context(cookbooks)))
     %Ref{cookbook: name} = parsed = Ref.parse!(id)

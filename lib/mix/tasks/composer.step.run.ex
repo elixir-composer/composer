@@ -44,10 +44,15 @@ defmodule Mix.Tasks.Composer.Step.Run do
 
   @impl Mix.Task
   def run(argv) do
-    CLI.require_project!()
     {own, passthrough} = CLI.split_passthrough(argv)
-    Process.put({__MODULE__, :passthrough}, passthrough)
-    super(own)
+
+    if CLI.prescan(own) == [] do
+      CLI.help("composer.step.run")
+    else
+      CLI.require_project!()
+      Process.put({__MODULE__, :passthrough}, passthrough)
+      super(own)
+    end
   end
 
   # Composed runs (Igniter.compose_task/3) never go through run/1, so the

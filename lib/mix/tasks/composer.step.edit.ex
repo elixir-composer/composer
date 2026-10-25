@@ -34,14 +34,14 @@ defmodule Mix.Tasks.Composer.Step.Edit do
 
   @impl Mix.Task
   def run(argv) do
-    {opts, args} = CLI.parse!(argv, print: :boolean)
+    case CLI.parse!(argv, print: :boolean) do
+      {_opts, []} -> CLI.help("composer.step.edit")
+      {opts, [ref]} -> edit(ref, opts)
+      _ -> Mix.raise("Usage: mix composer.step.edit STEP")
+    end
+  end
 
-    ref =
-      case args do
-        [ref] -> ref
-        _ -> Mix.raise("Usage: mix composer.step.edit STEP")
-      end
-
+  defp edit(ref, opts) do
     cookbooks = CLI.cookbooks!()
 
     meta =

@@ -113,6 +113,17 @@ are excluded from formatting on purpose.
 
 - `lib/mix/tasks/composer.*.ex` — thin Mix task wrappers; shared plumbing in
   `Composer.CLI`. Listing tasks support `--json`.
+- `mix composer` (`Mix.Tasks.Composer`) lists every loaded `composer.*`
+  task that has a `@shortdoc`, so a new task appears there automatically.
+  An internal task (e.g. `composer_new.install`, `composer.git.commit`)
+  has no `@shortdoc`, which keeps it out of `mix help` and `mix composer`.
+- A task run with none of its required arguments prints its `mix help`
+  page (`Composer.CLI.help/1`) instead of raising: check the positional
+  args (`CLI.prescan/1` for options mixed in) first thing in `run/1`. An
+  Igniter task must override `run/1` for this, since Igniter raises an
+  `ArgumentError` with a stack trace when a required `positional:` is
+  missing. Wrong arguments, as opposed to none, still `Mix.raise` a
+  one-line usage.
 - `Composer.Index` writes `_build/composer/index` (plain text) so shell
   completion (`priv/completion/`) never starts the BEAM; every task refreshes
   it.

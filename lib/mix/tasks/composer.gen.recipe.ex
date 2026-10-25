@@ -21,6 +21,7 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
 
   use Igniter.Mix.Task
 
+  alias Composer.CLI
   alias Composer.Recipe.Chapter
   alias Mix.Tasks.Composer.Gen.Cookbook, as: GenCookbook
 
@@ -30,6 +31,11 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
       positional: [:path],
       example: "mix composer.gen.recipe ash/base"
     }
+  end
+
+  @impl Mix.Task
+  def run(argv) do
+    if CLI.prescan(argv) == [], do: CLI.help("composer.gen.recipe"), else: super(argv)
   end
 
   @impl Igniter.Mix.Task

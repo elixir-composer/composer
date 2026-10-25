@@ -49,14 +49,14 @@ defmodule Mix.Tasks.Composer.Recipe.Show do
 
   @impl Mix.Task
   def run(argv) do
-    {opts, args} = CLI.parse!(argv)
+    case CLI.parse!(argv) do
+      {_opts, []} -> CLI.help("composer.recipe.show")
+      {opts, [ref]} -> show(ref, opts)
+      _ -> Mix.raise("Usage: mix composer.recipe.show RECIPE")
+    end
+  end
 
-    ref =
-      case args do
-        [ref] -> ref
-        _ -> Mix.raise("Usage: mix composer.recipe.show RECIPE")
-      end
-
+  defp show(ref, opts) do
     cookbooks = CLI.cookbooks!(quiet: opts[:json])
     result = CLI.resolve_recipe!(cookbooks, ref, :all)
     [recipe | _] = result.recipes

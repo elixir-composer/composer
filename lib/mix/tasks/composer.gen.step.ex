@@ -29,6 +29,7 @@ defmodule Mix.Tasks.Composer.Gen.Step do
 
   use Igniter.Mix.Task
 
+  alias Composer.CLI
   alias Mix.Tasks.Composer.Gen.Cookbook, as: GenCookbook
 
   @impl Igniter.Mix.Task
@@ -37,6 +38,11 @@ defmodule Mix.Tasks.Composer.Gen.Step do
       positional: [:path],
       example: "mix composer.gen.step ash/postgres"
     }
+  end
+
+  @impl Mix.Task
+  def run(argv) do
+    if CLI.prescan(argv) == [], do: CLI.help("composer.gen.step"), else: super(argv)
   end
 
   @impl Igniter.Mix.Task

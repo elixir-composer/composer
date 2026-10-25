@@ -24,14 +24,14 @@ defmodule Mix.Tasks.Composer.Step.Show do
 
   @impl Mix.Task
   def run(argv) do
-    {opts, args} = CLI.parse!(argv)
+    case CLI.parse!(argv) do
+      {_opts, []} -> CLI.help("composer.step.show")
+      {opts, [ref]} -> show(ref, opts)
+      _ -> Mix.raise("Usage: mix composer.step.show REF")
+    end
+  end
 
-    ref =
-      case args do
-        [ref] -> ref
-        _ -> Mix.raise("Usage: mix composer.step.show REF")
-      end
-
+  defp show(ref, opts) do
     cookbooks = CLI.cookbooks!(quiet: opts[:json])
 
     case CLI.ok!(Resolver.find_step(cookbooks, ref, CLI.context(cookbooks))) do

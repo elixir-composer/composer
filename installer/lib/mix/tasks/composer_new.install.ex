@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.ComposerNew.Install do
-  @shortdoc "Installs packages with Igniter, keeping version requirements (used by composer.new)"
+  # No @shortdoc, so `mix help` leaves this internal task out.
 
   @moduledoc """
   `mix igniter.install`, as `mix composer.new` runs it inside the new app:
@@ -28,6 +28,8 @@ defmodule Mix.Tasks.ComposerNew.Install do
   @compile {:no_warn_undefined, [Igniter.Util.Install, Igniter.Project.Deps]}
 
   @impl Mix.Task
+  def run([]), do: Mix.Task.run("help", ["composer_new.install"])
+
   def run(argv) do
     {packages, argv} = Enum.split_while(argv, &(not String.starts_with?(&1, "-")))
 

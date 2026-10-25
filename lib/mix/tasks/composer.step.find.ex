@@ -19,14 +19,13 @@ defmodule Mix.Tasks.Composer.Step.Find do
 
   @impl Mix.Task
   def run(argv) do
-    {opts, args} = CLI.parse!(argv)
+    case CLI.parse!(argv) do
+      {_opts, []} -> CLI.help("composer.step.find")
+      {opts, words} -> find(words |> Enum.join(" ") |> String.downcase(), opts)
+    end
+  end
 
-    query =
-      case args do
-        [] -> Mix.raise("Usage: mix composer.step.find QUERY")
-        words -> words |> Enum.join(" ") |> String.downcase()
-      end
-
+  defp find(query, opts) do
     CLI.cookbooks!(quiet: opts[:json])
     |> Enum.flat_map(&Cookbook.steps/1)
     |> search(query)
