@@ -242,7 +242,7 @@ defmodule Mix.Tasks.Composer.Init do
   end
 
   defp describe(ref, cb_std) do
-    %Ref{path: id} = Ref.parse!(ref)
+    %Ref.Legacy{path: id} = Ref.Legacy.parse!(ref)
 
     case Cookbook.step(cb_std, id) do
       {:ok, meta} -> meta.summary || ref
@@ -253,7 +253,7 @@ defmodule Mix.Tasks.Composer.Init do
   defp from_source(from) do
     cookbooks = CLI.cookbooks!()
     id = CLI.ok!(Composer.Resolver.find_recipe(cookbooks, from, nil))
-    %Ref{cookbook: name, path: path} = Ref.parse!(id)
+    %Ref.Legacy{cookbook: name, path: path} = Ref.Legacy.parse!(id)
     cookbook = Enum.find(cookbooks, &(&1.name == name))
     [_chapter, recipe_name] = String.split(path, "/")
 
@@ -290,15 +290,15 @@ defmodule Mix.Tasks.Composer.Init do
   defp qualify(entry, _recipe, _cookbooks), do: entry
 
   defp qualified(ref, recipe, cookbooks) do
-    case Ref.parse(ref) do
-      {:ok, %Ref{cookbook: nil, path: path} = parsed} ->
-        if Ref.nested?(parsed) do
+    case Ref.Legacy.parse(ref) do
+      {:ok, %Ref.Legacy{cookbook: nil, path: path} = parsed} ->
+        if Ref.Legacy.nested?(parsed) do
           case Composer.Resolver.find_recipe(cookbooks, ref, recipe.cookbook) do
             {:ok, id} -> id
             {:error, _} -> ref
           end
         else
-          Ref.id(recipe.cookbook, recipe.chapter <> "/" <> path)
+          Ref.Legacy.id(recipe.cookbook, recipe.chapter <> "/" <> path)
         end
 
       _ ->

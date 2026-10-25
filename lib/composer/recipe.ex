@@ -212,7 +212,7 @@ defmodule Composer.Recipe do
   def entry_error({string, opts} = entry, ref) when is_binary(string) do
     if is_list(opts) and opts != [] and Keyword.keyword?(opts) and
          Enum.uniq(Keyword.keys(opts)) == Keyword.keys(opts) do
-      case Composer.Ref.parse(string) do
+      case Composer.Ref.Legacy.parse(string) do
         {:ok, parsed} -> options_error(entry, parsed, ref)
         {:error, reason} -> reason
       end
@@ -261,7 +261,7 @@ defmodule Composer.Recipe do
 
   defp valid_form?(_entry), do: false
 
-  defp options_error(entry, %Composer.Ref{} = parsed, ref) do
+  defp options_error(entry, %Composer.Ref.Legacy{} = parsed, ref) do
     {_string, opts} = entry
     step? = parsed.cookbook not in [nil, "hex"]
 
@@ -297,7 +297,7 @@ defmodule Composer.Recipe do
       length(git_refs) > 1 ->
         {:multiple_git_refs, ref, entry, git_refs}
 
-      non_version && Composer.Ref.repo_package?(parsed.path) ->
+      non_version && Composer.Ref.Legacy.repo_package?(parsed.path) ->
         {:repo_source, ref, entry, non_version}
 
       true ->
@@ -407,8 +407,8 @@ defmodule Composer.Recipe do
       _ -> []
     end)
     |> Enum.flat_map(fn ref ->
-      case Composer.Ref.parse(ref) do
-        {:ok, %Composer.Ref{cookbook: cookbook}} when is_binary(cookbook) -> [cookbook]
+      case Composer.Ref.Legacy.parse(ref) do
+        {:ok, %Composer.Ref.Legacy{cookbook: cookbook}} when is_binary(cookbook) -> [cookbook]
         _ -> []
       end
     end)

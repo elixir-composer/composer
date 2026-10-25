@@ -10,12 +10,20 @@ defmodule ComposerNew.RefTest do
   {fixture, _binding} = Code.eval_file(Path.expand("../fixtures/refs.exs", __DIR__))
   @fixture fixture
 
-  test "parses every ref in the shared fixture" do
-    for {string, expected} <- @fixture do
-      case {expected, Ref.parse(string)} do
-        {{:ok, cookbook, path, source}, {:ok, parsed}} ->
-          assert {parsed.cookbook, parsed.path, parsed.source} == {cookbook, path, source},
-                 "#{string} parsed as #{inspect(parsed)}"
+  @fields [:kind, :scope, :cookbook, :up, :segments, :source]
+
+  test "parses every address in the shared fixture" do
+    for entry <- @fixture do
+      {string, expected} =
+        case entry do
+          {string, _expected, :composer} -> {string, :error}
+          {string, expected, :archive} -> {string, expected}
+          {string, expected} -> {string, expected}
+        end
+
+      case {expected, Ref.parse_address(string)} do
+        {{:ok, fields}, {:ok, parsed}} ->
+          assert Map.take(parsed, @fields) == fields, "#{string} parsed as #{inspect(parsed)}"
 
         {:error, {:error, message}} ->
           assert message =~ "Invalid reference #{inspect(string)}"
@@ -27,26 +35,46 @@ defmodule ComposerNew.RefTest do
   end
 
   test "keeps the spec as written" do
-    assert {:ok, %{spec: "path:../cb-lab"}} = Ref.parse("cb-lab:lv/base@path:../cb-lab")
-    assert {:ok, %{spec: nil}} = Ref.parse("cb_lab:lv/base")
+    assert {:ok, %{spec: "path:../cb-lab"}} = Ref.parse("cb-lab/lv/base@path:../cb-lab")
+    assert {:ok, %{spec: nil}} = Ref.parse("cb_lab/lv/base")
+    assert Ref.recipe(elem(Ref.parse("cb_lab/ash/ui/base@0.3"), 1)) == "cb_lab/ash/ui/base"
   end
 
   describe "archive rules" do
-    test "a ref must name a cookbook" do
-      assert {:error, message} = Ref.parse("lv/base")
-      assert message =~ "refs must name a cookbook (cookbook:chapter/recipe)"
-      assert message =~ "shortnames aren't supported"
+    test "accepts a qualified recipe with a source" do
+      assert {:ok, %{cookbook: "cb_lab", segments: ["lv", "base"], source: [github: _, ref: _]}} =
+               Ref.parse("cb_lab/lv/base@github:elixir-composer/cb_lab@v0.3.0")
     end
 
-    test "hex: names a package, not a cookbook" do
+    test "rejects root, relative and search addresses" do
+      for {address, why} <- [
+            {"/lv/base", "a cookbook-root address has no cookbook"},
+            {"./base", "a relative address has no cookbook"},
+            {"base", "a bare name has no cookbook"}
+          ] do
+        assert {:error, message} = Ref.parse(address)
+        assert message =~ why
+        assert message =~ "cb_lab/lv/base@"
+      end
+    end
+
+    test "rejects steps, and hex: which names a package" do
+      assert {:error, message} = Ref.parse("cb_lab:lv:base")
+      assert message =~ "that is a step"
+
       assert {:error, message} = Ref.parse("hex:oban")
-      assert message =~ "hex: names a package, not a cookbook"
+      assert message =~ "hex: names a package, not a recipe"
       assert {:error, _} = Ref.parse("hex:oban@2.0.0")
     end
 
-    test "cb_std: takes no source" do
-      assert {:ok, %{cookbook: "cb_std", source: []}} = Ref.parse("cb_std:debug/echo")
-      assert {:error, message} = Ref.parse("cb_std:debug/echo@0.3")
+    test "rejects the old cookbook:chapter/recipe form" do
+      assert {:error, message} = Ref.parse("cb_lab:lv/base")
+      assert message =~ ~s("cb_lab/lv/base")
+    end
+
+    test "cb_std/ takes no source" do
+      assert {:ok, %{cookbook: "cb_std", source: []}} = Ref.parse("cb_std/debug/echo")
+      assert {:error, message} = Ref.parse("cb_std/debug/echo@0.3")
       assert message =~ "cb_std ships with composer; drop the @source"
     end
   end

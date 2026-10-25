@@ -91,8 +91,8 @@ defmodule Composer.LSP.Definition do
   @doc "The HexDocs URL of a `hex:` reference, or `nil`."
   @spec hexdocs(String.t()) :: String.t() | nil
   def hexdocs(string) do
-    case Ref.parse(string) do
-      {:ok, %Ref{cookbook: "hex", path: package}} ->
+    case Ref.Legacy.parse(string) do
+      {:ok, %Ref.Legacy{cookbook: "hex", path: package}} ->
         case String.split(package, ".") do
           [org, name] -> "https://#{org}.hexdocs.pm/#{name}"
           [name] -> "https://hexdocs.pm/#{name}"

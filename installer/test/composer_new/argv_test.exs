@@ -9,9 +9,9 @@ defmodule ComposerNew.ArgvTest do
   end
 
   test "APP and REF, with defaults" do
-    parsed = parse!(~w(my_app cb_lab:lv/base))
+    parsed = parse!(~w(my_app cb_lab/lv/base))
     assert parsed.app == "my_app"
-    assert parsed.ref == "cb_lab:lv/base"
+    assert parsed.ref == "cb_lab/lv/base"
     assert parsed.recipe_flags == []
 
     assert Enum.sort(parsed.opts) ==
@@ -37,10 +37,10 @@ defmodule ComposerNew.ArgvTest do
   test "own options versus recipe flags, interleaved, in order" do
     parsed =
       parse!(
-        ~w(my_app --oban-pro cb_lab:phx/saas --with phx.new --gigalixir -x --dry-run --no-recipe)
+        ~w(my_app --oban-pro cb_lab/phx/saas --with phx.new --gigalixir -x --dry-run --no-recipe)
       )
 
-    assert parsed.ref == "cb_lab:phx/saas"
+    assert parsed.ref == "cb_lab/phx/saas"
     assert parsed.opts[:with] == "phx.new"
     assert parsed.opts[:dry_run]
     assert parsed.opts[:no_recipe]
@@ -70,7 +70,7 @@ defmodule ComposerNew.ArgvTest do
   end
 
   test "everything after -- is a recipe flag" do
-    parsed = parse!(~w(a cb_std:debug/echo --gigalixir -- --reset --with x extra))
+    parsed = parse!(~w(a cb_std/debug/echo --gigalixir -- --reset --with x extra))
     assert parsed.recipe_flags == ~w(--gigalixir --reset --with x extra)
     refute parsed.opts[:reset]
     assert parsed.opts[:with] == nil

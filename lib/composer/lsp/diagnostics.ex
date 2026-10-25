@@ -62,7 +62,7 @@ defmodule Composer.LSP.Diagnostics do
       {:ok, index} ->
         for recipe <- index.recipes,
             uniq: true,
-            do: Ref.id(owner.name, chapter <> "/" <> recipe.name)
+            do: Ref.Legacy.id(owner.name, chapter <> "/" <> recipe.name)
 
       {:error, _} ->
         []

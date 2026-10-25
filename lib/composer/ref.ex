@@ -1,28 +1,47 @@
 defmodule Composer.Ref do
   @moduledoc """
-  A reference to a step or recipe: `"cookbook:path"`.
+  An address of a recipe or a step.
 
-      iex> Composer.Ref.parse("cc_lab:ash/postgres")
-      {:ok, %Composer.Ref{cookbook: "cc_lab", path: "ash/postgres"}}
+  The separator gives the **kind**, `/` for a recipe and `:` for a step, and
+  the first character gives the **scope**:
 
-      iex> Composer.Ref.parse("ash/postgres")
-      {:ok, %Composer.Ref{cookbook: nil, path: "ash/postgres"}}
+  | Scope        | Recipe                  | Step                         |
+  |--------------|-------------------------|------------------------------|
+  | `:qualified` | `cb_std/ash/ui/buttons` | `cb_std:cluster:libcluster`  |
+  | `:root`      | `/ash/ui/buttons`       | `:cluster:libcluster`        |
+  | `:relative`  | `./base`, `../buttons`  | `.:dns` (reserved, rejected) |
+  | `:search`    | `buttons`               | `libcluster`                 |
 
-  A path is one or more `/`-separated segments of `[a-z0-9_]`. Input is
-  normalized from `-` to `_`, so `daisy-ui` and `daisy_ui` are the same
-  name. The `hex:` cookbook also accepts a private-repo package such as
-  `hex:oban.oban_pro`.
+      iex> Composer.Ref.parse("cb_lab/ash/postgres")
+      {:ok, %Composer.Ref{kind: :recipe, scope: :qualified, cookbook: "cb_lab", segments: ["ash", "postgres"]}}
 
-  ## Sources
+      iex> Composer.Ref.parse("../buttons")
+      {:ok, %Composer.Ref{kind: :recipe, scope: :relative, up: 1, segments: ["buttons"]}}
 
-  A `hex:` reference may name where the package comes from, after an `@`,
-  as `mix igniter.install` does:
+      iex> Composer.Ref.parse(":setup:credo")
+      {:ok, %Composer.Ref{kind: :step, scope: :root, segments: ["setup", "credo"]}}
+
+  A name is lowercase `[a-z0-9_]`; input is normalized from `-` to `_`, so
+  `daisy-ui` and `daisy_ui` are the same name. A search is a single bare
+  name, with no kind; only the command line accepts one (see
+  `Composer.Resolver`).
+
+  `.` and `..` appear only as a leading prefix (`./x`, `../x`, `../../x`),
+  and an address uses one kind of separator. Relative step references
+  (`.:dns`) are reserved and rejected.
+
+  ## `hex:`
+
+  `hex` is a virtual step cookbook: `hex:` takes exactly one name, which
+  may name a private-repo package (`hex:oban.oban_pro`), and is the only
+  address that takes a source, after an `@`, as `mix igniter.install`
+  does:
 
       iex> Composer.Ref.parse("hex:ash@3.5")
-      {:ok, %Composer.Ref{cookbook: "hex", path: "ash", source: [version: "~> 3.0"]}}
+      {:ok, %Composer.Ref{kind: :step, scope: :qualified, cookbook: "hex", segments: ["ash"], source: [version: "~> 3.0"]}}
 
       iex> Composer.Ref.parse("hex:my-lib@path:../my-lib")
-      {:ok, %Composer.Ref{cookbook: "hex", path: "my_lib", source: [path: "../my-lib"]}}
+      {:ok, %Composer.Ref{kind: :step, scope: :qualified, cookbook: "hex", segments: ["my_lib"], source: [path: "../my-lib"]}}
 
     * `@<version>` - `@3.5.0` is `"== 3.5.0"`, a partial version such as
       `@3.5` is `"~> 3.0"` (Igniter's rule), and a requirement with an
@@ -31,43 +50,61 @@ defmodule Composer.Ref do
     * `@git:<url>`
     * `@path:<path>`
 
-  The reference is split on its first `@`, so the spec may contain `:`, `@`
-  and `-`; only the package name is normalized. A source is the same
+  The address is split on its first `@`, so the spec may contain `:`, `@`,
+  `/` and `-`; only the part before it is normalized. A source is the same
   keyword list as the `version:`/`github:`/`git:`/`path:` options of a
-  recipe entry (see `Composer.Recipe`). Any other reference with an `@` is
-  invalid.
+  recipe entry (see `Composer.Recipe`).
+
+  ## Canonical ids
+
+  `id/3` builds the canonical qualified address from a kind, a cookbook and
+  segments (`cb_std:setup:credo`, `cb_std/ash/ui/buttons`). Canonical ids
+  are what the completion index, manifests, `--json` output, diagnostics
+  and `requires:` matching use. Internally a recipe id is its `/`-joined
+  chapter path and key (`"ash/ui/buttons"`) and a step id its `/`-joined
+  path under `steps/` (`"cluster/libcluster"`); `id/3` takes either form.
+
+  ## Listing stems
+
+  Listing tasks and completion also take a stem, an address cut after a
+  separator: `cb_std/`, `cb_std:`, `cb_std/ash/`, `/`, `:`. See
+  `parse_stem/1`.
 
   Parsing never creates atoms.
   """
 
-  @enforce_keys [:path]
-  defstruct cookbook: nil, path: nil, source: []
+  defstruct kind: nil, scope: nil, cookbook: nil, up: 0, segments: [], source: []
 
-  @type t :: %__MODULE__{cookbook: String.t() | nil, path: String.t(), source: keyword()}
+  @type kind :: :recipe | :step
+  @type scope :: :qualified | :root | :relative | :search
 
-  @segment ~r/\A[a-z0-9_]+\z/
+  @type t :: %__MODULE__{
+          kind: kind() | nil,
+          scope: scope(),
+          cookbook: String.t() | nil,
+          up: non_neg_integer(),
+          segments: [String.t()],
+          source: keyword()
+        }
+
+  @name ~r/\A[a-z0-9_]+\z/
   @hex_package ~r/\A[a-z0-9_]+(\.[a-z0-9_]+)?\z/
   @github_repo ~r/\A[^\/\s@]+\/[^\/\s@]+\z/
 
-  @doc "Parses a reference string."
+  @doc "Parses an address."
   @spec parse(String.t()) :: {:ok, t()} | {:error, {:invalid_ref, String.t(), String.t()}}
   def parse(string) when is_binary(string) do
-    {name, spec} =
-      case String.split(String.trim(string), "@", parts: 2) do
-        [name] -> {name, nil}
-        [name, spec] -> {name, spec}
-      end
+    {name, spec} = split(string)
+    invalid = &{:error, {:invalid_ref, string, &1}}
 
-    case String.split(String.replace(name, "-", "_"), ":") do
-      [path] -> build(string, nil, path, spec)
-      [cookbook, path] -> build(string, cookbook, path, spec)
-      _ -> {:error, {:invalid_ref, string, "a reference has at most one `:`"}}
+    with {:ok, ref} <- classify(String.replace(name, "-", "_"), invalid) do
+      attach_source(ref, spec, invalid)
     end
   end
 
-  def parse(other), do: {:error, {:invalid_ref, inspect(other), "a reference must be a string"}}
+  def parse(other), do: {:error, {:invalid_ref, inspect(other), "an address must be a string"}}
 
-  @doc "Like `parse/1`, raising `ArgumentError` on an invalid reference."
+  @doc "Like `parse/1`, raising `ArgumentError` on an invalid address."
   @spec parse!(String.t()) :: t()
   def parse!(string) do
     case parse(string) do
@@ -77,67 +114,230 @@ defmodule Composer.Ref do
   end
 
   @doc """
-  Formats a reference as `cookbook:path`, or `path` when unqualified, with
-  its source in `@` form.
+  Parses a listing stem: an address cut just after a separator, such as
+  `cb_std/`, `cb_std:`, `cb_std/ash/`, `cb_std:cluster:`, `/`, `:` or
+  `/ash/`. `cookbook` is `nil` for a root stem.
+
+      iex> Composer.Ref.parse_stem("cb_std/ash/")
+      {:ok, %{kind: :recipe, cookbook: "cb_std", segments: ["ash"]}}
+
+      iex> Composer.Ref.parse_stem(":")
+      {:ok, %{kind: :step, cookbook: nil, segments: []}}
+  """
+  @spec parse_stem(String.t()) ::
+          {:ok, %{kind: kind(), cookbook: String.t() | nil, segments: [String.t()]}}
+          | {:error, {:invalid_ref, String.t(), String.t()}}
+  def parse_stem(string) when is_binary(string) do
+    trimmed = string |> String.trim() |> String.replace("-", "_")
+
+    with sep when sep in ["/", ":"] <- String.last(trimmed),
+         kind = kind_of(sep),
+         {:ok, ref} <- classify(trimmed <> "x", fn _ -> :error end),
+         true <- ref.kind == kind and ref.scope in [:qualified, :root] do
+      {:ok, %{kind: kind, cookbook: ref.cookbook, segments: Enum.drop(ref.segments, -1)}}
+    else
+      _ -> {:error, {:invalid_ref, string, "a stem is an address ending in / or :"}}
+    end
+  end
+
+  @doc """
+  Writes an address in canonical form: `./x`, `../../x`, `/a/b`, `:a:b`,
+  `cb/a/b`, `cb:a:b`, `hex:pkg@spec`, or a bare search name.
   """
   @spec to_string(t()) :: String.t()
-  def to_string(%__MODULE__{cookbook: nil, path: path}), do: path
+  def to_string(%__MODULE__{scope: :search, segments: [name]}), do: name
 
-  def to_string(%__MODULE__{cookbook: cookbook, path: path, source: source}),
-    do: cookbook <> ":" <> path <> format_source(source)
+  def to_string(%__MODULE__{scope: :relative, up: up, segments: segments}) do
+    prefix = if up == 0, do: "./", else: String.duplicate("../", up)
+    prefix <> Enum.join(segments, "/")
+  end
 
-  @doc "Joins a cookbook name and a path into a qualified reference string."
-  @spec id(String.t(), String.t()) :: String.t()
-  def id(cookbook, path), do: cookbook <> ":" <> path
+  def to_string(%__MODULE__{scope: :root, kind: kind, segments: segments}) do
+    sep = separator(kind)
+    sep <> Enum.join(segments, sep)
+  end
 
-  @doc "True when `path` contains a `/`, i.e. it names a chapter or a step directory."
-  @spec nested?(t()) :: boolean()
-  def nested?(%__MODULE__{path: path}), do: String.contains?(path, "/")
+  def to_string(%__MODULE__{kind: kind, cookbook: cookbook, segments: segments, source: source}),
+    do: id(kind, cookbook, segments) <> format_source(source)
+
+  @doc """
+  Builds the canonical qualified id of a recipe or step: `id(:step,
+  "cb_std", ["setup", "credo"])` is `"cb_std:setup:credo"`. `segments` may
+  also be a `/`-joined internal id (`"setup/credo"`).
+  """
+  @spec id(kind(), String.t(), [String.t()] | String.t()) :: String.t()
+  def id(kind, cookbook, segments) when is_binary(segments),
+    do: id(kind, cookbook, String.split(segments, "/"))
+
+  def id(kind, cookbook, segments) do
+    sep = separator(kind)
+    cookbook <> sep <> Enum.join(segments, sep)
+  end
+
+  @doc "The separator of a kind: `/` for a recipe, `:` for a step."
+  @spec separator(kind()) :: String.t()
+  def separator(:recipe), do: "/"
+  def separator(:step), do: ":"
+
+  @doc "The internal id of a ref's segments: `/`-joined, as a file path."
+  @spec path(t()) :: String.t()
+  def path(%__MODULE__{segments: segments}), do: Enum.join(segments, "/")
 
   @doc "True when `package` names a package in a private repo (`org.pkg`)."
   @spec repo_package?(String.t()) :: boolean()
   def repo_package?(package), do: String.contains?(package, ".")
 
-  defp build(original, cookbook, path, spec) do
+  # -- classification ----------------------------------------------------
+
+  defp split(string) do
+    case String.split(String.trim(string), "@", parts: 2) do
+      [name] -> {name, nil}
+      [name, spec] -> {name, spec}
+    end
+  end
+
+  defp classify("", invalid), do: invalid.("an address is empty")
+
+  defp classify("." <> _ = name, invalid), do: relative(name, invalid)
+
+  defp classify("/" <> rest = name, invalid) do
+    with :ok <- one_separator(name, invalid),
+         {:ok, segments} <- segments(rest, "/", invalid) do
+      {:ok, %__MODULE__{kind: :recipe, scope: :root, segments: segments}}
+    end
+  end
+
+  defp classify(":" <> rest = name, invalid) do
+    with :ok <- one_separator(name, invalid),
+         {:ok, segments} <- segments(rest, ":", invalid) do
+      {:ok, %__MODULE__{kind: :step, scope: :root, segments: segments}}
+    end
+  end
+
+  defp classify(name, invalid) do
+    with :ok <- one_separator(name, invalid) do
+      case :binary.match(name, ["/", ":"]) do
+        :nomatch ->
+          if valid_name?(name),
+            do: {:ok, %__MODULE__{scope: :search, segments: [name]}},
+            else: invalid.(name_reason(name))
+
+        {at, 1} ->
+          sep = binary_part(name, at, 1)
+          cookbook = binary_part(name, 0, at)
+          rest = binary_part(name, at + 1, byte_size(name) - at - 1)
+          qualified(cookbook, kind_of(sep), rest, invalid)
+      end
+    end
+  end
+
+  defp qualified(cookbook, kind, rest, invalid) do
     cond do
-      cookbook != nil and not Regex.match?(@segment, cookbook) ->
-        {:error, {:invalid_ref, original, "cookbook names are lowercase [a-z0-9_]"}}
+      not valid_name?(cookbook) ->
+        invalid.("cookbook names are lowercase [a-z0-9_]")
 
-      cookbook == "hex" and not Regex.match?(@hex_package, path) ->
-        {:error,
-         {:invalid_ref, original,
-          "a hex: reference names one package, e.g. hex:oban or hex:org.pkg"}}
+      cookbook == "hex" and kind == :recipe ->
+        invalid.("hex is a step cookbook; a Hex package is written hex:<package>")
 
-      cookbook != "hex" and not valid_path?(path) ->
-        {:error,
-         {:invalid_ref, original,
-          "a path is one or more `/`-separated lowercase [a-z0-9_] segments"}}
-
-      spec != nil and cookbook != "hex" ->
-        {:error,
-         {:invalid_ref, original,
-          "only a hex: reference takes an @ source; for a Hex package write " <>
-            inspect("hex:" <> path <> "@" <> spec)}}
-
-      spec == nil ->
-        {:ok, %__MODULE__{cookbook: cookbook, path: path}}
+      cookbook == "hex" ->
+        if Regex.match?(@hex_package, rest),
+          do:
+            {:ok, %__MODULE__{kind: :step, scope: :qualified, cookbook: "hex", segments: [rest]}},
+          else: invalid.("a hex: address names one package, e.g. hex:oban or hex:org.pkg")
 
       true ->
-        with {:ok, source} <- parse_spec(original, path, spec) do
-          {:ok, %__MODULE__{cookbook: cookbook, path: path, source: source}}
+        with {:ok, segments} <- segments(rest, separator(kind), invalid) do
+          {:ok,
+           %__MODULE__{kind: kind, scope: :qualified, cookbook: cookbook, segments: segments}}
         end
     end
   end
 
-  defp valid_path?(path) do
-    path != "" and path |> String.split("/") |> Enum.all?(&Regex.match?(@segment, &1))
+  # "./x", "../x", "../../x", and the reserved ".:x", "..:x".
+  defp relative(name, invalid) do
+    case climb(name) do
+      {up, {:recipe, path}} ->
+        with :ok <- one_separator(name, invalid),
+             {:ok, segments} <- segments(path, "/", invalid) do
+          {:ok, %__MODULE__{kind: :recipe, scope: :relative, up: up, segments: segments}}
+        end
+
+      :step ->
+        invalid.("relative step references are not supported yet")
+
+      :error ->
+        invalid.("a relative address starts with ./ or ../, e.g. ./base or ../ui/buttons")
+    end
+  end
+
+  defp climb("./" <> rest), do: {0, {:recipe, rest}}
+  defp climb(".:" <> _), do: :step
+  defp climb(name), do: climb_up(name, 0)
+
+  defp climb_up("../" <> rest, up), do: climb_up(rest, up + 1)
+  defp climb_up("..:" <> _, _up), do: :step
+  defp climb_up(_rest, 0), do: :error
+  defp climb_up(rest, up), do: {up, {:recipe, rest}}
+
+  defp one_separator(name, invalid) do
+    if String.contains?(name, "/") and String.contains?(name, ":") do
+      invalid.(
+        "an address uses one separator, / for a recipe or : for a step; " <>
+          "write #{inspect(String.replace(name, ":", "/"))} or " <>
+          inspect(String.replace(name, "/", ":"))
+      )
+    else
+      :ok
+    end
+  end
+
+  defp segments(rest, sep, invalid) do
+    segments = String.split(rest, sep)
+
+    cond do
+      Enum.any?(segments, &(&1 in [".", ".."])) ->
+        invalid.(". and .. may only begin an address, as in ./base or ../buttons")
+
+      Enum.any?(segments, &(&1 == "")) ->
+        invalid.("an address has no empty segments (#{sep}#{sep} or a trailing #{sep})")
+
+      bad = Enum.find(segments, &(not valid_name?(&1))) ->
+        invalid.(name_reason(bad))
+
+      true ->
+        {:ok, segments}
+    end
+  end
+
+  defp valid_name?(name), do: Regex.match?(@name, name)
+
+  defp name_reason(name),
+    do: "#{inspect(name)} is not a name; names are lowercase [a-z0-9_]"
+
+  defp kind_of("/"), do: :recipe
+  defp kind_of(":"), do: :step
+
+  # -- sources ------------------------------------------------------------
+
+  defp attach_source(ref, nil, _invalid), do: {:ok, ref}
+
+  defp attach_source(%__MODULE__{cookbook: "hex", segments: [package]} = ref, spec, invalid) do
+    with {:ok, source} <- parse_spec(invalid, package, spec), do: {:ok, %{ref | source: source}}
+  end
+
+  defp attach_source(%__MODULE__{kind: :recipe}, _spec, invalid),
+    do: invalid.("a recipe address takes no @ source; add its cookbook to mix.exs instead")
+
+  defp attach_source(%__MODULE__{segments: segments}, spec, invalid) do
+    invalid.(
+      "only a hex: address takes an @ source; for a Hex package write " <>
+        inspect("hex:" <> List.last(segments) <> "@" <> spec)
+    )
   end
 
   # The spec after `@`, kept verbatim. Mirrors
   # Igniter.Project.Deps.determine_dep_type_and_version!/2.
-  defp parse_spec(original, package, spec) do
-    invalid = &{:error, {:invalid_ref, original, &1}}
-
+  defp parse_spec(invalid, package, spec) do
     case String.split(spec, ":", parts: 2) do
       [""] ->
         invalid.("nothing follows the @; write a version, github:, git: or path: source")
@@ -195,10 +395,11 @@ defmodule Composer.Ref do
     end
   end
 
-  defp format_source([]), do: ""
-  defp format_source(version: requirement), do: "@" <> requirement
-  defp format_source(github: repo), do: "@github:" <> repo
-  defp format_source(github: repo, ref: ref), do: "@github:" <> repo <> "@" <> ref
-  defp format_source(git: url), do: "@git:" <> url
-  defp format_source(path: path), do: "@path:" <> path
+  @doc false
+  def format_source([]), do: ""
+  def format_source(version: requirement), do: "@" <> requirement
+  def format_source(github: repo), do: "@github:" <> repo
+  def format_source(github: repo, ref: ref), do: "@github:" <> repo <> "@" <> ref
+  def format_source(git: url), do: "@git:" <> url
+  def format_source(path: path), do: "@path:" <> path
 end

@@ -100,7 +100,7 @@ defmodule Composer.Lint do
         path_deps(opts[:project], root) ++
         for %{id: id} <- steps,
             id in recipe_ids,
-            do: {:warning, {:step_recipe_clash, Ref.id(cookbook.name, id)}, nil}
+            do: {:warning, {:step_recipe_clash, Ref.Legacy.id(cookbook.name, id)}, nil}
 
     %{diagnostics: build(problems, Locate.new(cookbooks, recipes.loaded, root: root))}
   end

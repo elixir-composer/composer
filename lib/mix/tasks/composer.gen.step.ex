@@ -72,8 +72,8 @@ defmodule Mix.Tasks.Composer.Gen.Step do
   end
 
   defp normalize!(path) do
-    case Composer.Ref.parse(path) do
-      {:ok, %Composer.Ref{cookbook: nil, path: path}} ->
+    case Composer.Ref.Legacy.parse(path) do
+      {:ok, %Composer.Ref.Legacy{cookbook: nil, path: path}} ->
         path
 
       _ ->

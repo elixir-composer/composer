@@ -279,7 +279,7 @@ defmodule Composer.Step do
       Composer.Step.Meta,
       Map.merge(facets, %{
         id: id,
-        ref: Composer.Ref.id(cookbook, id),
+        ref: Composer.Ref.Legacy.id(cookbook, id),
         cookbook: cookbook,
         module: env.module
       })

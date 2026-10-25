@@ -225,7 +225,7 @@ defmodule Composer.Resolver do
     cookbooks
     |> Enum.filter(&(only == nil or &1.name in only))
     |> Enum.flat_map(fn cookbook ->
-      Enum.map(Cookbook.recipes(cookbook), &Ref.id(cookbook.name, &1))
+      Enum.map(Cookbook.recipes(cookbook), &Ref.Legacy.id(cookbook.name, &1))
     end)
     |> Enum.reduce_while(:ok, fn ref, :ok ->
       case resolve_recipe(cookbooks, ref, flags: :all) do
@@ -383,15 +383,15 @@ defmodule Composer.Resolver do
   # -- step references ----------------------------------------------------
 
   defp find_step(index, string, context, origin) do
-    with {:ok, ref} <- Ref.parse(string) do
+    with {:ok, ref} <- Ref.Legacy.parse(string) do
       case ref do
-        %Ref{cookbook: "hex", path: package, source: source} ->
+        %Ref.Legacy{cookbook: "hex", path: package, source: source} ->
           {:ok, {:install, package, source}}
 
-        %Ref{cookbook: nil} ->
+        %Ref.Legacy{cookbook: nil} ->
           find_unqualified_step(index, ref, string, context, origin)
 
-        %Ref{cookbook: name, path: path} ->
+        %Ref.Legacy{cookbook: name, path: path} ->
           cond do
             not Map.has_key?(index.by_name, name) ->
               {:error, {:unknown_cookbook, name, string, origin, Map.keys(index.by_name)}}
@@ -406,7 +406,7 @@ defmodule Composer.Resolver do
     end
   end
 
-  defp find_unqualified_step(index, %Ref{path: path} = ref, string, context, origin) do
+  defp find_unqualified_step(index, %Ref.Legacy{path: path} = ref, string, context, origin) do
     own = context && index.steps[context][path]
 
     if own do
@@ -424,7 +424,7 @@ defmodule Composer.Resolver do
           suggestions = step_suggestions(index, path)
 
           cond do
-            Ref.nested?(ref) -> {:error, {:missing_step, string, origin, suggestions}}
+            Ref.Legacy.nested?(ref) -> {:error, {:missing_step, string, origin, suggestions}}
             suggestions != [] -> {:error, {:typo, string, origin, suggestions}}
             true -> {:ok, {:install, path, []}}
           end
@@ -468,26 +468,26 @@ defmodule Composer.Resolver do
   # -- recipe references -------------------------------------------------
 
   defp find_recipe(index, string, context, origin) do
-    with {:ok, ref} <- Ref.parse(string) do
+    with {:ok, ref} <- Ref.Legacy.parse(string) do
       case ref do
-        %Ref{cookbook: nil, path: path} ->
+        %Ref.Legacy{cookbook: nil, path: path} ->
           if context && path in Map.get(index.recipes, context, []) do
-            {:ok, Ref.id(context, path)}
+            {:ok, Ref.Legacy.id(context, path)}
           else
-            case for({name, ids} <- index.recipes, path in ids, do: Ref.id(name, path)) do
+            case for({name, ids} <- index.recipes, path in ids, do: Ref.Legacy.id(name, path)) do
               [id] -> {:ok, id}
               [_ | _] = ids -> {:error, {:ambiguous, :recipe, string, origin, Enum.sort(ids)}}
               [] -> {:error, {:missing_recipe, string, origin, recipe_suggestions(index, path)}}
             end
           end
 
-        %Ref{cookbook: name, path: path} ->
+        %Ref.Legacy{cookbook: name, path: path} ->
           cond do
             not Map.has_key?(index.by_name, name) ->
               {:error, {:unknown_cookbook, name, string, origin, Map.keys(index.by_name)}}
 
             path in Map.get(index.recipes, name, []) ->
-              {:ok, Ref.id(name, path)}
+              {:ok, Ref.Legacy.id(name, path)}
 
             true ->
               {:error, {:missing_recipe, string, origin, recipe_suggestions(index, path)}}
@@ -497,7 +497,7 @@ defmodule Composer.Resolver do
   end
 
   defp recipe_suggestions(index, path) do
-    all = for {name, ids} <- index.recipes, id <- ids, do: {Ref.id(name, id), id}
+    all = for {name, ids} <- index.recipes, id <- ids, do: {Ref.Legacy.id(name, id), id}
 
     case ranked(all, path) do
       [] -> all |> Enum.map(&elem(&1, 0)) |> Enum.sort()
@@ -512,12 +512,12 @@ defmodule Composer.Resolver do
     ids = Map.get(index.recipes, recipe.cookbook, [])
 
     if id in ids do
-      {:ok, Ref.id(recipe.cookbook, id)}
+      {:ok, Ref.Legacy.id(recipe.cookbook, id)}
     else
       siblings =
         for sibling <- ids,
             Path.dirname(sibling) == recipe.chapter,
-            do: {Ref.id(recipe.cookbook, sibling), Path.basename(sibling)}
+            do: {Ref.Legacy.id(recipe.cookbook, sibling), Path.basename(sibling)}
 
       suggestions =
         case for({ref, sibling} <- siblings, similar?(sibling, name), do: ref) do
@@ -560,7 +560,7 @@ defmodule Composer.Resolver do
 
   # Each chapter file is evaluated once per resolution.
   defp load(id, state) do
-    %Ref{cookbook: name, path: path} = Ref.parse!(id)
+    %Ref.Legacy{cookbook: name, path: path} = Ref.Legacy.parse!(id)
     cookbook = Map.fetch!(state.index.by_name, name)
 
     case Cookbook.recipe_path(cookbook, path) do
@@ -599,9 +599,9 @@ defmodule Composer.Resolver do
   # with the real cookbook name. Returns the string to look up and, for an
   # aliased reference, `{alias, target, written}` for errors and display.
   defp expand(string, recipe) do
-    with {:ok, %Ref{cookbook: name, path: path}} <- Ref.parse(string),
+    with {:ok, %Ref.Legacy{cookbook: name, path: path}} <- Ref.Legacy.parse(string),
          target when is_binary(target) <- Recipe.alias_target(recipe, name) do
-      {Ref.id(target, path), {name, target, string}}
+      {Ref.Legacy.id(target, path), {name, target, string}}
     else
       _ -> {string, nil}
     end
@@ -678,9 +678,9 @@ defmodule Composer.Resolver do
   end
 
   defp find_included(index, ref, recipe) do
-    case Ref.parse(ref) do
-      {:ok, %Ref{cookbook: nil, path: name} = parsed} ->
-        if Ref.nested?(parsed),
+    case Ref.Legacy.parse(ref) do
+      {:ok, %Ref.Legacy{cookbook: nil, path: name} = parsed} ->
+        if Ref.Legacy.nested?(parsed),
           do: find_recipe(index, ref, recipe.cookbook, recipe.ref),
           else: find_in_chapter(index, name, recipe)
 

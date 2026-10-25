@@ -135,7 +135,7 @@ defmodule Composer.Recipe.Chapter do
   @spec pick({[Recipe.t()], [term()]}, Path.t(), String.t(), String.t()) ::
           {:ok, Recipe.t()} | {:error, term()}
   def pick({recipes, errors}, path, cookbook, name) do
-    ref = Composer.Ref.id(cookbook, name(path) <> "/" <> name)
+    ref = Composer.Ref.Legacy.id(cookbook, name(path) <> "/" <> name)
 
     cond do
       recipe = Enum.find(recipes, &(&1.name == name)) ->
@@ -199,7 +199,7 @@ defmodule Composer.Recipe.Chapter do
 
   defp recipe(cookbook, chapter, name, value, path) do
     id = "#{chapter}/#{name}"
-    ref = Composer.Ref.id(cookbook, id)
+    ref = Composer.Ref.Legacy.id(cookbook, id)
 
     errors =
       cond do

@@ -135,7 +135,7 @@ defmodule Composer.Lint.Locate do
   def recipe_named(locate, cookbook, name) do
     with %Cookbook{} = book <- locate.cookbooks[cookbook],
          id when is_binary(id) <- Enum.find(Cookbook.recipes(book), &(Path.basename(&1) == name)) do
-      Ref.id(cookbook, id)
+      Ref.Legacy.id(cookbook, id)
     end
   end
 
@@ -154,7 +154,7 @@ defmodule Composer.Lint.Locate do
         {path, name}
 
       nil ->
-        with {:ok, %Ref{cookbook: cookbook, path: id}} <- Ref.parse(ref),
+        with {:ok, %Ref.Legacy{cookbook: cookbook, path: id}} <- Ref.Legacy.parse(ref),
              %Cookbook{} = book <- locate.cookbooks[cookbook],
              [chapter, name] <- String.split(id, "/"),
              path when is_binary(path) <- Cookbook.chapter_path(book, chapter) do
@@ -207,8 +207,8 @@ defmodule Composer.Lint.Locate do
   end
 
   defp names_package?(string, package) do
-    case Ref.parse(string) do
-      {:ok, %Ref{cookbook: cookbook, path: ^package}} when cookbook in [nil, "hex"] -> true
+    case Ref.Legacy.parse(string) do
+      {:ok, %Ref.Legacy{cookbook: cookbook, path: ^package}} when cookbook in [nil, "hex"] -> true
       _ -> false
     end
   end

@@ -77,15 +77,16 @@ defmodule Composer.Index do
       |> Enum.map(&Path.dirname(elem(&1, 0)))
       |> Enum.frequencies()
       |> Enum.map(fn {chapter, count} ->
-        {"chapter", Ref.id(name, chapter <> "/"), "#{count} recipe#{if count != 1, do: "s"}"}
+        {"chapter", Ref.Legacy.id(name, chapter <> "/"),
+         "#{count} recipe#{if count != 1, do: "s"}"}
       end)
 
     [{"cookbook", name, cookbook.summary}] ++
       chapters ++
       Enum.map(recipes, fn {id, shortdoc} ->
-        {"recipe", Ref.id(name, id), first_line(shortdoc)}
+        {"recipe", Ref.Legacy.id(name, id), first_line(shortdoc)}
       end) ++
-      Enum.map(steps, fn {id, summary} -> {"step", Ref.id(name, id), summary} end)
+      Enum.map(steps, fn {id, summary} -> {"step", Ref.Legacy.id(name, id), summary} end)
   end
 
   defp first_line(nil), do: ""

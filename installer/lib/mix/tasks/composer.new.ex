@@ -7,14 +7,14 @@ defmodule Mix.Tasks.Composer.New do
 
       mix composer.new APP [REF] [RECIPE-FLAGS] [OPTIONS]
 
-      mix composer.new my_app cb_lab:base/completions --with phx.new --with-args=--no-ecto
-      mix composer.new my_app cb_lab:base/completions@github:elixir-composer/cb_lab@v0.3.0
-      mix composer.new my_app cb_home:lv/base@path:~/src/Gen/cb_home --with phx.new
-      mix composer.new my_app cb_mine:phx/saas --oban-pro --gigalixir
+      mix composer.new my_app cb_lab/base/completions --with phx.new --with-args=--no-ecto
+      mix composer.new my_app cb_lab/base/completions@github:elixir-composer/cb_lab@v0.3.0
+      mix composer.new my_app cb_home/lv/base@path:~/src/Gen/cb_home --with phx.new
+      mix composer.new my_app cb_mine/phx/saas --oban-pro --gigalixir
 
   ## REF
 
-  `COOKBOOK:CHAPTER/RECIPE[@SOURCE]`, where SOURCE says where the cookbook
+  `COOKBOOK/CHAPTER/RECIPE[@SOURCE]`, where SOURCE says where the cookbook
   comes from, as in `mix igniter.install`:
 
     * none - the latest Hex release
@@ -24,10 +24,11 @@ defmodule Mix.Tasks.Composer.New do
     * `@git:URL`
     * `@path:PATH`
 
-  REF must name its cookbook. `cb_std:CHAPTER/RECIPE` takes no source, since
-  `cb_std` ships with composer, and `hex:` refs aren't cookbooks. Without a
-  REF, the app gets composer only: run `mix composer.init` in it to start
-  your own cookbook.
+  REF is a qualified recipe address: root (`/lv/base`), relative
+  (`./base`) and bare (`base`) addresses are rejected, as are steps and
+  `hex:` packages. `cb_std/CHAPTER/RECIPE` takes no source, since `cb_std`
+  ships with composer. Without a REF, the app gets composer only: run
+  `mix composer.init` in it to start your own cookbook.
 
   ## Options
 
@@ -63,7 +64,7 @@ defmodule Mix.Tasks.Composer.New do
     3. in APP, `mix composer_new.install composer,COOKBOOK,... --only dev,test --yes`
     4. in APP, `git init`, `git add -A` and `git commit`, with this command
        line as the message: `git log --reverse` shows how to rebuild the app
-    5. in APP, `mix composer.recipe.run COOKBOOK:CHAPTER/RECIPE [RECIPE-FLAGS]`,
+    5. in APP, `mix composer.recipe.run COOKBOOK/CHAPTER/RECIPE [RECIPE-FLAGS]`,
        unless there is no REF or `--no-recipe` is given
 
   `mix composer_new.install`, which this archive provides, is

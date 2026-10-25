@@ -38,8 +38,8 @@ defmodule Composer.LSP.Complete do
     aliased =
       for {name, target} <- Enum.sort(aliases),
           {type, id, text} <- found,
-          {:ok, %Ref{cookbook: ^target, path: path}} <- [Ref.parse(id)],
-          do: {type, Ref.id(name, path), text}
+          {:ok, %Ref.Legacy{cookbook: ^target, path: path}} <- [Ref.Legacy.parse(id)],
+          do: {type, Ref.Legacy.id(name, path), text}
 
     prefixes =
       if kind == :steps,

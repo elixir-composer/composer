@@ -16,7 +16,7 @@ defmodule ComposerNew.Plan do
       (in APP) git init
       (in APP) git add -A
       (in APP) git commit -m "mix composer.new <argv as typed>"
-      (in APP) mix composer.recipe.run COOKBOOK:CHAPTER/RECIPE [FLAGS]
+      (in APP) mix composer.recipe.run COOKBOOK/CHAPTER/RECIPE [FLAGS]
                                                (REF given, no --no-recipe)
 
   `igniter.new` gets `--no-git`, so the history starts with the commit
@@ -112,7 +112,7 @@ defmodule ComposerNew.Plan do
     install = packages.install
     deps = [packages.composer | List.wrap(cookbook_spec(ref, env))] ++ packages.extra
 
-    recipe = if ref && not opts[:no_recipe], do: "#{ref.cookbook}:#{ref.path}"
+    recipe = if ref && not opts[:no_recipe], do: Ref.recipe(ref)
 
     create =
       ["igniter.new", app_arg, "--no-git", "--yes"] ++
@@ -179,7 +179,7 @@ defmodule ComposerNew.Plan do
     %__MODULE__{summary: summary, commands: commands, parsed: parsed}
   end
 
-  # A cb_std: recipe needs no cookbook install: cb_std ships with composer.
+  # A cb_std/ recipe needs no cookbook install: cb_std ships with composer.
   defp cookbook_spec(nil, _env), do: nil
   defp cookbook_spec(%{cookbook: "cb_std"}, _env), do: nil
   defp cookbook_spec(ref, env), do: Ref.install_spec(ref.cookbook, ref.spec, env)

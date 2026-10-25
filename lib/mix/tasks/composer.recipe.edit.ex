@@ -45,7 +45,7 @@ defmodule Mix.Tasks.Composer.Recipe.Edit do
 
     cookbooks = CLI.cookbooks!()
     id = CLI.ok!(Resolver.find_recipe(cookbooks, ref, CLI.context(cookbooks)))
-    %Ref{cookbook: name, path: recipe} = Ref.parse!(id)
+    %Ref.Legacy{cookbook: name, path: recipe} = Ref.Legacy.parse!(id)
     cookbook = Enum.find(cookbooks, &(&1.name == name))
 
     path =

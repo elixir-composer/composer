@@ -59,9 +59,9 @@ defmodule Composer.LSP.Lookup do
     context = owner && owner.name
 
     found =
-      case Ref.parse(written) do
-        {:ok, %Ref{cookbook: nil} = ref} when context != nil ->
-          if Ref.nested?(ref),
+      case Ref.Legacy.parse(written) do
+        {:ok, %Ref.Legacy{cookbook: nil} = ref} when context != nil ->
+          if Ref.Legacy.nested?(ref),
             do: Resolver.find_recipe(cookbooks, written, context),
             else: in_chapter(cookbooks, context, chapter, written)
 
@@ -73,7 +73,7 @@ defmodule Composer.LSP.Lookup do
   end
 
   defp resolve(%{kind: :recipe, value: name}, cookbooks, owner, chapter) when owner != nil,
-    do: load(cookbooks, Ref.id(owner.name, chapter <> "/" <> name))
+    do: load(cookbooks, Ref.Legacy.id(owner.name, chapter <> "/" <> name))
 
   defp resolve(_cursor, _cookbooks, _owner, _chapter), do: nil
 
@@ -96,12 +96,12 @@ defmodule Composer.LSP.Lookup do
     book = Enum.find(cookbooks, &(&1.name == context))
 
     if book && id in Cookbook.recipes(book),
-      do: {:ok, Ref.id(context, id)},
+      do: {:ok, Ref.Legacy.id(context, id)},
       else: {:error, {:missing_recipe, name, nil, []}}
   end
 
   defp load(cookbooks, id) do
-    %Ref{cookbook: name, path: recipe_id} = Ref.parse!(id)
+    %Ref.Legacy{cookbook: name, path: recipe_id} = Ref.Legacy.parse!(id)
     book = Enum.find(cookbooks, &(&1.name == name))
 
     case book && Cookbook.recipe_path(book, recipe_id) do
@@ -120,17 +120,18 @@ defmodule Composer.LSP.Lookup do
   """
   @spec expand(String.t(), %{String.t() => String.t()}) :: String.t()
   def expand(written, aliases) do
-    with {:ok, %Ref{cookbook: name, path: path}} when is_binary(name) <- Ref.parse(written),
+    with {:ok, %Ref.Legacy{cookbook: name, path: path}} when is_binary(name) <-
+           Ref.Legacy.parse(written),
          target when is_binary(target) <- Map.get(aliases, name) do
-      Ref.id(target, path)
+      Ref.Legacy.id(target, path)
     else
       _ -> written
     end
   end
 
   defp hex_kind(written) do
-    case Ref.parse(written) do
-      {:ok, %Ref{cookbook: "hex"}} -> :explicit
+    case Ref.Legacy.parse(written) do
+      {:ok, %Ref.Legacy{cookbook: "hex"}} -> :explicit
       _ -> :fallthrough
     end
   end

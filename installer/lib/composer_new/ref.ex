@@ -1,61 +1,91 @@
 defmodule ComposerNew.Ref do
   @moduledoc """
-  Parses a `mix composer.new` recipe reference: `COOKBOOK:CHAPTER/RECIPE`,
+  Parses a `mix composer.new` recipe address: `COOKBOOK/CHAPTER/RECIPE`,
   with an optional `@SOURCE` naming where the cookbook comes from.
 
-      iex> ComposerNew.Ref.parse("cb_lab:lv/base@github:elixir-composer/cb_lab@v0.3.0")
+      iex> ComposerNew.Ref.parse("cb_lab/lv/base@github:elixir-composer/cb_lab@v0.3.0")
       {:ok,
        %{
+         kind: :recipe,
+         scope: :qualified,
          cookbook: "cb_lab",
-         path: "lv/base",
+         up: 0,
+         segments: ["lv", "base"],
          source: [github: "elixir-composer/cb_lab", ref: "v0.3.0"],
          spec: "github:elixir-composer/cb_lab@v0.3.0"
        }}
 
-  This is a copy of the name and `@source` rules of `Composer.Ref` (the
-  archive can't depend on composer), and a fixture shared by both
-  projects' tests keeps the two in step:
+  This is a copy of the address grammar of `Composer.Ref` (the archive
+  can't depend on composer), and a fixture shared by both projects' tests
+  keeps the two in step:
 
-    * the reference is split on its first `@`; only the name before it is
+    * the address is split on its first `@`; only the part before it is
       normalized from `-` to `_`
-    * names are lowercase `[a-z0-9_]` segments
-    * a source is a version (`3.5.0` is `== 3.5.0`, a partial `3.5` is
-      `~> 3.0`, Igniter's rule, and a requirement such as `~> 3.5` is kept),
-      `github:OWNER/REPO[@GITREF]`, `git:URL` or `path:PATH`
+    * the separator gives the kind (`/` a recipe, `:` a step) and the first
+      character the scope (a name, a leading separator, a leading `.`); a
+      bare name is a search
+    * names are lowercase `[a-z0-9_]`; `.` and `..` only begin an address;
+      one kind of separator per address; relative steps are reserved
+    * `hex:` takes one package name; a source is a version (`3.5.0` is
+      `== 3.5.0`, a partial `3.5` is `~> 3.0`, Igniter's rule, and a
+      requirement such as `~> 3.5` is kept), `github:OWNER/REPO[@GITREF]`,
+      `git:URL` or `path:PATH`
 
-  On top of those, a reference here must name a cookbook (no shortnames),
-  can't be `hex:`, and `cb_std:`, which ships with composer, takes no
-  source.
+  The grammar differs from composer's in one place: here a recipe address
+  takes an `@SOURCE` too, naming where the cookbook is installed from.
+  `parse_address/1` is the shared grammar; `parse/1` adds the archive's
+  rules: the address is a qualified recipe (no root, relative, search,
+  step or `hex:` address), and `cb_std/`, which ships with composer, takes
+  no source.
 
   Parsing never creates atoms.
   """
 
-  @segment ~r/\A[a-z0-9_]+\z/
+  @name ~r/\A[a-z0-9_]+\z/
+  @hex_package ~r/\A[a-z0-9_]+(\.[a-z0-9_]+)?\z/
   @github_repo ~r/\A[^\/\s@]+\/[^\/\s@]+\z/
 
   @type source :: keyword(String.t())
   @type t :: %{
-          cookbook: String.t(),
-          path: String.t(),
+          kind: :recipe | :step | nil,
+          scope: :qualified | :root | :relative | :search,
+          cookbook: String.t() | nil,
+          up: non_neg_integer(),
+          segments: [String.t()],
           source: source(),
           spec: String.t() | nil
         }
 
+  @example "cb_lab/lv/base@github:elixir-composer/cb_lab@v0.3.0"
+
   @doc """
-  Parses a reference. `spec` is the text after the `@` as written, or
-  `nil`; `source` is its parsed form (`[]` for none, meaning the latest
-  Hex release).
+  Parses a recipe address for `mix composer.new`. `spec` is the text after
+  the `@` as written, or `nil`; `source` is its parsed form (`[]` for none,
+  meaning the latest Hex release).
   """
   @spec parse(String.t()) :: {:ok, t()} | {:error, String.t()}
   def parse(string) when is_binary(string) do
-    {name, spec} = split(string)
+    with {:ok, ref} <- parse_address(string),
+         :ok <- archive_rules(string, ref),
+         do: {:ok, ref}
+  end
 
-    with {:ok, cookbook, path} <- parse_name(string, name),
-         :ok <- archive_rules(string, cookbook, spec),
-         {:ok, source} <- parse_spec(string, spec) do
-      {:ok, %{cookbook: cookbook, path: path, source: source, spec: spec}}
+  @doc "Parses any address of the shared grammar, without the archive's rules."
+  @spec parse_address(String.t()) :: {:ok, t()} | {:error, String.t()}
+  def parse_address(string) when is_binary(string) do
+    {name, spec} = split(string)
+    invalid = &{:error, invalid(string, &1)}
+
+    with {:ok, ref} <- classify(String.replace(name, "-", "_"), invalid),
+         {:ok, source} <- address_source(ref, spec, string, invalid) do
+      {:ok, Map.merge(ref, %{source: source, spec: spec})}
     end
   end
+
+  @doc "The recipe an address names, as `mix composer.recipe.run` takes it."
+  @spec recipe(t()) :: String.t()
+  def recipe(%{cookbook: cookbook, segments: segments}),
+    do: cookbook <> "/" <> Enum.join(segments, "/")
 
   @doc """
   Parses a bare source, with no package name, as `--composer` takes it:
@@ -98,51 +128,177 @@ defmodule ComposerNew.Ref do
     end
   end
 
-  defp parse_name(original, name) do
-    case String.split(String.replace(name, "-", "_"), ":") do
-      [_path] ->
-        {:error,
-         invalid(
-           original,
-           "refs must name a cookbook (cookbook:chapter/recipe); shortnames aren't supported"
-         )}
+  defp address(kind, scope, cookbook, up, segments),
+    do: %{kind: kind, scope: scope, cookbook: cookbook, up: up, segments: segments}
 
-      [cookbook, path] ->
-        cond do
-          not Regex.match?(@segment, cookbook) ->
-            {:error, invalid(original, "cookbook names are lowercase [a-z0-9_]")}
+  # Mirrors Composer.Ref's classification.
+  defp classify("", invalid), do: invalid.("an address is empty")
+  defp classify("." <> _ = name, invalid), do: relative(name, invalid)
 
-          not valid_path?(path) ->
-            {:error,
-             invalid(
-               original,
-               "a path is one or more `/`-separated lowercase [a-z0-9_] segments"
-             )}
+  defp classify("/" <> rest = name, invalid) do
+    with :ok <- one_separator(name, invalid),
+         {:ok, segments} <- segments(rest, "/", invalid),
+         do: {:ok, address(:recipe, :root, nil, 0, segments)}
+  end
 
-          true ->
-            {:ok, cookbook, path}
-        end
+  defp classify(":" <> rest = name, invalid) do
+    with :ok <- one_separator(name, invalid),
+         {:ok, segments} <- segments(rest, ":", invalid),
+         do: {:ok, address(:step, :root, nil, 0, segments)}
+  end
 
-      _ ->
-        {:error, invalid(original, "a reference has at most one `:`")}
+  defp classify(name, invalid) do
+    with :ok <- one_separator(name, invalid) do
+      case :binary.match(name, ["/", ":"]) do
+        :nomatch ->
+          if Regex.match?(@name, name),
+            do: {:ok, address(nil, :search, nil, 0, [name])},
+            else: invalid.(name_reason(name))
+
+        {at, 1} ->
+          kind = if binary_part(name, at, 1) == "/", do: :recipe, else: :step
+          cookbook = binary_part(name, 0, at)
+          rest = binary_part(name, at + 1, byte_size(name) - at - 1)
+          qualified(cookbook, kind, rest, invalid)
+      end
     end
   end
 
-  defp archive_rules(original, "hex", _spec),
-    do: {:error, invalid(original, "hex: names a package, not a cookbook")}
+  defp qualified(cookbook, kind, rest, invalid) do
+    cond do
+      not Regex.match?(@name, cookbook) ->
+        invalid.("cookbook names are lowercase [a-z0-9_]")
 
-  defp archive_rules(original, "cb_std", spec) when spec != nil,
-    do: {:error, invalid(original, "cb_std ships with composer; drop the @source")}
+      cookbook == "hex" and kind == :recipe ->
+        invalid.("hex is a step cookbook; a Hex package is written hex:<package>")
 
-  defp archive_rules(_original, _cookbook, _spec), do: :ok
+      cookbook == "hex" ->
+        if Regex.match?(@hex_package, rest),
+          do: {:ok, address(:step, :qualified, "hex", 0, [rest])},
+          else: invalid.("a hex: address names one package, e.g. hex:oban or hex:org.pkg")
 
-  defp valid_path?(path) do
-    path != "" and path |> String.split("/") |> Enum.all?(&Regex.match?(@segment, &1))
+      true ->
+        sep = if kind == :recipe, do: "/", else: ":"
+
+        with {:ok, segments} <- segments(rest, sep, invalid),
+             do: {:ok, address(kind, :qualified, cookbook, 0, segments)}
+    end
+  end
+
+  defp relative(name, invalid) do
+    case climb(name) do
+      {up, {:recipe, path}} ->
+        with :ok <- one_separator(name, invalid),
+             {:ok, segments} <- segments(path, "/", invalid),
+             do: {:ok, address(:recipe, :relative, nil, up, segments)}
+
+      :step ->
+        invalid.("relative step references are not supported yet")
+
+      :error ->
+        invalid.("a relative address starts with ./ or ../, e.g. ./base or ../ui/buttons")
+    end
+  end
+
+  defp climb("./" <> rest), do: {0, {:recipe, rest}}
+  defp climb(".:" <> _), do: :step
+  defp climb(name), do: climb_up(name, 0)
+
+  defp climb_up("../" <> rest, up), do: climb_up(rest, up + 1)
+  defp climb_up("..:" <> _, _up), do: :step
+  defp climb_up(_rest, 0), do: :error
+  defp climb_up(rest, up), do: {up, {:recipe, rest}}
+
+  defp one_separator(name, invalid) do
+    if String.contains?(name, "/") and String.contains?(name, ":") do
+      invalid.(
+        "an address uses one separator, / for a recipe or : for a step; " <>
+          "write #{inspect(String.replace(name, ":", "/"))} or " <>
+          inspect(String.replace(name, "/", ":"))
+      )
+    else
+      :ok
+    end
+  end
+
+  defp segments(rest, sep, invalid) do
+    segments = String.split(rest, sep)
+
+    cond do
+      Enum.any?(segments, &(&1 in [".", ".."])) ->
+        invalid.(". and .. may only begin an address, as in ./base or ../buttons")
+
+      Enum.any?(segments, &(&1 == "")) ->
+        invalid.("an address has no empty segments (#{sep}#{sep} or a trailing #{sep})")
+
+      bad = Enum.find(segments, &(not Regex.match?(@name, &1))) ->
+        invalid.(name_reason(bad))
+
+      true ->
+        {:ok, segments}
+    end
+  end
+
+  defp name_reason(name), do: "#{inspect(name)} is not a name; names are lowercase [a-z0-9_]"
+
+  # Unlike Composer.Ref, a recipe takes a source: where its cookbook comes from.
+  defp address_source(_ref, nil, _original, _invalid), do: {:ok, []}
+
+  defp address_source(%{cookbook: "hex", segments: [package]}, spec, original, invalid) do
+    case String.split(spec, ":", parts: 2) do
+      [kind, value] when kind in ~w(github git path) and value != "" ->
+        if String.contains?(package, "."),
+          do: invalid.("a private-repo package (org.pkg) takes a version, not a #{kind}: source"),
+          else: parse_spec(original, spec)
+
+      _ ->
+        parse_spec(original, spec)
+    end
+  end
+
+  defp address_source(%{kind: :recipe, scope: :qualified}, spec, original, _invalid),
+    do: parse_spec(original, spec)
+
+  defp address_source(%{segments: segments}, spec, _original, invalid) do
+    invalid.(
+      "only a hex: address takes an @ source; for a Hex package write " <>
+        inspect("hex:" <> List.last(segments) <> "@" <> spec)
+    )
+  end
+
+  defp archive_rules(original, %{kind: :recipe, scope: :qualified, cookbook: "cb_std", spec: spec})
+       when spec != nil,
+       do: {:error, invalid(original, "cb_std ships with composer; drop the @source")}
+
+  defp archive_rules(original, %{kind: :recipe, scope: :qualified, segments: [_]}),
+    do:
+      {:error,
+       invalid(original, "a recipe address is COOKBOOK/CHAPTER/RECIPE, such as #{@example}")}
+
+  defp archive_rules(_original, %{kind: :recipe, scope: :qualified}), do: :ok
+
+  defp archive_rules(original, %{cookbook: "hex"}),
+    do:
+      {:error,
+       invalid(original, "hex: names a package, not a recipe; write a recipe such as #{@example}")}
+
+  defp archive_rules(original, %{kind: :step}),
+    do:
+      {:error,
+       invalid(original, "that is a step; mix composer.new takes a recipe such as #{@example}")}
+
+  defp archive_rules(original, %{scope: scope}) do
+    what =
+      case scope do
+        :root -> "a cookbook-root address"
+        :relative -> "a relative address"
+        :search -> "a bare name"
+      end
+
+    {:error, invalid(original, "#{what} has no cookbook; name it, as in #{@example}")}
   end
 
   # Mirrors Composer.Ref's parse_spec/3.
-  defp parse_spec(_original, nil), do: {:ok, []}
-
   defp parse_spec(original, spec) do
     case String.split(spec, ":", parts: 2) do
       [""] ->

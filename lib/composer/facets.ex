@@ -103,7 +103,7 @@ defmodule Composer.Facets do
   @doc "True for a well-formed `requires` entry."
   @spec requirement?(term()) :: boolean()
   def requirement?(ref) when is_binary(ref),
-    do: match?({:ok, %Composer.Ref{source: []}}, Composer.Ref.parse(ref))
+    do: match?({:ok, %Composer.Ref.Legacy{source: []}}, Composer.Ref.Legacy.parse(ref))
 
   def requirement?({:executable, name}), do: is_binary(name) and name != ""
 
