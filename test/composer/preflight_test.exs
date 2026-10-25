@@ -28,7 +28,7 @@ defmodule Composer.PreflightTest do
   end
 
   test "step requirements and entries without metadata are not checked here" do
-    assert :ok = Preflight.check([entry(["cb_std:setup/credo"]), %{label: "hex:oban", meta: nil}])
+    assert :ok = Preflight.check([entry(["cb_std:setup:credo"]), %{label: "hex:oban", meta: nil}])
   end
 
   test "requires: [\"hex:pkg\"] passes alongside a sourced install of the package" do

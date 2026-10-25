@@ -1,3 +1,3 @@
 [
-  buttons: [shortdoc: "Buttons", steps: ["nested_book:ui/button"]]
+  buttons: [shortdoc: "Buttons", steps: [":ui:button"]]
 ]

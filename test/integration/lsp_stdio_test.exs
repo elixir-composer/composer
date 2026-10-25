@@ -91,7 +91,7 @@ defmodule Composer.Integration.LspStdioTest do
       await(state, &match?(%{"method" => "textDocument/publishDiagnostics"}, &1))
 
     assert published["params"]["uri"] == uri
-    assert Enum.any?(published["params"]["diagnostics"], &(&1["code"] == "typo"))
+    assert Enum.any?(published["params"]["diagnostics"], &(&1["code"] == "bare_word"))
 
     # On the "fake_dep:hi" literal of line 4.
     position = %{line: 3, character: 35}

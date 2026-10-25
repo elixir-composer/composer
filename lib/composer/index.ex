@@ -2,13 +2,22 @@ defmodule Composer.Index do
   @moduledoc """
   The shell completion index: `_build/composer/index`.
 
-  A plain-text file of tab-separated lines that the completion script reads
-  without starting the BEAM:
+  A plain-text file of tab-separated lines, with canonical addresses (see
+  `Composer.Ref`), that the completion script reads without starting the
+  BEAM:
 
+      self	my_app
       cookbook	cb_lab	Andy's composer steps
-      chapter	cb_lab:base/	1 recipe
-      recipe	cb_lab:base/completions	CbLab's base recipe
-      step	cb_std:setup/credo	Adds Credo for static code analysis
+      dir	cb_lab/ash/	1 chapter, 1 directory
+      chapter	cb_lab/ash/ui/	2 recipes
+      recipe	cb_lab/ash/ui/buttons	Button components
+      group	cb_std:cluster:	3 steps
+      step	cb_std:setup:credo	Adds Credo for static code analysis
+
+  `dir` is a directory under `recipes/` and `group` a step namespace, so
+  completion can stop at every segment. `self` names the current project's
+  own cookbook, for the root addresses `/...` and `:...`; it is absent when
+  the project is not a cookbook.
 
   Cookbooks are read from their committed manifests. A cookbook with no
   manifest, or one that fails to read, falls back to runtime metadata: its
@@ -28,8 +37,13 @@ defmodule Composer.Index do
   @doc "Builds the index lines for `cookbooks`."
   @spec lines([Cookbook.t()]) :: [String.t()]
   def lines(cookbooks) do
-    cookbooks
-    |> Enum.flat_map(&entries/1)
+    own =
+      case Composer.Discovery.own(cookbooks) do
+        nil -> []
+        cookbook -> [{"self", cookbook.name, nil}]
+      end
+
+    (own ++ Enum.flat_map(cookbooks, &entries/1))
     |> Enum.sort()
     |> Enum.map(fn {kind, id, text} -> Enum.join([kind, id, clean(text)], "\t") end)
   end
@@ -64,30 +78,60 @@ defmodule Composer.Index do
     {steps, recipes} =
       case cookbook.kind == :code && Manifest.read(cookbook) do
         {:ok, data} ->
-          {Enum.map(data.steps, &{&1.id, &1.summary}),
-           Enum.map(data.recipes, &{&1.id, &1[:shortdoc]})}
+          {Enum.map(data.steps, &{internal(&1.id), &1.summary}),
+           Enum.map(data.recipes, &{internal(&1.id), &1[:shortdoc]})}
 
         _ ->
           {Enum.map(Cookbook.steps(cookbook), &{&1.id, &1.summary}),
            Enum.map(Manifest.recipes(cookbook), &{&1.id, &1.shortdoc})}
       end
 
-    chapters =
-      recipes
-      |> Enum.map(&Path.dirname(elem(&1, 0)))
-      |> Enum.frequencies()
-      |> Enum.map(fn {chapter, count} ->
-        {"chapter", Ref.Legacy.id(name, chapter <> "/"),
-         "#{count} recipe#{if count != 1, do: "s"}"}
-      end)
+    chapters = recipes |> Enum.map(&Path.dirname(elem(&1, 0))) |> Enum.frequencies()
+    dirs = chapters |> Map.keys() |> Enum.flat_map(&parents/1) |> Enum.uniq()
 
     [{"cookbook", name, cookbook.summary}] ++
-      chapters ++
-      Enum.map(recipes, fn {id, shortdoc} ->
-        {"recipe", Ref.Legacy.id(name, id), first_line(shortdoc)}
+      Enum.map(chapters, fn {chapter, count} ->
+        {"chapter", Ref.id(:recipe, name, chapter) <> "/", count(count, "recipe")}
       end) ++
-      Enum.map(steps, fn {id, summary} -> {"step", Ref.Legacy.id(name, id), summary} end)
+      Enum.map(dirs, &{"dir", Ref.id(:recipe, name, &1) <> "/", dir_text(&1, chapters, dirs)}) ++
+      Enum.map(recipes, fn {id, shortdoc} ->
+        {"recipe", Ref.id(:recipe, name, id), first_line(shortdoc)}
+      end) ++
+      groups(name, steps) ++
+      Enum.map(steps, fn {id, summary} -> {"step", Ref.id(:step, name, id), summary} end)
   end
+
+  # A manifest id is canonical (cb/a/b, cb:a:b); internally it is a/b.
+  defp internal(id) do
+    case Ref.parse(id) do
+      {:ok, %Ref{scope: :qualified} = ref} -> Ref.path(ref)
+      _ -> id
+    end
+  end
+
+  # The directories a chapter path is in: ash/ui/tailwind is in ash and ash/ui.
+  defp parents(chapter) do
+    segments = String.split(chapter, "/")
+    for n <- 1..(length(segments) - 1)//1, do: segments |> Enum.take(n) |> Enum.join("/")
+  end
+
+  defp dir_text(dir, chapters, dirs) do
+    files = Enum.count(Map.keys(chapters), &(Path.dirname(&1) == dir))
+    subdirs = Enum.count(dirs, &(Path.dirname(&1) == dir))
+    count(files, "chapter") <> ", " <> count(subdirs, "directory", "directories")
+  end
+
+  # Every step namespace, with the number of steps under it.
+  defp groups(name, steps) do
+    steps
+    |> Enum.flat_map(fn {id, _summary} -> parents(id) end)
+    |> Enum.frequencies()
+    |> Enum.map(fn {group, count} ->
+      {"group", Ref.id(:step, name, group) <> ":", count(count, "step")}
+    end)
+  end
+
+  defp count(n, one, many \\ nil), do: "#{n} #{if n == 1, do: one, else: many || one <> "s"}"
 
   defp first_line(nil), do: ""
   defp first_line(text), do: text |> String.split("\n", parts: 2) |> hd()

@@ -6,8 +6,8 @@ defmodule Mix.Tasks.Composer.Recipe.Show do
   expanded, numbered step list, with the recipe each step came from and
   the include flags that gate it.
 
-      $ mix composer.recipe.show my_app:phx/app
-      Recipe my_app:phx/app (/home/you/src/my_app/lib/composer/my_app/recipes/phx.exs)
+      $ mix composer.recipe.show my_app/phx/app
+      Recipe my_app/phx/app (/home/you/src/my_app/lib/composer/my_app/recipes/phx.exs)
 
       Standard Phoenix app
 
@@ -17,13 +17,13 @@ defmodule Mix.Tasks.Composer.Recipe.Show do
         --gigalixir  Add Gigalixir deployment
 
       Steps:
-         1. cb_std:phx/remove_theme_toggle  [my_app:phx/clean]
-         2. cb_std:setup/credo  [my_app:dev/env]
-         3. cb_std:cluster/gigalixir  [my_app:deploy/gigalixir] if :gigalixir
-         4. cc_lab:auth/passkeys (as lab)  [my_app:phx/app]
-         5. cb_std:setup/sort_deps  [my_app:phx/finish]
+         1. cb_std:phx:remove_theme_toggle  [my_app/phx/clean]
+         2. cb_std:setup:credo  [my_app/dev/env]
+         3. cb_std:cluster:gigalixir  [my_app/deploy/gigalixir] if :gigalixir
+         4. cc_lab:auth:passkeys (as lab)  [my_app/phx/app]
+         5. cb_std:setup:sort_deps  [my_app/phx/finish]
 
-  Flags declared by recipes that this one `:use`s are listed after its
+  Flags declared by recipes that this one includes are listed after its
   own; `mix composer.recipe.run` accepts all of them.
 
   A step written with a cookbook alias (see `Composer.Recipe`) shows the

@@ -1,11 +1,14 @@
 #compdef mix
 # Zsh completion for composer's mix tasks, from `mix composer.completion zsh`.
 #
-# Completes step ids for `mix composer.step.{run,show,edit}`, recipe ids for
-# `mix composer.recipe.{run,show,edit}`, and cookbook and chapter names
-# (`cb_lab`, `cb_lab:lv/`) for `mix composer.recipe.list`, from
-# _build/composer/index, without starting the BEAM, and hands every
-# other `mix` completion to mix_completions' _mix
+# Completes addresses one segment at a time, from _build/composer/index,
+# without starting the BEAM: steps (cb_std:setup:credo) for
+# `mix composer.step.{run,show,help,edit}`, recipes (cb_lab/lv/base) for
+# `mix composer.recipe.{run,show,help,edit}`, and listing stems (cb_lab/,
+# cb_std:cluster:) for `mix composer.recipe.list` and `mix composer.step.list`.
+# A bare word completes to cookbook names and to the recipes or steps it
+# names; a leading / or : is the project's own cookbook. Every other `mix`
+# completion goes to mix_completions' _mix
 # (https://hex.pm/packages/mix_completions) when it is available.
 #
 # Save it on your fpath after mix_completions' _mix, e.g. as
@@ -23,39 +26,104 @@ __composer_index() {
   print -r -- $index
 }
 
+# The same program is in composer.bash and composer.fish.
+# -- segments.awk --
+__composer_awk='
+# Prints the completion candidates for ITEM, one segment at a time, as
+# "nospace<TAB>candidate<TAB>description", nospace 1 after a chapter,
+# directory, group or cookbook name. MODE is recipe, step,
+# rlist (recipe.list stems) or slist (step.list stems).
+BEGIN { FS = "\t" }
+$1 == "self" { own = $2; next }
+{ n++; kind[n] = $1; id[n] = $2; text[n] = $3 }
+END {
+  item = ITEM
+  sep = (MODE == "recipe" || MODE == "rlist") ? "/" : ":"
+  first = substr(item, 1, 1)
+  if (first == ".") exit
+  root = 0
+  if (first == "/" || first == ":") {
+    if (first != sep || own == "") exit
+    root = 1
+    item = own item
+  }
+
+  if (index(item, "/") == 0 && index(item, ":") == 0) {
+    for (i = 1; i <= n; i++) {
+      if (kind[i] == "cookbook" && substr(id[i], 1, length(item)) == item) emit(id[i], text[i], 1)
+    }
+    if (MODE == "recipe" || MODE == "step") {
+      for (i = 1; i <= n; i++) {
+        if (kind[i] != MODE) continue
+        leaf = id[i]
+        sub(/.*[\/:]/, "", leaf)
+        if (substr(leaf, 1, length(item)) == item) emit(leaf, id[i], 0)
+      }
+    }
+    exit
+  }
+
+  if (MODE == "recipe") wanted = " recipe chapter dir "
+  else if (MODE == "rlist") wanted = " chapter dir "
+  else if (MODE == "step") wanted = " step group "
+  else wanted = " group "
+
+  # The item up to its last separator, and the cookbook part.
+  p = item
+  sub(/[^\/:]*$/, "", p)
+  if (substr(p, length(p), 1) != sep) exit
+  for (i = 1; i <= n; i++) {
+    if (index(wanted, " " kind[i] " ") == 0) continue
+    if (substr(id[i], 1, length(item)) != item) continue
+    rest = substr(id[i], length(p) + 1)
+    if (rest == "") continue
+    j = index(rest, sep)
+    if (j > 0) emit(p substr(rest, 1, j), "", 1)
+    else emit(p rest, text[i], 0)
+  }
+}
+
+function emit(candidate, description, nospace) {
+  if (root) candidate = substr(candidate, length(own) + 1)
+  if (candidate in seen || candidate == "") return
+  seen[candidate] = 1
+  printf "%d\t%s\t%s\n", nospace, candidate, description
+}
+'
+# -- end segments.awk --
+
 _composer_mix() {
-  local kind=""
+  local mode=""
   case ${words[2]} in
-    composer.step.run|composer.step.show|composer.step.help|composer.step.edit) kind=step ;;
-    composer.recipe.run|composer.recipe.show|composer.recipe.help|composer.recipe.edit) kind=recipe ;;
-    composer.recipe.list) kind=list ;;
+    composer.step.run|composer.step.show|composer.step.help|composer.step.edit) mode=step ;;
+    composer.recipe.run|composer.recipe.show|composer.recipe.help|composer.recipe.edit) mode=recipe ;;
+    composer.recipe.list) mode=rlist ;;
+    composer.step.list) mode=slist ;;
   esac
 
-  if [[ -n $kind && $CURRENT -ge 3 && $PREFIX != -* ]]; then
-    local index k id summary
-    local -a ids chapters
+  if [[ -n $mode && $CURRENT -ge 3 && $PREFIX != -* ]]; then
+    local index nospace candidate description
+    local -a spaced spaced_d stems stems_d
     index=$(__composer_index) || return 1
 
-    while IFS=$'\t' read -r k id summary; do
-      # _describe splits "value:description" on ':', so escape the ':' in ids.
-      if [[ $kind == list ]]; then
-        [[ $k == cookbook ]] && ids+=("${id//:/\\:}:$summary")
-        [[ $k == chapter ]] && chapters+=("${id//:/\\:}:$summary")
-      elif [[ $k == $kind ]]; then
-        ids+=("${id//:/\\:}:$summary")
-      fi
-    done < $index
-
-    if [[ $kind == list ]]; then
-      _describe -t cookbooks "composer cookbooks" ids
-      # A chapter is completed further, so no space after it.
-      _describe -t chapters "composer chapters" chapters -S ''
-      return
-    fi
-
     # step.run takes a comma-separated list: complete the last item.
-    compset -P '*,'
-    _describe -t ids "composer ${kind}s" ids
+    [[ $mode == step ]] && compset -P '*,'
+
+    while IFS=$'\t' read -r nospace candidate description; do
+      if [[ $nospace == 1 ]]; then
+        stems+=($candidate)
+        stems_d+=("$candidate")
+      else
+        spaced+=($candidate)
+        spaced_d+=("$candidate${description:+  -- $description}")
+      fi
+    done < <(awk -v MODE="$mode" -v ITEM="$PREFIX" "$__composer_awk" $index)
+
+    # A chapter, directory, group or cookbook name is completed further, so
+    # no space after it. A word starting with / or . never completes files.
+    (( $#stems )) && compadd -Q -S '' -d stems_d -- $stems
+    (( $#spaced )) && compadd -Q -l -d spaced_d -- $spaced
+    return 0
   elif (( $+functions[_mix] )) || autoload +X _mix 2>/dev/null; then
     _mix "$@"
   else

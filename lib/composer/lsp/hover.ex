@@ -49,7 +49,7 @@ defmodule Composer.LSP.Hover do
       end
 
     entries =
-      case Resolver.resolve_recipe(cookbooks, recipe.ref, flags: :all, context: recipe.cookbook) do
+      case Resolver.resolve_recipe(cookbooks, recipe.ref, flags: :all) do
         {:ok, %{steps: steps}} -> CLI.render_entries(steps, aliases: true)
         {:error, _} -> Enum.map_join(recipe.steps, "\n", &("  " <> inspect(&1)))
       end
@@ -60,17 +60,8 @@ defmodule Composer.LSP.Hover do
       doc <> flags <> "\n\n```\n" <> entries <> "\n```"
   end
 
-  defp body({:hex, package, kind}, _cookbooks) do
-    note = package |> Meta.hex_note() |> String.trim() |> unwrap()
-
-    case kind do
-      :explicit ->
-        note
-
-      :fallthrough ->
-        "No cookbook has a step named `#{package}`, so it names a Hex package.\n\n" <> note
-    end
-  end
+  defp body({:hex, package, :explicit}, _cookbooks),
+    do: package |> Meta.hex_note() |> String.trim() |> unwrap()
 
   defp body({:alias, name, nil}, _cookbooks), do: "`#{name}` is a cookbook alias"
 

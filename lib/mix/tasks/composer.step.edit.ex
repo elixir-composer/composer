@@ -5,7 +5,7 @@ defmodule Mix.Tasks.Composer.Step.Edit do
   Opens the source file of a step in your editor, at its
   `use Composer.Step` line.
 
-      $ mix composer.step.edit cb_std:setup/credo
+      $ mix composer.step.edit cb_std:setup:credo
 
   The editor command comes from `COMPOSER_EDITOR`, then `VISUAL`, then
   `EDITOR`; `__FILE__` and `__LINE__` in it are replaced with the file and

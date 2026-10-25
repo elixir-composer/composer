@@ -12,15 +12,15 @@ defmodule Composer.Test.LSPFixtures do
       aliases: aliases,
       steps: [
         "fake_book:hello",
-        "fb:ash/postgres",
+        "fb:ash:postgres",
         "hex:oban",
         "oban",
-        {:use, "base"},
-        {:use, "fake_book:main/full"},
+        "./base",
+        "fake_book/main/full",
         "nope:x"
       ]
     ],
-    base: [shortdoc: "Base", doc: "The base.", flags: [x: "An x"], steps: ["cb_std:setup/gitignore"]]
+    base: [shortdoc: "Base", doc: "The base.", flags: [x: "An x"], steps: ["cb_std:setup:gitignore"]]
   ]
   """
 

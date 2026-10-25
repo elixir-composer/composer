@@ -20,21 +20,21 @@ defmodule Composer.LSP.LookupTest do
   end
 
   test "a step behind a cookbook alias", context do
-    assert {:step, %{ref: "fake_book:ash/postgres"}} = lookup(context, 9, 8)
+    assert {:step, %{ref: "fake_book:ash:postgres"}} = lookup(context, 9, 8)
   end
 
-  test "hex: and a name that falls through to Hex", context do
+  test "hex:, and a bare word, which is not an address in source", context do
     assert lookup(context, 10, 8) == {:hex, "oban", :explicit}
-    assert lookup(context, 11, 8) == {:hex, "oban", :fallthrough}
+    assert {:error, {:bare_word, "oban", nil, ["hex:oban"], []}} = lookup(context, 11, 8)
   end
 
-  test "{:use, ...} targets, in the same chapter and qualified", context do
-    assert {:recipe, %{ref: "mine:app/base", doc: "The base."}} = lookup(context, 12, 15)
-    assert {:recipe, %{ref: "fake_book:main/full"}} = lookup(context, 13, 15)
+  test "includes, relative and qualified", context do
+    assert {:recipe, %{ref: "mine/app/base", doc: "The base."}} = lookup(context, 12, 9)
+    assert {:recipe, %{ref: "fake_book/main/full"}} = lookup(context, 13, 15)
   end
 
   test "a recipe's name key", context do
-    assert {:recipe, %{ref: "mine:app/app"}} = lookup(context, 4, 3)
+    assert {:recipe, %{ref: "mine/app/app"}} = lookup(context, 4, 3)
   end
 
   test "an alias name", context do
@@ -45,8 +45,18 @@ defmodule Composer.LSP.LookupTest do
     assert {:error, {:unknown_cookbook, "nope", "nope:x", _, _}} = lookup(context, 14, 8)
   end
 
+  test "the buffer's context is its cookbook and chapter path", %{snapshot: snapshot, path: path} do
+    assert Lookup.context(snapshot.cookbooks, path) == %{
+             cookbook: "mine",
+             chapter: "app",
+             cli?: false
+           }
+
+    assert Lookup.context(snapshot.cookbooks, "mix.exs").cookbook == nil
+  end
+
   test "alias expansion" do
-    assert Lookup.expand("lab:x/y", %{"lab" => "cc_lab"}) == "cc_lab:x/y"
+    assert Lookup.expand("lab:x:y", %{"lab" => "cc_lab"}) == "cc_lab:x:y"
     assert Lookup.expand("cb_std:x", %{"lab" => "cc_lab"}) == "cb_std:x"
   end
 end

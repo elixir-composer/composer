@@ -16,7 +16,7 @@ defmodule Mix.Tasks.Composer.RecipeEditTest do
 
       second: [
         shortdoc: "Second",
-        steps: [{:use, "no_such_recipe"}]
+        steps: ["./no_such_recipe"]
       ]
     ]
     """)
@@ -41,14 +41,14 @@ defmodule Mix.Tasks.Composer.RecipeEditTest do
 
   test "--print shows the chapter file and the recipe's line, even if it fails to load",
        %{chapter: chapter} do
-    assert run(["--print", "mine:phx/first"]) == "#{chapter}:2\n"
-    assert run(["--print", "phx/second"]) == "#{chapter}:4\n"
+    assert run(["--print", "mine/phx/first"]) == "#{chapter}:2\n"
+    assert run(["--print", "second"]) == "#{chapter}:4\n"
   end
 
   test "opens the editor from COMPOSER_EDITOR", %{chapter: chapter, tmp_dir: dir} do
     out = Path.join(dir, "opened")
     System.put_env("COMPOSER_EDITOR", "echo __FILE__:__LINE__ > '#{out}'")
-    run(["phx/second"])
+    run(["mine/phx/second"])
     assert File.read!(out) == "#{chapter}:4\n"
   end
 
@@ -56,7 +56,7 @@ defmodule Mix.Tasks.Composer.RecipeEditTest do
     System.put_env("COMPOSER_EDITOR", "false")
 
     assert_raise Mix.Error, ~r/Editor exited with status 1/, fn ->
-      run(["phx/first"])
+      run(["mine/phx/first"])
     end
   end
 

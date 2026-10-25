@@ -16,7 +16,7 @@ defmodule Composer.RecipeTest do
       {:queue, "ecto.setup", [], if: :db}
     ]
 
-    assert {:ok, ^entries} = Recipe.validate(entries, "mine:g/p")
+    assert {:ok, ^entries} = Recipe.validate(entries, "mine/g/p")
     assert Recipe.if_flags(entries) == [:oban_pro, :args, :gigalixir, :db]
   end
 
@@ -31,7 +31,7 @@ defmodule Composer.RecipeTest do
       {{:install, :ash}, ~s("hex:ash")},
       {{:add, :oban, if: :oban}, ~s({"oban", if: :oban})},
       {{:gen, :hello, from: StartReg}, ~s("start_reg:hello")},
-      {{:use, :base}, ~s({:use, "base"})}
+      {{:use, :base}, ~s("./base")}
     ]
 
     for {entry, suggestion} <- cases do
@@ -110,13 +110,13 @@ defmodule Composer.RecipeTest do
     end
 
     test "package options on a qualified step reference are an error" do
-      entry = {"cb_std:setup/credo", only: :dev}
+      entry = {"cb_std:setup:credo", only: :dev}
 
       assert {:error, {:hex_only_option, "r", ^entry, :only} = reason} =
                Recipe.validate([entry], "r")
 
       assert Composer.Error.message(reason) =~ "for hex: entries only"
-      assert {:ok, _} = Recipe.validate([{"cb_std:setup/credo", argv: ["--x"]}], "r")
+      assert {:ok, _} = Recipe.validate([{"cb_std:setup:credo", argv: ["--x"]}], "r")
     end
 
     test "sources combine only one way" do

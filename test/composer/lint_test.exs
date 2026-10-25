@@ -45,15 +45,15 @@ defmodule Composer.LintTest do
       {"old_format", ~r/old_format.exs must evaluate to a keyword list of recipes/},
       {"not_keyword", ~r/not_keyword.exs must evaluate to a keyword list/},
       {"not_literal", ~r/not_literal.exs must end in a literal keyword list/},
-      {"missing_shortdoc", ~r/Recipe mine:missing_shortdoc\/base has no shortdoc:/},
-      {"unknown_key", ~r/Recipe mine:unknown_key\/base has an unknown key :help/},
-      {"bad_value", ~r/Recipe mine:bad_value\/base has an invalid flags:/},
-      {"undeclared_flag", ~r/Recipe mine:undeclared_flag\/base uses if: :credo/},
-      {"reserved_flag", ~r/mine:reserved_flag\/base declares the flag :with/},
+      {"missing_shortdoc", ~r/Recipe mine\/missing_shortdoc\/base has no shortdoc:/},
+      {"unknown_key", ~r/Recipe mine\/unknown_key\/base has an unknown key :help/},
+      {"bad_value", ~r/Recipe mine\/bad_value\/base has an invalid flags:/},
+      {"undeclared_flag", ~r/Recipe mine\/undeclared_flag\/base uses if: :credo/},
+      {"reserved_flag", ~r/mine\/reserved_flag\/base declares the flag :with/},
       {"duplicate", ~r/duplicate.exs defines the recipe base more than once/},
-      {"raises", ~r/Could not evaluate chapter mine:raises\/.*boom/s},
+      {"raises", ~r/Could not evaluate chapter mine\/raises\/.*boom/s},
       {"BadName", ~r/BadName.exs has an invalid name/},
-      {"multiline", ~r/mine:multiline\/base has a shortdoc on more than one line/}
+      {"multiline", ~r/mine\/multiline\/base has a shortdoc on more than one line/}
     ]
 
     for {fixture, pattern} <- cases do
@@ -66,14 +66,6 @@ defmodule Composer.LintTest do
     result = lint(dir, cookbooks, ["empty"])
     assert [error] = errors(result)
     assert error =~ "empty.exs holds no recipes"
-  end
-
-  test "a recipe named like a chapter is an error", %{tmp_dir: dir, cookbooks: cookbooks} do
-    File.mkdir_p!(Path.join(dir, "recipes"))
-    File.write!(Path.join(dir, "recipes/ash.exs"), ~s([base: [shortdoc: "B", steps: []]]))
-    File.write!(Path.join(dir, "recipes/lv.exs"), ~s([ash: [shortdoc: "A", steps: []]]))
-
-    assert_error(lint_recipes(dir, cookbooks), ~r/a chapter ash and a recipe named ash/)
   end
 
   test "chapters may be nested in directories", %{tmp_dir: dir, cookbooks: cookbooks} do
@@ -129,7 +121,7 @@ defmodule Composer.LintTest do
 
     assert_error(
       lint_recipes(dir, cookbooks),
-      ~r/In recipe mine:g\/a: no step matches "cb_std:nope"/
+      ~r/In recipe mine\/g\/a: no step matches "cb_std:nope"/
     )
   end
 
@@ -309,7 +301,7 @@ defmodule Composer.LintTest do
       assert errors(report) == []
 
       assert [inconsistent, unused] = report.diagnostics
-      assert unused.message =~ "mine:g/a: alias ob (= other_book) is never used"
+      assert unused.message =~ "mine/g/a: alias ob (= other_book) is never used"
       # Both at the alias they are about: line 2, `fb:` then `ob:`.
       assert {unused.code, unused.line, unused.column} == {:unused_alias, 2, 49}
 
@@ -328,7 +320,7 @@ defmodule Composer.LintTest do
 
       assert_error(
         shadowing,
-        ~r/mine:g\/a declares the alias other_book:, but other_book is an installed cookbook/
+        ~r/mine\/g\/a declares the alias other_book:, but other_book is an installed cookbook/
       )
 
       reserved =
@@ -336,7 +328,7 @@ defmodule Composer.LintTest do
         [b: [shortdoc: "x", aliases: [cb_std: "fake_book"], steps: []]]
         """)
 
-      assert_error(reserved, ~r/mine:g\/b declares the alias cb_std:, but cb_std is a reserved/)
+      assert_error(reserved, ~r/mine\/g\/b declares the alias cb_std:, but cb_std is a reserved/)
     end
   end
 end

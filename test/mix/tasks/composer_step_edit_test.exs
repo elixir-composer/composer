@@ -46,7 +46,9 @@ defmodule Mix.Tasks.Composer.StepEditTest do
   end
 
   test "raises on a Hex package" do
-    assert_raise Mix.Error, ~r/Hex package oban, not a step/, fn -> run(["--print", "oban"]) end
+    assert_raise Mix.Error, ~r/Hex package oban, not a step/, fn ->
+      run(["--print", "hex:oban"])
+    end
   end
 
   test "raises on an unknown step" do

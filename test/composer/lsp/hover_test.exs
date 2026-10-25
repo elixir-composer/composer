@@ -31,23 +31,22 @@ defmodule Composer.LSP.HoverTest do
   end
 
   test "a recipe: shortdoc, doc, flags and entries", %{hover: hover} do
-    text = hover.(12, 15)
-    assert text =~ "**mine:app/base** - Base"
+    text = hover.(12, 9)
+    assert text =~ "**mine/app/base** - Base"
     assert text =~ "The base."
     assert text =~ "- `--x` - An x"
-    assert text =~ "1. cb_std:setup/gitignore"
+    assert text =~ "1. cb_std:setup:gitignore"
     assert String.ends_with?(text, @footer)
   end
 
-  test "hex: and a fall-through to Hex: step.show's wording", %{hover: hover} do
+  test "hex:, in step.show's wording, and a bare word's error", %{hover: hover} do
     explicit = hover.(10, 8)
     assert explicit =~ "hex:oban - the Hex package oban"
     assert String.ends_with?(explicit, @footer)
 
-    fallthrough = hover.(11, 8)
-    assert fallthrough =~ "No cookbook has a step named `oban`"
-    assert fallthrough =~ "hex:oban - the Hex package oban"
-    assert String.ends_with?(fallthrough, @footer)
+    bare = hover.(11, 8)
+    assert bare =~ ~s("oban" is not an address; write "hex:oban")
+    assert String.ends_with?(bare, @footer)
   end
 
   test "an alias: its target cookbook", %{hover: hover} do

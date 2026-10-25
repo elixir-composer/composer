@@ -145,11 +145,11 @@ defmodule Mix.Tasks.Composer.Gen.Cookbook do
     """
     # The app chapter of #{name}. Run its default recipe with:
     #
-    #     mix composer.recipe.run #{name}:app/default
+    #     mix composer.recipe.run #{name}/app/default
     #
     # Each recipe has a shortdoc:, an optional doc: and flags:, and steps:,
-    # one entry per line: "cookbook:path" steps, {"ref", if: :flag},
-    # {:use, "recipe"}, {:task, "x.y", argv} and {:queue, "x.y", argv}.
+    # one entry per line: "cookbook:path:to:step" steps, {"address", if: :flag},
+    # "./recipe" includes, {:task, "x.y", argv} and {:queue, "x.y", argv}.
     # Browse steps with `mix composer.step.list`.
     [
       default: [

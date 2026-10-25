@@ -84,7 +84,7 @@ defmodule Mix.Tasks.Composer.GenTest do
   test "gen.recipe creates a chapter in the cookbook" do
     igniter = Igniter.compose_task(test_project(), "composer.gen.recipe", ["phoenix/base"])
     source = parses!(igniter, "lib/composer/test/recipes/phoenix.exs")
-    assert source =~ "mix composer.recipe.run test:phoenix/base"
+    assert source =~ "mix composer.recipe.run test/phoenix/base"
 
     assert {[base: [shortdoc: "TODO: describe this recipe in one line", steps: []]], _} =
              Code.eval_string(source)
@@ -98,7 +98,7 @@ defmodule Mix.Tasks.Composer.GenTest do
           # My Ash recipes.
           [
             # The base.
-            base: [shortdoc: "Base", steps: ["cb_std:setup/credo"]]
+            base: [shortdoc: "Base", steps: ["cb_std:setup:credo"]]
           ]
           """
         }
@@ -120,11 +120,11 @@ defmodule Mix.Tasks.Composer.GenTest do
         files: %{"lib/composer/test/recipes/ash.exs" => ~s([base: [shortdoc: "B", steps: []]])}
       )
 
-    assert_raise Mix.Error, ~r/test:ash\/base already exists/, fn ->
+    assert_raise Mix.Error, ~r/test\/ash\/base already exists/, fn ->
       Igniter.compose_task(project, "composer.gen.recipe", ["ash/base"])
     end
 
-    for bad <- ["base", "a/b/c", "Ash/base"] do
+    for bad <- ["base", "./a/b", "Ash/base"] do
       assert_raise Mix.Error, ~r/Give it as chapter\/name/, fn ->
         Igniter.compose_task(test_project(), "composer.gen.recipe", [bad])
       end

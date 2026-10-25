@@ -6,7 +6,7 @@ defmodule Composer.CbStd.Steps.Cluster.Gigalixir.Libcluster do
     capability: [:deploy],
     phase: :setup,
     stability: :stable,
-    requires: ["cb_std:cluster/libcluster"]
+    requires: ["cb_std:cluster:libcluster"]
 
   @impl Igniter.Mix.Task
   def igniter(igniter) do

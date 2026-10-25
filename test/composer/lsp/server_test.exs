@@ -50,12 +50,12 @@ defmodule Composer.LSP.ServerTest do
     ash = Path.join(dir, "recipes/ash.exs")
     use = Path.join(dir, "recipes/use.exs")
     File.write!(ash, ~s|[\n  base: [shortdoc: "x", steps: ["credoo"]]\n]\n|)
-    File.write!(use, ~s|[\n  full: [shortdoc: "x", steps: [{:use, "mine:ash/base"}]]\n]\n|)
+    File.write!(use, ~s|[\n  full: [shortdoc: "x", steps: ["mine/ash/base"]]\n]\n|)
 
     {client, _} = start_server(opts)
     save(client, ash)
 
-    assert [%{"code" => "typo", "source" => "composer", "severity" => 1} = typo] =
+    assert [%{"code" => "bare_word", "source" => "composer", "severity" => 1} = typo] =
              assert_diagnostics(Convert.path_to_uri(ash))
 
     assert typo["range"] == %{
@@ -63,10 +63,10 @@ defmodule Composer.LSP.ServerTest do
              "end" => %{"line" => 1, "character" => 40}
            }
 
-    assert typo["data"]["suggestions"] == ["cb_std:setup/credo", "fake_book:setup/credo"]
+    assert typo["data"]["suggestions"] == ["cb_std:setup:credo", "fake_book:setup:credo"]
     assert [%{"code" => "include_problems"}] = assert_diagnostics(Convert.path_to_uri(use))
 
-    File.write!(ash, ~s|[\n  base: [shortdoc: "x", steps: ["cb_std:setup/credo"]]\n]\n|)
+    File.write!(ash, ~s|[\n  base: [shortdoc: "x", steps: ["cb_std:setup:credo"]]\n]\n|)
     save(client, ash)
 
     assert [] = assert_diagnostics(Convert.path_to_uri(ash))
@@ -147,11 +147,11 @@ defmodule Composer.LSP.ServerTest do
       })
 
     assert [first, _second] = actions
-    assert first["title"] == "Replace with `cb_std:setup/credo`"
+    assert first["title"] == "Replace with `cb_std:setup:credo`"
     assert first["kind"] == "quickfix"
 
     assert first["edit"]["changes"][uri] == [
-             %{"range" => typo["range"], "newText" => ~s("cb_std:setup/credo")}
+             %{"range" => typo["range"], "newText" => ~s("cb_std:setup:credo")}
            ]
   end
 

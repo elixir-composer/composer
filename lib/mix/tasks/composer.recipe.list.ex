@@ -5,21 +5,24 @@ defmodule Mix.Tasks.Composer.Recipe.List do
   Lists every cookbook's recipes with their shortdocs, in discovery order.
 
       $ mix composer.recipe.list
-        cb_lab:base/completions  CbLab's base recipe
-        cb_lab:ui/test           Scratch recipe for trying out UI steps
+        cb_lab/base/completions  CbLab's base recipe
+        cb_lab/ui/test           Scratch recipe for trying out UI steps
 
       mix composer.recipe.list                 # every cookbook
-      mix composer.recipe.list cb_lab          # one cookbook
+      mix composer.recipe.list cb_lab          # one cookbook (or cb_lab/)
       mix composer.recipe.list cb_lab cb_mine  # several cookbooks
-      mix composer.recipe.list cb_lab:base/    # one chapter (note the slash)
+      mix composer.recipe.list cb_lab/base/    # one chapter, and those nested in it
+      mix composer.recipe.list /ash/           # a chapter of this project's cookbook
 
-  Cookbooks are separate arguments, not a comma-separated list. A chapter
-  file that cannot be loaded is reported as a warning, with its path.
+  An argument is a cookbook name or a listing stem, an address cut after a
+  `/`: `cb_lab/`, `cb_lab/ash/ui/`, or `/` and `/ash/` for this project's
+  cookbook. A stem lists the recipes of the chapters at and below it.
+  Arguments are separate, not a comma-separated list. A chapter file that
+  cannot be loaded is reported as a warning, with its path.
 
   ## Leaf recipes
 
-  A recipe is a *leaf* when no other recipe in its own chapter includes it
-  with `{:use, ...}`. Leaves are the recipes meant to be run directly; the
+  A recipe is a *leaf* when no other recipe in its own chapter includes it. Leaves are the recipes meant to be run directly; the
   others are building blocks for them. Only includes within the same
   cookbook and chapter count: a recipe that another chapter or cookbook uses is
   still a leaf in its own chapter. An include that does not resolve is
@@ -65,7 +68,8 @@ defmodule Mix.Tasks.Composer.Recipe.List do
         {loaded, errors} = Cookbook.load_recipes(cookbook)
         included = included_in_chapter(index, loaded)
 
-        loaded = if chapter, do: Enum.filter(loaded, &(&1.chapter == chapter)), else: loaded
+        loaded =
+          if chapter, do: Enum.filter(loaded, &in_chapter?(&1.chapter, chapter)), else: loaded
 
         loaded =
           loaded
@@ -74,7 +78,7 @@ defmodule Mix.Tasks.Composer.Recipe.List do
 
         errors =
           if chapter,
-            do: Enum.filter(errors, &(Chapter.path(elem(&1, 0)) == chapter)),
+            do: Enum.filter(errors, &in_chapter?(Chapter.path(elem(&1, 0)), chapter)),
             else: errors
 
         {recipes ++ Enum.map(loaded, &data/1), problems ++ errors}
@@ -110,12 +114,15 @@ defmodule Mix.Tasks.Composer.Recipe.List do
     end
   end
 
+  defp in_chapter?(chapter, stem),
+    do: chapter == stem or String.starts_with?(chapter, stem <> "/")
+
   # The refs of the recipes that a recipe in their own chapter includes.
   defp included_in_chapter(index, recipes) do
     for recipe <- recipes,
         {_written, {:ok, ref}} <- Resolver.included(index, recipe),
         ref != recipe.ref,
-        Path.dirname(ref) == recipe.cookbook <> ":" <> recipe.chapter,
+        Path.dirname(ref) == recipe.cookbook <> "/" <> recipe.chapter,
         into: MapSet.new(),
         do: ref
   end
@@ -150,44 +157,56 @@ defmodule Mix.Tasks.Composer.Recipe.List do
     end
   end
 
-  # An argument is a cookbook name, or "cookbook:chapter/" for one chapter.
+  # An argument is a cookbook name, or a stem: "cookbook/", "cookbook/chapter/",
+  # "/" or "/chapter/" (this project's cookbook).
   defp select!(arg, cookbooks) do
-    case String.split(arg, ":", parts: 2) do
-      [name] ->
+    case {Composer.Ref.parse(arg), Composer.Ref.parse_stem(arg)} do
+      {{:ok, %Composer.Ref{scope: :search, segments: [name]}}, _} ->
         {cookbook!(name, arg, cookbooks), nil}
 
-      [name, chapter_slash] ->
-        chapter =
-          case String.split(chapter_slash, "/") do
-            [chapter, ""] -> chapter
-            _ -> nil
-          end
-
-        unless chapter && Chapter.valid_name?(chapter) do
-          Mix.raise("""
-          Invalid argument #{inspect(arg)}. List a chapter as "cookbook:chapter/", with a \
-          trailing slash (e.g. cb_lab:base/), or a whole cookbook by name.
-          """)
-        end
-
+      {_, {:ok, %{kind: :recipe, cookbook: name, segments: segments}}} ->
+        name = name || own!(arg, cookbooks)
         cookbook = cookbook!(name, arg, cookbooks)
 
-        unless Cookbook.chapter_path(cookbook, chapter) do
-          chapters = Enum.map(Cookbook.chapters(cookbook), &elem(&1, 0))
-
-          known =
-            case chapters do
-              [] ->
-                "#{name} has no chapters."
-
-              chapters ->
-                "Chapters in #{name}: " <> Enum.map_join(chapters, ", ", &"#{name}:#{&1}/")
-            end
-
-          Mix.raise("#{name} has no chapter #{inspect(chapter)}.\n\n#{known}")
+        case Enum.join(segments, "/") do
+          "" -> {cookbook, nil}
+          chapter -> {cookbook, chapter!(cookbook, chapter, arg)}
         end
 
-        {cookbook, chapter}
+      _ ->
+        Mix.raise("""
+        Invalid argument #{inspect(arg)}. List a cookbook by name (cb_lab) or a \
+        stem ending in / (cb_lab/, cb_lab/base/, or /base/ in this project's \
+        cookbook).
+        """)
+    end
+  end
+
+  defp own!(arg, cookbooks) do
+    case Composer.CLI.context(cookbooks).cookbook do
+      nil -> Mix.raise(Error.message({:not_a_cookbook, arg, nil}))
+      name -> name
+    end
+  end
+
+  # A stem names a chapter, or a directory of chapters.
+  defp chapter!(cookbook, chapter, arg) do
+    chapters = Enum.map(Cookbook.chapters(cookbook), &elem(&1, 0))
+
+    if Enum.any?(chapters, &in_chapter?(&1, chapter)) do
+      chapter
+    else
+      known =
+        case chapters do
+          [] ->
+            "#{cookbook.name} has no chapters."
+
+          chapters ->
+            "Chapters in #{cookbook.name}: " <>
+              Enum.map_join(chapters, ", ", &"#{cookbook.name}/#{&1}/")
+        end
+
+      Mix.raise("#{cookbook.name} has no chapter #{inspect(chapter)} (#{arg}).\n\n#{known}")
     end
   end
 

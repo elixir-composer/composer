@@ -14,7 +14,8 @@ defmodule Composer.Lint do
 
     * every step has a summary, an `action` and a `stability`
     * every step has a test at `test/composer/<cookbook>/steps/<id>_test.exs`
-    * every step reference in `requires` resolves
+    * every step address in `requires` resolves; one in the old syntax is
+      `old_requires`, with its rewrite
     * the committed manifest holds the same data as a freshly built one
     * the chapter rules below
     * every recipe resolves (with every include followed); this also
@@ -37,15 +38,22 @@ defmodule Composer.Lint do
     * a duplicate recipe name within a chapter
     * a recipe missing `shortdoc` or `steps`, with an unknown key, or with
       a value of the wrong type; a `shortdoc` on more than one line
+    * an address the resolver rejects, among them (with `--fix` rewriting
+      those that have one rewrite): `old_syntax` (`"cb_std:setup/credo"`),
+      `use_entry` (`{:use, "base"}`), `bare_word` (`"oban"`),
+      `kind_mismatch` (`"cb_std/echo"` for the step `cb_std:echo`),
+      `relative_step` (`".:dns"`), `above_root` (`"../../../core"`),
+      `include_options` (`{"./base", argv: [...]}`)
     * an `if:` flag that the recipe does not declare in its own `flags`
     * a declared flag with a reserved name (`Composer.Recipe.reserved_flags/0`)
     * an invalid, reserved (`cb_std`, `hex`, `local`), duplicate or
       atom-valued cookbook alias, or one whose target is not a package
       cookbook name
-    * a recipe named like a chapter of the same cookbook
 
   Warnings:
 
+    * an address in the old syntax shown in a recipe's `shortdoc:` or
+      `doc:` (`old_doc_address`), which `--fix` does not rewrite
     * a cookbook alias that none of the recipe's own references use
     * an alias that names different cookbooks in two recipes of one chapter
     * a step and a recipe share an id, which is allowed but confusing
@@ -100,7 +108,7 @@ defmodule Composer.Lint do
         path_deps(opts[:project], root) ++
         for %{id: id} <- steps,
             id in recipe_ids,
-            do: {:warning, {:step_recipe_clash, Ref.Legacy.id(cookbook.name, id)}, nil}
+            do: {:warning, {:step_recipe_clash, Ref.id(:recipe, cookbook.name, id)}, nil}
 
     %{diagnostics: build(problems, Locate.new(cookbooks, recipes.loaded, root: root))}
   end
@@ -264,12 +272,40 @@ defmodule Composer.Lint do
       Enum.map_reduce(problems, locate, fn {severity, reason, context}, locate ->
         anchor = Error.anchor(reason)
         {{file, range, related}, locate} = Locate.place(locate, anchor, context)
-        diagnostic = severity |> Diagnostic.new(reason) |> Diagnostic.locate(file, range, related)
+
+        diagnostic =
+          severity
+          |> Diagnostic.new(reason)
+          |> Diagnostic.locate(file, range, related)
+          |> with_fix(reason, range)
+
         {{diagnostic, anchor_recipe(anchor, context, locate)}, locate}
       end)
 
     {dedupe(located), locate}
   end
+
+  # The one rewrite of a problem, when it has one, at the range it was
+  # placed at; `expect` is what the range must hold for the fix to apply.
+  defp with_fix(%Diagnostic{file: nil} = diagnostic, _reason, _range), do: diagnostic
+  defp with_fix(diagnostic, _reason, nil), do: diagnostic
+
+  defp with_fix(diagnostic, reason, range) do
+    case fix(reason) do
+      nil -> diagnostic
+      {expect, text} -> %{diagnostic | fix: %{range: range, expect: expect, text: text}}
+    end
+  end
+
+  defp fix({:old_syntax, _origin, written, [new]}), do: {written, inspect(new)}
+  defp fix({:bare_word, written, _origin, [one], _close}), do: {written, inspect(one)}
+
+  defp fix({:kind_mismatch, _kind, written, _origin, twin}) when is_binary(twin),
+    do: {written, inspect(twin)}
+
+  defp fix({:use_entry, _ref, entry, [text]}), do: {entry, text}
+  defp fix({:old_requires, _step, _module, written, [new]}), do: {written, inspect(new)}
+  defp fix(_reason), do: nil
 
   # One diagnostic per kind of problem and place. Two recipes sharing a
   # binding can have the same problem at one place, so the recipe counts.
@@ -405,12 +441,6 @@ defmodule Composer.Lint do
       end)
 
     loaded = Enum.flat_map(results, & &1.loaded)
-    chapter_names = for {chapter, _path} <- files, Chapter.valid_name?(chapter), do: chapter
-
-    clashes =
-      for name <- loaded |> Enum.map(& &1.name) |> Enum.uniq(),
-          name in chapter_names,
-          do: {:error, {:chapter_recipe_clash, cookbook.name, name}, nil}
 
     shallow =
       for recipe <- loaded,
@@ -421,7 +451,7 @@ defmodule Composer.Lint do
       problems:
         errors(legacy_dir(cookbook)) ++
           errors(bad_dirs) ++
-          Enum.flat_map(results, & &1.problems) ++ clashes ++ shallow,
+          Enum.flat_map(results, & &1.problems) ++ shallow,
       loaded: loaded,
       shallow: MapSet.new(shallow, &elem(&1, 1)),
       linted: MapSet.new(loaded, & &1.ref)
@@ -460,6 +490,7 @@ defmodule Composer.Lint do
               do: {:error, {:multiline_shortdoc, recipe.ref}, recipe.ref}
 
         empty = if term == [], do: [{:error, {:empty_chapter, path}, nil}], else: []
+        docs = Enum.flat_map(loaded, &old_doc_addresses/1)
 
         # A chapter with problems is not resolved, to avoid repeating them.
         loaded = if errors == [], do: loaded, else: []
@@ -467,12 +498,26 @@ defmodule Composer.Lint do
         %{
           problems:
             for({reason, ref} <- errors, do: {:error, reason, ref}) ++
-              multiline ++ empty ++ unused_aliases(loaded) ++ inconsistent_aliases(path, loaded),
+              multiline ++
+              empty ++ docs ++ unused_aliases(loaded) ++ inconsistent_aliases(path, loaded),
           loaded: loaded
         }
 
       {:error, reason} ->
         %{problems: [{:error, reason, nil}], loaded: []}
+    end
+  end
+
+  # Addresses in the old syntax shown in a recipe's shortdoc: or doc:,
+  # which --fix leaves alone: `cookbook:path/with/slashes` and {:use, ...}.
+  @old_address ~r/(?<![\w@.\/:-])(?!(?:hex|path|github|git|https?):)[a-z][a-z0-9_]*:[a-z0-9_]+(?:\/[a-z0-9_]+)+|\{:use,/
+
+  defp old_doc_addresses(recipe) do
+    for {key, text} <- [shortdoc: recipe.shortdoc, doc: recipe.doc],
+        is_binary(text),
+        found = @old_address |> Regex.scan(text) |> List.flatten() |> Enum.uniq(),
+        found != [] do
+      {:warning, {:old_doc_address, recipe.ref, key, found}, recipe.ref}
     end
   end
 
@@ -509,10 +554,10 @@ defmodule Composer.Lint do
   # Resolves each recipe as a whole, for what only the tree shows (cycles,
   # conflicting installs). A problem the shallow pass already reported, or
   # one written in a recipe it checked, is left to it.
-  defp deep(cookbook, cookbooks, recipes, shallow) do
+  defp deep(_cookbook, cookbooks, recipes, shallow) do
     for recipe <- recipes,
         {:error, reason} <- [
-          Resolver.resolve_recipe(cookbooks, recipe.ref, flags: :all, context: cookbook.name)
+          Resolver.resolve_recipe(cookbooks, recipe.ref, flags: :all)
         ],
         not MapSet.member?(shallow.shallow, reason),
         not shallow_origin?(Error.anchor(reason), shallow.linted),
@@ -644,10 +689,30 @@ defmodule Composer.Lint do
       else: [{:missing_step_test, meta.ref, meta.module, path}]
   end
 
+  # Requirements are cookbook source: resolved against the step's own
+  # cookbook, with no search. One in the old syntax compiles with a
+  # warning; it is reported here with its rewrite.
   defp requires(meta, cookbooks) do
     for ref when is_binary(ref) <- meta.requires,
-        {:error, reason} <- [Resolver.find_step(cookbooks, ref, meta.cookbook)] do
-      {:requires_unresolved, meta.ref, meta.module, ref, reason}
+        problem = requirement_problem(meta, ref, cookbooks),
+        do: problem
+  end
+
+  defp requirement_problem(meta, ref, cookbooks) do
+    if Composer.Facets.requirement?(ref) do
+      case Resolver.find_step(cookbooks, ref, meta.cookbook) do
+        {:ok, _found} -> nil
+        {:error, reason} -> {:requires_unresolved, meta.ref, meta.module, ref, reason}
+      end
+    else
+      rewrites =
+        case Resolver.legacy_rewrite(cookbooks, meta.cookbook, :step, ref) do
+          {:ok, new} -> [new]
+          {:ambiguous, ids} -> ids
+          :error -> []
+        end
+
+      {:old_requires, meta.ref, meta.module, ref, rewrites}
     end
   end
 

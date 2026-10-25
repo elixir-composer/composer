@@ -21,6 +21,12 @@ defmodule Composer.Lint.Diagnostic do
     * `related` - other places involved, as `%{file, range, message}`
       (the other origin of a `conflicting_install`, each hop of a `cycle`,
       the first key of a `duplicate_recipe`, ...)
+    * `fix` - the one unambiguous rewrite, when there is one: `%{range:
+      range, expect: value, text: replacement}`, replacing the source at
+      `range` in `file` (which must still hold the literal `expect`) with
+      `text`. Set by `Composer.Lint` for the old-syntax rules and for
+      `bare_word`/`kind_mismatch` with a single candidate; applied by
+      `mix composer.cookbook.lint --fix` and the LSP's quick fixes.
 
   ## Positions
 
@@ -43,7 +49,8 @@ defmodule Composer.Lint.Diagnostic do
     :message,
     :reason,
     suggestions: [],
-    related: []
+    related: [],
+    fix: nil
   ]
 
   @type position :: {pos_integer(), pos_integer()}
@@ -61,7 +68,8 @@ defmodule Composer.Lint.Diagnostic do
           message: String.t(),
           reason: term(),
           suggestions: [String.t()],
-          related: [related()]
+          related: [related()],
+          fix: %{range: range(), expect: term(), text: String.t()} | nil
         }
 
   @doc "An unlocated diagnostic for `reason`."
@@ -111,8 +119,14 @@ defmodule Composer.Lint.Diagnostic do
   @spec error?(t()) :: boolean()
   def error?(%__MODULE__{severity: severity}), do: severity == :error
 
-  @doc "The diagnostic code of a reason: its tag."
+  @doc """
+  The diagnostic code of a reason: its tag. An invalid relative step
+  address is `relative_step`.
+  """
   @spec code(term()) :: atom()
+  def code({:invalid_ref, _ref, "relative step references are not supported yet"}),
+    do: :relative_step
+
   def code(reason) when is_tuple(reason), do: elem(reason, 0)
   def code(reason) when is_atom(reason), do: reason
 
@@ -122,8 +136,16 @@ defmodule Composer.Lint.Diagnostic do
   """
   @spec suggestions(term()) :: [String.t()]
   def suggestions({:via_alias, _written, _name, _target, reason}), do: suggestions(reason)
-  def suggestions({tag, _ref, _origin, list}) when tag in [:typo, :missing_step], do: list
-  def suggestions({:missing_recipe, _ref, _origin, list}), do: list
+
+  def suggestions({tag, _ref, _origin, list}) when tag in [:missing_step, :missing_recipe],
+    do: list
+
+  def suggestions({:bare_word, _word, _origin, candidates, close}), do: candidates ++ close
+
+  def suggestions({:kind_mismatch, _kind, _written, _origin, twin}) when is_binary(twin),
+    do: [twin]
+
+  def suggestions({:old_syntax, _origin, _written, rewrites}), do: rewrites
   def suggestions(_reason), do: []
 
   @doc """
@@ -142,7 +164,18 @@ defmodule Composer.Lint.Diagnostic do
       "end_column" => d.end_column,
       "message" => d.message,
       "suggestions" => d.suggestions,
-      "related" => Enum.map(d.related, &related_map/1)
+      "related" => Enum.map(d.related, &related_map/1),
+      "fix" => d.fix && fix_map(d.fix)
+    }
+  end
+
+  defp fix_map(%{range: {{line, column}, {end_line, end_column}}, text: text}) do
+    %{
+      "line" => line,
+      "column" => column,
+      "end_line" => end_line,
+      "end_column" => end_column,
+      "text" => text
     }
   end
 

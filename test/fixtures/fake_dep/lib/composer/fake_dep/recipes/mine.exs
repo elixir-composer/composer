@@ -3,6 +3,6 @@
   app: [
     shortdoc: "Base, plus a .gitignore with --ignore",
     flags: [ignore: "Add macOS files to .gitignore"],
-    steps: [{:use, "base"}, {"cb_std:setup/gitignore", if: :ignore}]
+    steps: ["./base", {"cb_std:setup:gitignore", if: :ignore}]
   ]
 ]

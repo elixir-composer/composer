@@ -3,10 +3,9 @@ defmodule Composer.LSP.Cursor do
   What is under the cursor in a chapter buffer.
 
   When the buffer parses, `Composer.Recipe.Locator` answers. Otherwise a
-  line scan finds the string literal enclosing the cursor: a `{:use, ...}`
-  target when `{:use,` precedes it, a reference otherwise. The scan knows
-  string literals, the `{:use,` prefix and keys (`steps:`) and nothing
-  else; references are parsed by `Composer.Ref`.
+  line scan finds the string literal enclosing the cursor, an address.
+  The scan knows string literals and keys (`steps:`, `requires:`) and
+  nothing else; an address's kind is read from it by `Composer.Ref`.
 
   Lines and columns are 1-based, columns in graphemes, as the locator's.
   """
@@ -16,7 +15,7 @@ defmodule Composer.LSP.Cursor do
   @type range :: Composer.Lint.Diagnostic.range()
 
   @type t :: %{
-          kind: :ref | :use | :alias | :key | :recipe,
+          kind: :ref | :alias | :key | :recipe,
           recipe: String.t() | nil,
           value: term(),
           range: range(),
@@ -59,10 +58,8 @@ defmodule Composer.LSP.Cursor do
 
     case line_text && literal_at(line_text, column) do
       %{end: end_column} = literal when end_column != nil ->
-        before = line_text |> String.graphemes() |> Enum.take(literal.start - 1) |> Enum.join()
-
         %{
-          kind: if(use_prefix?(before), do: :use, else: :ref),
+          kind: :ref,
           recipe: recipe_before(lines, line),
           value: literal.value,
           range: {{line, literal.start}, {line, end_column}},
@@ -111,16 +108,14 @@ defmodule Composer.LSP.Cursor do
   defp scan([char | rest], column, {start, value}, acc),
     do: scan(rest, column + 1, {start, value <> char}, acc)
 
-  defp use_prefix?(before), do: Regex.match?(~r/\{\s*:use\s*,\s*\z/, before)
-
   @doc """
   The completion context at `line`, `column` of `text`, by line scan:
-  `{:steps | :use, prefix, replace_range}` inside a string literal of a
-  `steps:` list (`:use` after `{:use,`), else `nil`. `replace_range`
-  covers the literal's contents.
+  `{:steps | :requires, prefix, replace_range}` inside a string literal of
+  a `steps:` list or a step's `requires:` list, else `nil`.
+  `replace_range` covers the literal's contents.
   """
   @spec context(String.t(), pos_integer(), pos_integer()) ::
-          {:steps | :use, String.t(), range()} | nil
+          {:steps | :requires, String.t(), range()} | nil
   def context(text, line, column) do
     lines = String.split(text, ~r/\r?\n/)
     line_text = Enum.at(lines, line - 1)
@@ -133,20 +128,20 @@ defmodule Composer.LSP.Cursor do
       stop = if literal.end, do: literal.end - 1, else: length(graphemes) + 1
       range = {{line, start + 1}, {line, stop}}
 
-      cond do
-        use_prefix?(before) -> {:use, prefix, range}
-        in_steps?(lines, line, before) -> {:steps, prefix, range}
-        true -> nil
+      case list_key(lines, line, before) do
+        "steps" -> {:steps, prefix, range}
+        "requires" -> {:requires, prefix, range}
+        _ -> nil
       end
     else
       _ -> nil
     end
   end
 
-  # True when the literal belongs to a `steps:` list: the nearest key
-  # before it on its line, or else the key starting the nearest earlier
-  # line indented less than this one, is `steps:`.
-  defp in_steps?(lines, line, before) do
+  # The key of the list the literal belongs to: the nearest key before it
+  # on its line, or else the key starting the nearest earlier line
+  # indented less than this one (or a `steps:`/`requires:` ending one).
+  defp list_key(lines, line, before) do
     case last_key(code(before)) do
       nil ->
         indent = indent(Enum.at(lines, line - 1))
@@ -158,14 +153,17 @@ defmodule Composer.LSP.Cursor do
           code = code(text)
 
           case Regex.run(~r/\A(\s*)([a-z_][a-z0-9_]*):\s/, code <> " ") do
-            [_, spaces, key] -> if String.length(spaces) < indent, do: {:key, key}
-            nil -> if last_key(code) == "steps" and indent(text) < indent, do: {:key, "steps"}
+            [_, spaces, key] ->
+              if String.length(spaces) < indent, do: key
+
+            nil ->
+              key = last_key(code)
+              if key in ["steps", "requires"] and indent(text) < indent, do: key
           end
         end)
-        |> Kernel.==({:key, "steps"})
 
       key ->
-        key == "steps"
+        key
     end
   end
 

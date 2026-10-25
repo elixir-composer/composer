@@ -8,9 +8,8 @@ defmodule Composer.Recipe.Locator do
 
     * `key` - the range of its name key (`auth:`)
     * `keys` - its own keys (`steps:`, `aliases:`, `flags:`, ...)
-    * `refs` - the reference strings in its `steps:`, in source order,
-      including the string of a `{"ref", opts}` entry
-    * `uses` - the strings of its `{:use, ...}` entries
+    * `refs` - the address strings in its `steps:`, in source order,
+      including the string of a `{"address", opts}` entry
     * `entries` - each entry's range and, when it is literal, its value
     * `aliases` - each alias name, from a literal `aliases:` or from the
       top-level binding that `aliases:` names
@@ -40,7 +39,6 @@ defmodule Composer.Recipe.Locator do
           key: range(),
           keys: %{atom() => range()},
           refs: [{String.t(), range()}],
-          uses: [{String.t(), range()}],
           entries: [{range(), term()}],
           aliases: %{atom() => range()},
           alias_targets: %{atom() => String.t()},
@@ -57,7 +55,6 @@ defmodule Composer.Recipe.Locator do
   @type target ::
           :recipe
           | {:ref, String.t() | (String.t() -> boolean())}
-          | {:use, String.t()}
           | {:entry, term()}
           | {:key, atom()}
           | {:if, atom()}
@@ -118,9 +115,9 @@ defmodule Composer.Recipe.Locator do
     do: for(%{name: ^name, key: key} <- recipes, do: key)
 
   @doc """
-  Returns the ranges of the reference strings (in `steps:` and
-  `{:use, ...}`) of recipe `name` that equal `match`, or satisfy it when
-  it is a function, in source order.
+  Returns the ranges of the address strings in the `steps:` of recipe
+  `name` that equal `match`, or satisfy it when it is a function, in
+  source order.
   """
   @spec refs(t(), String.t(), String.t() | (String.t() -> boolean())) :: [range()]
   def refs(index, name, match) do
@@ -144,18 +141,17 @@ defmodule Composer.Recipe.Locator do
   end
 
   @doc """
-  Returns what is at `line`, `column`: a reference, a `{:use, ...}`
-  target, an alias name, a recipe key or a recipe's name key, as
-  `{kind, recipe_name, value, range}`, or `nil`.
+  Returns what is at `line`, `column`: an address, an alias name, a
+  recipe key or a recipe's name key, as `{kind, recipe_name, value,
+  range}`, or `nil`.
   """
   @spec at(t(), pos_integer(), pos_integer()) ::
-          {:ref | :use | :alias | :key | :recipe, String.t(), term(), range()} | nil
+          {:ref | :alias | :key | :recipe, String.t(), term(), range()} | nil
   def at(%__MODULE__{recipes: recipes}, line, column) do
     Enum.find_value(recipes, fn recipe ->
       [{:recipe, recipe.name, recipe.key}]
       |> Enum.concat(for {key, range} <- recipe.keys, do: {:key, key, range})
       |> Enum.concat(for {string, range} <- recipe.refs, do: {:ref, string, range})
-      |> Enum.concat(for {string, range} <- recipe.uses, do: {:use, string, range})
       |> Enum.concat(for {name, range} <- recipe.aliases, do: {:alias, name, range})
       |> Enum.find_value(fn {kind, value, range} ->
         if within?(range, {line, column}), do: {kind, recipe.name, value, range}
@@ -176,11 +172,6 @@ defmodule Composer.Recipe.Locator do
       recipe.keys[:steps]
   end
 
-  defp find(_index, recipe, {:use, string}) do
-    Enum.find_value(recipe.uses, fn {s, range} -> s == string && range end) ||
-      recipe.keys[:steps]
-  end
-
   defp find(_index, recipe, {:entry, entry}) do
     first = first_string(entry)
 
@@ -194,7 +185,7 @@ defmodule Composer.Recipe.Locator do
   defp find(_index, recipe, {:alias, name}),
     do: recipe.aliases[name] || recipe.keys[:aliases]
 
-  defp literals(recipe), do: Enum.sort_by(recipe.refs ++ recipe.uses, &elem(&1, 1))
+  defp literals(recipe), do: recipe.refs
 
   defp matches?(match, string) when is_function(match, 1), do: match.(string)
   defp matches?(match, string), do: match == string
@@ -254,7 +245,6 @@ defmodule Composer.Recipe.Locator do
       key: key,
       keys: %{},
       refs: [],
-      uses: [],
       entries: [],
       aliases: %{},
       alias_targets: %{},
@@ -294,7 +284,7 @@ defmodule Composer.Recipe.Locator do
       {:list, items} ->
         items
         |> Enum.reduce(acc, &entry(ctx, &1, &2))
-        |> then(&%{&1 | refs: Enum.reverse(&1.refs), uses: Enum.reverse(&1.uses)})
+        |> then(&%{&1 | refs: Enum.reverse(&1.refs)})
         |> then(&%{&1 | entries: Enum.reverse(&1.entries)})
 
       _ ->
@@ -322,12 +312,6 @@ defmodule Composer.Recipe.Locator do
       {{:ok, value}, range} when range != nil -> %{acc | entries: [{range, value} | acc.entries]}
       _ -> acc
     end
-  end
-
-  defp tuple(ctx, acc, [{:__block__, _, [:use]}, {:__block__, _, [string]} = ref | rest])
-       when is_binary(string) do
-    acc = %{acc | uses: [{string, string_range(ctx, ref)} | acc.uses]}
-    ifs(ctx, acc, rest)
   end
 
   defp tuple(ctx, acc, [{:__block__, _, [string]} = ref | rest]) when is_binary(string) do

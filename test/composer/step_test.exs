@@ -9,7 +9,7 @@ defmodule Composer.StepTest do
     meta = Composer.FakeBook.Steps.Ash.Postgres.__composer_step__()
 
     assert meta.id == "ash/postgres"
-    assert meta.ref == "fake_book:ash/postgres"
+    assert meta.ref == "fake_book:ash:postgres"
     assert meta.cookbook == "fake_book"
     assert meta.module == Composer.FakeBook.Steps.Ash.Postgres
     assert meta.summary == "Adds AshPostgres"

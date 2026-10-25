@@ -31,7 +31,7 @@ defmodule Mix.Tasks.Composer.InitTest do
     assert cookbook =~ "if Code.ensure_loaded?(Composer) do"
     assert_creates(igniter, "lib/composer/test/steps/.gitkeep")
     assert_creates(igniter, "lib/composer/test/manifest.exs")
-    assert Enum.any?(igniter.notices, &(&1 =~ "mix composer.recipe.run app/default"))
+    assert Enum.any?(igniter.notices, &(&1 =~ "mix composer.recipe.run /app/default"))
 
     # The manifest lists the recipe with its shortdoc, so lint passes.
     {manifest, _} = Code.eval_string(content(igniter, "lib/composer/test/manifest.exs"))
@@ -56,8 +56,8 @@ defmodule Mix.Tasks.Composer.InitTest do
   test "every step carries its description from the step's summary" do
     {_igniter, content} = generated()
 
-    assert content =~ ~r{# Removes daisyUI\n\s+"cb_std:phx/remove_daisy_ui",}
-    assert content =~ ~r{# Adds pgvector support\n\s+"cb_std:pg/vector",}
+    assert content =~ ~r{# Removes daisyUI\n\s+"cb_std:phx:remove_daisy_ui",}
+    assert content =~ ~r{# Adds pgvector support\n\s+"cb_std:pg:vector",}
 
     assert content =~
              ~r/# Installs oban and runs the package's own igniter installer\n\s+"hex:oban",/
@@ -68,7 +68,7 @@ defmodule Mix.Tasks.Composer.InitTest do
 
     assert content =~ ~s({"cb_std:oban_pro", if: :oban_pro})
     assert content =~ "Adds Oban Pro extensions (only with --oban-pro)"
-    assert content =~ ~s({"cb_std:cluster/gigalixir/libcluster", if: :gigalixir})
+    assert content =~ ~s({"cb_std:cluster:gigalixir:libcluster", if: :gigalixir})
   end
 
   test "oban_pro follows oban, whose installer it patches, and sort_deps is last" do
@@ -76,7 +76,7 @@ defmodule Mix.Tasks.Composer.InitTest do
     position = &Enum.find_index(refs, fn ref -> ref == &1 end)
 
     assert position.("hex:oban") < position.("cb_std:oban_pro")
-    assert List.last(refs) == "cb_std:setup/sort_deps"
+    assert List.last(refs) == "cb_std:setup:sort_deps"
   end
 
   test "the default recipe references only resolvable steps, without warnings" do
@@ -96,12 +96,12 @@ defmodule Mix.Tasks.Composer.InitTest do
 
       File.write!(Path.join(dir, "recipes/mine.exs"), """
       [
-        base: [shortdoc: "Base", steps: ["cb_std:setup/credo"]],
+        base: [shortdoc: "Base", steps: ["cb_std:setup:credo"]],
         app: [
           shortdoc: "Mine",
           doc: "My app.",
           flags: [gigalixir: "Deploy"],
-          steps: [{:use, "base"}, {:use, "base", if: :gigalixir}, {"cb_std:cluster/gigalixir", if: :gigalixir}]
+          steps: ["./base", {"./base", if: :gigalixir}, {"cb_std:cluster:gigalixir", if: :gigalixir}]
         ]
       ]
       """)
@@ -109,11 +109,11 @@ defmodule Mix.Tasks.Composer.InitTest do
       Application.put_env(:composer, :discovery, cookbooks: [code_cookbook(dir)])
       on_exit(fn -> Application.delete_env(:composer, :discovery) end)
 
-      {igniter, content} = generated(["--from", "mine:mine/app"])
+      {igniter, content} = generated(["--from", "mine/mine/app"])
 
-      assert content =~ "Copied from mine:mine/app"
-      assert content =~ "by `mix composer.init --from mine:mine/app`"
-      refute content =~ "cb_std:phx/remove_daisy_ui"
+      assert content =~ "Copied from mine/mine/app"
+      assert content =~ "by `mix composer.init --from mine/mine/app`"
+      refute content =~ "cb_std:phx:remove_daisy_ui"
 
       {chapter, _} = Code.eval_string(content)
 
@@ -123,9 +123,9 @@ defmodule Mix.Tasks.Composer.InitTest do
                  doc: "My app.",
                  flags: [gigalixir: "Deploy"],
                  steps: [
-                   {:use, "mine:mine/base"},
-                   {:use, "mine:mine/base", if: :gigalixir},
-                   {"cb_std:cluster/gigalixir", if: :gigalixir}
+                   "mine/mine/base",
+                   {"mine/mine/base", if: :gigalixir},
+                   {"cb_std:cluster:gigalixir", if: :gigalixir}
                  ]
                ]
              ]
@@ -135,7 +135,7 @@ defmodule Mix.Tasks.Composer.InitTest do
     end
 
     test "raises for an unknown recipe" do
-      assert_raise Mix.Error, ~r/no recipe matches "nope"/, fn ->
+      assert_raise Mix.Error, ~r/No recipe or step is named "nope"/, fn ->
         Igniter.compose_task(test_project(), Mix.Tasks.Composer.Init, ["--from", "nope"])
       end
     end

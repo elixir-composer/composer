@@ -14,14 +14,14 @@ defmodule Composer.Recipe.ChapterTest do
 
     assert %Recipe{
              id: "clean/base",
-             ref: "mine:clean/base",
+             ref: "mine/clean/base",
              cookbook: "mine",
              chapter: "clean",
              name: "base",
              shortdoc: "The base",
              doc: nil,
              flags: [],
-             steps: ["cb_std:setup/gitignore"]
+             steps: ["cb_std:setup:gitignore"]
            } = base
 
     assert base.path == fixture("clean")
@@ -40,7 +40,7 @@ defmodule Composer.Recipe.ChapterTest do
 
     # Bindings before a literal list are fine.
     assert Chapter.ids(fixture("bindings")) == {:ok, ["base"]}
-    assert {:ok, [%{steps: ["cb_std:setup/gitignore"]}]} = load("bindings")
+    assert {:ok, [%{steps: ["cb_std:setup:gitignore"]}]} = load("bindings")
   end
 
   test "a non-literal top level cannot be listed" do
@@ -70,25 +70,25 @@ defmodule Composer.Recipe.ChapterTest do
     path = fixture("not_keyword")
     assert {:error, {:chapter_shape, ^path, %{}}} = load("not_keyword")
 
-    assert {:error, {:recipe_missing_key, "mine:missing_shortdoc/base", :shortdoc}} =
+    assert {:error, {:recipe_missing_key, "mine/missing_shortdoc/base", :shortdoc}} =
              load("missing_shortdoc")
 
-    assert {:error, {:unknown_recipe_key, "mine:unknown_key/base", :help} = reason} =
+    assert {:error, {:unknown_recipe_key, "mine/unknown_key/base", :help} = reason} =
              load("unknown_key")
 
-    assert Error.message(reason) =~ "mine:unknown_key/base has an unknown key :help"
+    assert Error.message(reason) =~ "mine/unknown_key/base has an unknown key :help"
 
-    assert {:error, {:bad_recipe_value, "mine:bad_value/base", :shortdoc, ""}} =
+    assert {:error, {:bad_recipe_value, "mine/bad_value/base", :shortdoc, ""}} =
              load("bad_value")
 
-    assert {:error, {:undeclared_flag, "mine:undeclared_flag/base", :credo} = reason} =
+    assert {:error, {:undeclared_flag, "mine/undeclared_flag/base", :credo} = reason} =
              load("undeclared_flag")
 
     assert Error.message(reason) =~ ~s(flags: [credo: "What --credo does"])
   end
 
   test "a flag named like a mix composer.new option is reserved" do
-    assert {:error, {:reserved_flag, "mine:reserved_flag/base", :with} = reason} =
+    assert {:error, {:reserved_flag, "mine/reserved_flag/base", :with} = reason} =
              load("reserved_flag")
 
     assert Error.message(reason) =~ "--with is reserved by mix composer.new"
@@ -97,8 +97,8 @@ defmodule Composer.Recipe.ChapterTest do
     {[], errors} = Chapter.check(term, fixture("reserved_flag"), "mine")
 
     assert Enum.sort(errors) == [
-             {:reserved_flag, "mine:reserved_flag/base", :extra_dep},
-             {:reserved_flag, "mine:reserved_flag/base", :with}
+             {:reserved_flag, "mine/reserved_flag/base", :extra_dep},
+             {:reserved_flag, "mine/reserved_flag/base", :with}
            ]
   end
 
@@ -119,8 +119,8 @@ defmodule Composer.Recipe.ChapterTest do
     {term, _} = Code.eval_file(fixture("bad_value"))
     {[], errors} = Chapter.check(term, fixture("bad_value"), "mine")
 
-    assert {:bad_recipe_value, "mine:bad_value/base", :shortdoc, ""} in errors
-    assert {:bad_recipe_value, "mine:bad_value/base", :flags, [credo: 1]} in errors
+    assert {:bad_recipe_value, "mine/bad_value/base", :shortdoc, ""} in errors
+    assert {:bad_recipe_value, "mine/bad_value/base", :flags, [credo: 1]} in errors
   end
 
   test "duplicate recipe names are an error" do
@@ -133,7 +133,7 @@ defmodule Composer.Recipe.ChapterTest do
 
   test "a raising file and a syntax error are reported" do
     # The line of the failure in the file is kept, for lint.
-    assert {:error, {:recipe_eval, "mine:raises/", _, %RuntimeError{}, 1}} = load("raises")
+    assert {:error, {:recipe_eval, "mine/raises/", _, %RuntimeError{}, 1}} = load("raises")
 
     path = "test/support/fixtures/syntax_error.exs"
     assert {:error, {:chapter_parse, ^path, _, 1}} = Chapter.ids(path)
@@ -163,13 +163,13 @@ defmodule Composer.Recipe.ChapterTest do
       assert {:ok, {[good], errors}} = Chapter.load_all(path, "mine")
       assert good.name == "good"
 
-      assert {:reserved_alias, "mine:bad_aliases/reserved", :cb_std} in errors
-      assert {:invalid_alias, "mine:bad_aliases/malformed", :Lab} in errors
-      assert {:duplicate_alias, "mine:bad_aliases/duplicate", :fb} in errors
-      assert {:alias_atom_target, "mine:bad_aliases/atom", :fb, :fake_book} in errors
+      assert {:reserved_alias, "mine/bad_aliases/reserved", :cb_std} in errors
+      assert {:invalid_alias, "mine/bad_aliases/malformed", :Lab} in errors
+      assert {:duplicate_alias, "mine/bad_aliases/duplicate", :fb} in errors
+      assert {:alias_atom_target, "mine/bad_aliases/atom", :fb, :fake_book} in errors
 
       for {name, target} <- [h: "hex", c: "cb_std", l: "local"] do
-        assert {:invalid_alias_target, "mine:bad_aliases/virtual", name, target} in errors
+        assert {:invalid_alias_target, "mine/bad_aliases/virtual", name, target} in errors
       end
 
       assert {:error, {:alias_atom_target, _, _, _} = reason} =
@@ -181,9 +181,9 @@ defmodule Composer.Recipe.ChapterTest do
   end
 
   test "Recipe.load/3 picks one recipe by name" do
-    assert {:ok, %{ref: "mine:clean/app"}} = Recipe.load(fixture("clean"), "mine", "app")
+    assert {:ok, %{ref: "mine/clean/app"}} = Recipe.load(fixture("clean"), "mine", "app")
 
-    assert {:error, {:missing_recipe, "mine:clean/nope", nil, []}} =
+    assert {:error, {:missing_recipe, "mine/clean/nope", nil, []}} =
              Recipe.load(fixture("clean"), "mine", "nope")
   end
 end

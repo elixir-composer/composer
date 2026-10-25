@@ -35,9 +35,9 @@ defmodule Composer.GitTest do
 
   describe "message/3" do
     @entries [
-      %{label: "cb_std:phx/remove_daisy_ui", origin: "mine:phoenix_cleanup"},
+      %{label: "cb_std:phx:remove_daisy_ui", origin: "mine:phoenix_cleanup"},
       %{label: "cb_std:oban_pro", origin: "mine:jobs"},
-      %{label: "cb_std:phx/remove_topbar", origin: nil}
+      %{label: "cb_std:phx:remove_topbar", origin: nil}
     ]
 
     test "builds the subject and plain-line body" do
@@ -54,9 +54,9 @@ defmodule Composer.GitTest do
              Flags: --oban-pro
 
              Steps:
-             1. cb_std:phx/remove_daisy_ui [mine:phoenix_cleanup]
+             1. cb_std:phx:remove_daisy_ui [mine:phoenix_cleanup]
              2. cb_std:oban_pro [mine:jobs]
-             3. cb_std:phx/remove_topbar [command line]
+             3. cb_std:phx:remove_topbar [command line]
              """
 
       refute message =~ ~r/^\s*[-*•] /m
@@ -81,7 +81,7 @@ defmodule Composer.GitTest do
     setup %{tmp_dir: dir} do
       init_repo!(dir)
       file = Path.join(dir, "../msg-#{System.unique_integer([:positive])}.txt")
-      File.write!(file, "composer: apply recipe x\n\nSteps:\n1. cb_std:setup/credo [x]\n")
+      File.write!(file, "composer: apply recipe x\n\nSteps:\n1. cb_std:setup:credo [x]\n")
       %{msg_file: file}
     end
 

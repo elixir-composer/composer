@@ -189,9 +189,10 @@ defmodule Composer.LSP.Server do
            {_kind, _prefix, _range} = context <- Cursor.context(at.text, at.line, at.column) do
         entries = at.snapshot.entries
         aliases = Cursor.scan_aliases(at.text, at.line)
+        buffer = Lookup.context(Lookup.cookbooks(at.snapshot), at.path)
 
         items =
-          for item <- Complete.items(context, entries, aliases) do
+          for item <- Complete.items(context, entries, aliases, buffer) do
             %S.CompletionItem{
               label: item.label,
               kind: completion_kind(item.kind),
@@ -410,7 +411,10 @@ defmodule Composer.LSP.Server do
 
   defp completion_kind(:step), do: CompletionItemKind.function()
   defp completion_kind(:recipe), do: CompletionItemKind.module()
+  defp completion_kind(:folder), do: CompletionItemKind.folder()
+  defp completion_kind(:cookbook), do: CompletionItemKind.folder()
   defp completion_kind(:alias), do: CompletionItemKind.folder()
+  defp completion_kind(:keyword), do: CompletionItemKind.keyword()
 
   # Whether the diagnostic's range starts at a `"` in the document.
   defp starts_with_quote?(diagnostic, doc) do

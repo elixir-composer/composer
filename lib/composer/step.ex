@@ -22,8 +22,8 @@ defmodule Composer.Step do
   ## Identity
 
   The step's id is its path under `steps/` (`"ash/postgres"`), and its
-  cookbook is the directory above `steps/` (`cc_lab`). Its reference is
-  `"cc_lab:ash/postgres"`. The module name must match that path —
+  cookbook is the directory above `steps/` (`cc_lab`). Its address is
+  `"cc_lab:ash:postgres"`. The module name must match that path —
   `Composer.<Cookbook>.Steps.<Path...>` — or compilation fails.
 
   ## Options
@@ -34,8 +34,10 @@ defmodule Composer.Step do
     * `:action`, `:phase`, `:stability` - one facet value each
     * `:frameworks`, `:capability` - lists of facet values
     * `:tags` - free atoms or strings
-    * `:requires` - step references, `{:executable, name}` and
-      `{:package, name, requirement}` checked before a run
+    * `:requires` - step addresses, qualified (`"cb_std:cluster:libcluster"`),
+      root (`":cluster:libcluster"`, a step of this cookbook) or
+      `"hex:pkg"`; `{:executable, name}` and `{:package, name, requirement}`
+      are checked before a run
     * `:provides`, `:conflicts` - capability atoms used for overlap warnings
     * `:author`, `:license`, `:homepage` - strings
 
@@ -279,7 +281,7 @@ defmodule Composer.Step do
       Composer.Step.Meta,
       Map.merge(facets, %{
         id: id,
-        ref: Composer.Ref.Legacy.id(cookbook, id),
+        ref: Composer.Ref.id(:step, cookbook, id),
         cookbook: cookbook,
         module: env.module
       })

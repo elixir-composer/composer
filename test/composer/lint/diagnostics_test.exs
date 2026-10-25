@@ -50,10 +50,10 @@ defmodule Composer.Lint.DiagnosticsTest do
            reserved_alias duplicate_alias alias_atom_target invalid_alias_target legacy_form
            invalid_entry unknown_entry_option bad_entry_option hex_only_option multiple_sources
            git_option_without_git multiple_git_refs source_conflict repo_source invalid_ref
-           recipe_eval inconsistent_alias missing_step typo unknown_cookbook
-           ambiguous dep_opts_on_step unknown_alias_target via_alias missing_recipe
-           alias_shadows_cookbook unused_alias conflicting_install cycle chapter_recipe_clash
-           reserved_flag)a
+           recipe_eval inconsistent_alias missing_step bare_word unknown_cookbook
+           unknown_alias_target via_alias missing_recipe old_syntax kind_mismatch
+           relative_step above_root include_options use_entry
+           alias_shadows_cookbook unused_alias conflicting_install cycle reserved_flag)a
 
       assert expected -- Enum.map(diagnostics, & &1.code) == []
     end
@@ -62,10 +62,27 @@ defmodule Composer.Lint.DiagnosticsTest do
       diagnostics = anchors(dir, cookbooks)
 
       # {:ref, origin, written}: the literal, quotes included.
-      typo = find(diagnostics, :typo)
-      assert at(typo) == {"refs.exs", 10, 7}
-      assert {typo.end_line, typo.end_column} == {10, 15}
-      assert typo.suggestions == ["cb_std:setup/credo", "fake_book:setup/credo"]
+      bare = Enum.find(diagnostics, &match?({:bare_word, "hello", _, _, _}, &1.reason))
+      assert at(bare) == {"refs.exs", 13, 7}
+      assert {bare.end_line, bare.end_column} == {13, 14}
+      assert bare.suggestions == ["fake_book:hello", "other_book:hello"]
+      assert bare.fix == nil
+
+      # One rewrite is a fix, replacing the literal.
+      old = find(diagnostics, :old_syntax)
+      assert at(old) == {"refs.exs", 14, 8}
+
+      assert old.fix == %{
+               range: {{14, 8}, {14, 25}},
+               expect: "setup/gitignore",
+               text: ~s("cb_std:setup:gitignore")
+             }
+
+      mismatch = find(diagnostics, :kind_mismatch)
+      assert mismatch.fix.text == ~s("fake_book:hello")
+      use = find(diagnostics, :use_entry)
+      assert use.fix == %{range: {{26, 33}, {26, 47}}, expect: {:use, "nope"}, text: ~s("./nope")}
+      assert at(use) == {"refs.exs", 26, 33}
       # Behind an alias, at the reference as written.
       assert at(find(diagnostics, :via_alias)) == {"refs.exs", 16, 7}
       assert at(find(diagnostics, :unknown_alias_target)) == {"refs.exs", 15, 7}
@@ -80,7 +97,6 @@ defmodule Composer.Lint.DiagnosticsTest do
       assert at(find(diagnostics, :inconsistent_alias)) == {"refs.exs", 2, 12}
       # {:recipe, ref} and {:recipe_named, cookbook, name}: the name key.
       assert at(find(diagnostics, :recipe_shape)) == {"keys.exs", 8, 3}
-      assert at(find(diagnostics, :chapter_recipe_clash)) == {"refs.exs", 27, 3}
       # {:file, path, line}: the whole line the exception names.
       eval = Enum.find(diagnostics, &(&1.code == :recipe_eval and &1.file =~ "raises"))
       assert {at(eval), eval.end_column} == {{"raises.exs", 3, 1}, 18}
@@ -94,21 +110,21 @@ defmodule Composer.Lint.DiagnosticsTest do
       assert [%{range: {{10, 3}, _}, message: "dup is first defined here"}] = duplicate.related
 
       install = find(diagnostics, :conflicting_install)
-      assert at(install) == {"refs.exs", 24, 36}
+      assert at(install) == {"refs.exs", 29, 36}
 
-      assert [%{range: {{24, 49}, _}, message: "also installed as hex:oban --x"}] =
+      assert [%{range: {{29, 49}, _}, message: "also installed as hex:oban --x"}] =
                install.related
 
       assert [cycle | _] = Enum.filter(diagnostics, &(&1.code == :cycle))
-      assert at(cycle) == {"refs.exs", 25, 42}
-      assert [%{range: {{26, 42}, _}, message: message}] = cycle.related
+      assert at(cycle) == {"refs.exs", 30, 35}
+      assert [%{range: {{31, 35}, _}, message: message}] = cycle.related
       assert message =~ "includes"
     end
 
     test "a cycle across files relates every hop", %{tmp_dir: dir, cookbooks: cookbooks} do
       config(dir, %{
-        "a.exs" => ~s|[one: [shortdoc: "x", steps: [{:use, "mine:b/two"}]]]\n|,
-        "b.exs" => ~s|[two: [shortdoc: "x", steps: [{:use, "mine:a/one"}]]]\n|
+        "a.exs" => ~s|[one: [shortdoc: "x", steps: ["/b/two"]]]\n|,
+        "b.exs" => ~s|[two: [shortdoc: "x", steps: ["mine/a/one"]]]\n|
       })
 
       cycles = Enum.filter(lint_recipes(dir, cookbooks).diagnostics, &(&1.code == :cycle))
@@ -151,12 +167,12 @@ defmodule Composer.Lint.DiagnosticsTest do
 
     test "anchor/1 is :unknown only for what it does not know" do
       assert Error.anchor({:no_such_reason, 1}) == :unknown
-      assert Error.anchor({:typo, "x", "mine:a/b", []}) == {:ref, "mine:a/b", "x"}
+      assert Error.anchor({:bare_word, "x", "mine/a/b", [], []}) == {:ref, "mine/a/b", "x"}
 
       assert Error.anchor(
-               {:via_alias, "lab:x", :lab, "cc_lab", {:missing_step, "cc_lab:x", "mine:a/b", []}}
+               {:via_alias, "lab:x", :lab, "cc_lab", {:missing_step, "cc_lab:x", "mine/a/b", []}}
              ) ==
-               {:ref, "mine:a/b", "lab:x"}
+               {:ref, "mine/a/b", "lab:x"}
     end
 
     defp clause_tags(ast, name) do
@@ -187,7 +203,7 @@ defmodule Composer.Lint.DiagnosticsTest do
   end
 
   describe "all errors per recipe" do
-    test "three typos give three diagnostics, none repeated by the deep pass", %{
+    test "three bad addresses give three diagnostics, none repeated by the deep pass", %{
       tmp_dir: dir,
       cookbooks: cookbooks
     } do
@@ -198,20 +214,20 @@ defmodule Composer.Lint.DiagnosticsTest do
       diagnostics = lint_recipes(dir, cookbooks).diagnostics
 
       assert Enum.map(diagnostics, &{&1.code, &1.column}) == [
-               {:typo, 29},
+               {:bare_word, 29},
                {:missing_step, 39},
-               {:typo, 54}
+               {:bare_word, 54}
              ]
     end
 
-    test "a typo in an included recipe is reported once, at its origin", %{
+    test "a problem in an included recipe is reported once, at its origin", %{
       tmp_dir: dir,
       cookbooks: cookbooks
     } do
       config(dir, %{
         "ash.exs" => ~s|[\n  base: [shortdoc: "x", steps: ["credoo"]]\n]\n|,
         "app.exs" =>
-          ~s|[\n  full: [shortdoc: "x", steps: [{:use, "mine:ash/base"}]],\n  more: [shortdoc: "x", steps: [{:use, "mine:ash/base"}]]\n]\n|
+          ~s|[\n  full: [shortdoc: "x", steps: ["mine/ash/base"]],\n  more: [shortdoc: "x", steps: ["/ash/base"]]\n]\n|
       })
 
       assert [typo] = lint_recipes(dir, cookbooks).diagnostics
@@ -223,10 +239,10 @@ defmodule Composer.Lint.DiagnosticsTest do
     setup %{tmp_dir: dir, cookbooks: cookbooks} do
       config(dir, %{
         "ash.exs" =>
-          ~s|[\n  base: [shortdoc: "x", steps: ["credoo", "cb_std:nope"]],\n  mid: [shortdoc: "x", steps: [{:use, "base"}]]\n]\n|,
+          ~s|[\n  base: [shortdoc: "x", steps: ["credoo", "cb_std:nope"]],\n  mid: [shortdoc: "x", steps: ["./base"]]\n]\n|,
         "app.exs" =>
-          ~s|[\n  full: [shortdoc: "x", steps: [{:use, "mine:ash/mid"}, "cb_std:setup/gitignore"]]\n]\n|,
-        "clean.exs" => ~s|[\n  ok: [shortdoc: "x", steps: ["cb_std:setup/gitignore"]]\n]\n|
+          ~s|[\n  full: [shortdoc: "x", steps: ["mine/ash/mid", "cb_std:setup:gitignore"]]\n]\n|,
+        "clean.exs" => ~s|[\n  ok: [shortdoc: "x", steps: ["cb_std:setup:gitignore"]]\n]\n|
       })
 
       %{
@@ -246,13 +262,13 @@ defmodule Composer.Lint.DiagnosticsTest do
       results = Lint.files(cookbooks, [app, ash, clean])
 
       assert results[clean] == []
-      assert Enum.map(results[ash], & &1.code) == [:typo, :missing_step, :include_problems]
+      assert Enum.map(results[ash], & &1.code) == [:bare_word, :missing_step, :include_problems]
 
       # Included through ash/mid: the problems below it count.
       assert [summary] = results[app]
       assert %Diagnostic{code: :include_problems, severity: :error, file: ^app} = summary
-      assert {summary.line, summary.column} == {2, 40}
-      assert summary.message == "mine:ash/mid has 2 problems."
+      assert {summary.line, summary.column} == {2, 33}
+      assert summary.message == "mine/ash/mid has 2 problems."
 
       assert Enum.map(summary.related, &{Path.basename(&1.file), elem(elem(&1.range, 0), 0)}) == [
                {"ash.exs", 2},
@@ -265,12 +281,12 @@ defmodule Composer.Lint.DiagnosticsTest do
       app: app,
       ash: ash
     } do
-      assert Lint.dependents(cookbooks, "mine:ash/base") == [
-               %{ref: "mine:app/full", path: app},
-               %{ref: "mine:ash/mid", path: ash}
+      assert Lint.dependents(cookbooks, "mine/ash/base") == [
+               %{ref: "mine/app/full", path: app},
+               %{ref: "mine/ash/mid", path: ash}
              ]
 
-      assert Lint.dependents(cookbooks, "mine:app/full") == []
+      assert Lint.dependents(cookbooks, "mine/app/full") == []
     end
 
     test "the cookbook of a file is found from its path", %{

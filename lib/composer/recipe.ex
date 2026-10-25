@@ -1,14 +1,14 @@
 defmodule Composer.Recipe do
   @moduledoc """
   A recipe: a named, self-describing list of steps. Recipes live in
-  chapter files (see `Composer.Recipe.Chapter`), `recipes/<chapter>.exs`, and
-  are addressed as `<cookbook>:<chapter>/<name>`.
+  chapter files (see `Composer.Recipe.Chapter`), `recipes/**/<chapter>.exs`,
+  and are addressed as `<cookbook>/<chapter path>/<name>`.
 
       # recipes/ash.exs
       [
         base: [
           shortdoc: "Ash core: sourceror, ash and ash_phoenix",
-          steps: ["cc_lab:sourceror", "cc_lab:ash", "cc_lab:ash/phoenix"]
+          steps: ["cc_lab:sourceror", "cc_lab:ash", "cc_lab:ash:phoenix"]
         ],
         auth: [
           shortdoc: "Ash with authentication and accounts",
@@ -17,8 +17,8 @@ defmodule Composer.Recipe do
           \""",
           flags: [oban_pro: "Add Oban Pro"],
           steps: [
-            {:use, "base"},
-            "cc_lab:ash/authentication",
+            "./base",
+            "cc_lab:ash:authentication",
             {"cb_std:oban_pro", if: :oban_pro},
             {:task, "ash.codegen", ["initial"]},
             {:queue, "ecto.setup", []}
@@ -35,17 +35,19 @@ defmodule Composer.Recipe do
       rejects a `--flag` that no recipe it reaches declares. Some names
       are reserved (see "Reserved flags" below).
     * `aliases` - `[alias: "cookbook"]`, short names for cookbooks in this
-      recipe's own references (see "Cookbook aliases" below)
+      recipe's own addresses (see "Cookbook aliases" below)
     * `steps` (required) - the entries below
 
   ## Entries
 
-    * `"ref"` - a step: `"cookbook:path"`, or an unqualified `"path"`
-      (see `Composer.Resolver` for how it is found). An unqualified name that
-      matches no step is a Hex package: `"oban"` is `"hex:oban"`.
-    * `{"ref", if: :flag}` - a step that runs only with `--flag`
-    * `{"ref", argv: ["--opt"]}` - a step run with options, as after `--`
-      on `mix composer.step.run`; combines with `if:`
+  An entry's kind comes from its address (see `Composer.Ref`): `/` names
+  a recipe, `:` a step.
+
+    * `"cookbook:a:b"`, `":a:b"` - a step, in another cookbook or in this
+      one (see `Composer.Resolver`)
+    * `{"cookbook:a:b", if: :flag}` - a step that runs only with `--flag`
+    * `{"cookbook:a:b", argv: ["--opt"]}` - a step run with options, as
+      after `--` on `mix composer.step.run`; combines with `if:`
     * `"hex:pkg"` / `{"hex:pkg", opts}` - a package added to `mix.exs`,
       whose own installer runs (`"hex:pkg@<spec>"` is the `@` shorthand,
       see `Composer.Ref`). Besides `if:`, `opts` may hold:
@@ -55,26 +57,29 @@ defmodule Composer.Recipe do
           `git: url` or `path: "../my_lib"`; with `github:` or `git:`, at
           most one of `ref:`, `branch:`, `tag:`, and `sparse:` (a string),
           `submodules:` (a boolean)
-
-      An unqualified name accepts the same options, and is an error if it
-      names a step rather than a package.
-    * `{:use, "ref"}` / `{:use, "ref", if: :flag}` - another recipe's
-      steps, in place. An unqualified name without a `/` (`{:use, "base"}`)
-      is the recipe of that name in the same chapter.
+    * `"./base"`, `"../ui/buttons"`, `"/ash/core"`, `"cb_lab/lv/base"` -
+      another recipe's steps, in place: relative to this recipe's chapter,
+      from this cookbook's `recipes/`, or in another cookbook
+    * `{"./base", if: :flag}` - an include gated by a flag; an include
+      takes no other option
     * `{:task, "x.y", argv}` - compose any Igniter-aware Mix task
     * `{:queue, "x.y", argv}` - run a Mix task after the changes apply
 
   `{:task, ...}` and `{:queue, ...}` take an optional `if:` keyword as a
-  fourth element.
+  fourth element. A bare word (`"oban"`) is not an address: write
+  `"hex:oban"` or the step's full address. `{:use, ...}` is gone; it is
+  an error naming the include to write instead (`mix composer.cookbook.lint
+  --fix` rewrites it).
 
   ## Cookbook aliases
 
-  `aliases: [lab: "cc_lab"]` lets the recipe write `"lab:auth/passkeys"`
-  (or `{:use, "lab:auth/base"}`) for `"cc_lab:auth/passkeys"`. An
-  alias is only a lookup shortcut:
+  `aliases: [lab: "cc_lab"]` lets the recipe write `"lab:auth:passkeys"`
+  for `"cc_lab:auth:passkeys"` (or `"lab/auth/base"` for
+  `"cc_lab/auth/base"`). An alias is only a lookup shortcut:
 
-    * it applies to the declaring recipe's own references, never inside a
-      recipe it includes, and never on the command line
+    * it applies to the declaring recipe's own qualified addresses, never
+      to root or relative ones, inside a recipe it includes, or on the
+      command line
     * the target is a package cookbook's name (a string), never `cb_std`,
       `hex`, `local` or another reserved name
     * the alias is a lowercase `[a-z0-9_]` name other than `cb_std`, `hex`
@@ -130,8 +135,6 @@ defmodule Composer.Recipe do
   @type entry ::
           String.t()
           | {String.t(), keyword()}
-          | {:use, String.t()}
-          | {:use, String.t(), keyword()}
           | {:task | :queue, String.t()}
           | {:task | :queue, String.t(), [String.t()]}
           | {:task | :queue, String.t(), [String.t()], keyword()}
@@ -189,7 +192,7 @@ defmodule Composer.Recipe do
 
   Old step forms are `{:legacy_form, ref, entry, suggestion}`, where
   `suggestion` is the new syntax when one can be derived. Options of a
-  `{"ref", opts}` entry are checked one by one:
+  `{"address", opts}` step entry are checked one by one:
 
     * `{:unknown_entry_option, ref, entry, key}`
     * `{:bad_entry_option, ref, entry, key, value}` - a value of the wrong
@@ -204,17 +207,29 @@ defmodule Composer.Recipe do
     * `{:repo_source, ref, entry, key}` - a non-version source for a
       private-repo package (`hex:org.pkg`)
 
-  An unqualified reference accepts the package options, since it may be a
-  Hex package; `Composer.Resolver` rejects them if it names a step. An
-  invalid reference string is reported as `{:invalid_ref, ...}`.
+  A bare word accepts the package options, as `mix composer.cookbook.lint
+  --fix` may rewrite it to a `hex:` package. An invalid address is
+  reported as `{:invalid_ref, ...}`.
+
+  Some entries are left to `Composer.Resolver`, which needs the installed
+  cookbooks to report them with their rewrite: `{:use, ...}`, an address in
+  the old syntax (`"cb_std:setup/credo"`), and the options of a recipe
+  include (`{:include_options, ...}`, since an old unqualified step
+  `"ash/postgres"` reads as an include now).
   """
   @spec entry_error(term(), String.t() | nil) :: term() | nil
   def entry_error({string, opts} = entry, ref) when is_binary(string) do
     if is_list(opts) and opts != [] and Keyword.keyword?(opts) and
          Enum.uniq(Keyword.keys(opts)) == Keyword.keys(opts) do
-      case Composer.Ref.Legacy.parse(string) do
-        {:ok, parsed} -> options_error(entry, parsed, ref)
-        {:error, reason} -> reason
+      case Composer.Ref.parse(string) do
+        {:ok, %Composer.Ref{kind: :recipe}} ->
+          nil
+
+        {:ok, parsed} ->
+          options_error(entry, parsed, ref)
+
+        {:error, reason} ->
+          if match?({:ok, _}, Composer.Ref.Legacy.parse(string)), do: nil, else: reason
       end
     else
       {:invalid_entry, ref, entry}
@@ -249,6 +264,7 @@ defmodule Composer.Recipe do
   def git_keys, do: @git_options
 
   defp valid_form?(ref) when is_binary(ref), do: true
+  # Old includes, reported by Composer.Resolver with their rewrite.
   defp valid_form?({:use, ref}), do: is_binary(ref)
   defp valid_form?({:use, ref, opts}), do: is_binary(ref) and if_opts?(opts)
   defp valid_form?({kind, task}) when kind in [:task, :queue], do: is_binary(task)
@@ -261,9 +277,9 @@ defmodule Composer.Recipe do
 
   defp valid_form?(_entry), do: false
 
-  defp options_error(entry, %Composer.Ref.Legacy{} = parsed, ref) do
+  defp options_error(entry, %Composer.Ref{} = parsed, ref) do
     {_string, opts} = entry
-    step? = parsed.cookbook not in [nil, "hex"]
+    step? = parsed.cookbook != "hex" and parsed.scope != :search
 
     Enum.find_value(opts, fn {key, value} ->
       cond do
@@ -297,7 +313,7 @@ defmodule Composer.Recipe do
       length(git_refs) > 1 ->
         {:multiple_git_refs, ref, entry, git_refs}
 
-      non_version && Composer.Ref.Legacy.repo_package?(parsed.path) ->
+      non_version && parsed.cookbook == "hex" && Composer.Ref.repo_package?(hd(parsed.segments)) ->
         {:repo_source, ref, entry, non_version}
 
       true ->
@@ -393,8 +409,8 @@ defmodule Composer.Recipe do
   end
 
   @doc """
-  Returns the cookbook parts of the qualified references in `steps` (step
-  and `{:use, ...}` references), without duplicates.
+  Returns the cookbook parts of the qualified addresses in `steps` (steps
+  and recipe includes), without duplicates.
   """
   @spec cookbooks_referenced([entry()]) :: [String.t()]
   def cookbooks_referenced(steps) do
@@ -402,13 +418,11 @@ defmodule Composer.Recipe do
     |> Enum.flat_map(fn
       ref when is_binary(ref) -> [ref]
       {ref, _opts} when is_binary(ref) -> [ref]
-      {:use, ref} -> [ref]
-      {:use, ref, _opts} -> [ref]
       _ -> []
     end)
     |> Enum.flat_map(fn ref ->
-      case Composer.Ref.Legacy.parse(ref) do
-        {:ok, %Composer.Ref.Legacy{cookbook: cookbook}} when is_binary(cookbook) -> [cookbook]
+      case Composer.Ref.parse(ref) do
+        {:ok, %Composer.Ref{scope: :qualified, cookbook: cookbook}} -> [cookbook]
         _ -> []
       end
     end)
@@ -418,7 +432,7 @@ defmodule Composer.Recipe do
   @doc "Returns an entry's own `if:` flag, or `nil`."
   @spec own_flag(entry()) :: atom() | nil
   def own_flag({ref, opts}) when is_binary(ref), do: opts[:if]
-  def own_flag({:use, _ref, opts}), do: opts[:if]
+  def own_flag({:use, _ref, opts}) when is_list(opts), do: opts[:if]
   def own_flag({_kind, _task, _argv, opts}), do: opts[:if]
   def own_flag(_entry), do: nil
 
@@ -454,20 +468,20 @@ defmodule Composer.Recipe do
     end
   end
 
-  defp legacy({:use, name}) when is_atom(name), do: "{:use, #{inspect(to_string(name))}}"
+  defp legacy({:use, name}) when is_atom(name), do: inspect("./#{name}")
 
   defp legacy({:use, name, opts}) when is_atom(name) and is_list(opts),
-    do: "{:use, #{inspect(to_string(name))}, if: #{inspect(opts[:if])}}"
+    do: "{#{inspect("./#{name}")}, if: #{inspect(opts[:if])}}"
 
   defp legacy({:composer, _module}),
-    do: "a {:use, \"cookbook:recipe\"} include of a recipe file"
+    do: "an include of a recipe, \"cookbook/chapter/name\""
 
   defp legacy({:composer, _module, _opts}),
-    do: "a {:use, \"cookbook:recipe\", if: :flag} include of a recipe file"
+    do: "a gated include of a recipe, {\"cookbook/chapter/name\", if: :flag}"
 
   defp legacy(module) when is_atom(module) and not is_nil(module) and not is_boolean(module) do
     if match?("Elixir." <> _, Atom.to_string(module)),
-      do: "a step in a cookbook, referenced as \"cookbook:path\""
+      do: "a step in a cookbook, addressed as \"cookbook:path:to:step\""
   end
 
   defp legacy({module, opts}) when is_atom(module) and is_list(opts), do: legacy(module)

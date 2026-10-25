@@ -14,12 +14,12 @@ defmodule Composer.Error do
       [
         base: [
           shortdoc: "One line, shown by mix composer.recipe.list",
-          steps: ["cb_std:setup/credo", "hex:oban"]
+          steps: ["cb_std:setup:credo", "hex:oban"]
         ],
         app: [
           shortdoc: "Builds on base",
           flags: [gigalixir: "Deploy to Gigalixir"],
-          steps: [{:use, "base"}, {"cb_std:cluster/gigalixir", if: :gigalixir}]
+          steps: ["./base", {"cb_std:cluster:gigalixir", if: :gigalixir}]
         ]
       ]
 
@@ -30,7 +30,14 @@ defmodule Composer.Error do
   @doc "Returns a human-readable message for an error reason."
   @spec message(term()) :: String.t()
   def message({:invalid_ref, ref, why}) do
-    "Invalid reference #{inspect(ref)}: #{why}.\n\nA reference is \"cookbook:path\" or \"path\", e.g. \"cb_std:setup/credo\" or \"ash/postgres\"."
+    """
+    Invalid address #{inspect(ref)}: #{why}.
+
+    A recipe is addressed with /, a step with : (cb_std/debug/echo, \
+    cb_std:setup:credo); a leading / or : is this cookbook (/ash/base, \
+    :setup:credo), ./ and ../ are relative to the recipe's chapter, and a \
+    Hex package is hex:pkg.
+    """
   end
 
   def message({:recipe_eval, ref, path, exception, _line}) do
@@ -231,17 +238,13 @@ defmodule Composer.Error do
     "#{ref}: template #{inspect(path)} does not exist (looked for #{file})."
   end
 
-  def message({:chapter_recipe_clash, cookbook, name}) do
-    "#{cookbook} has a chapter #{name} and a recipe named #{name}. Rename one, so #{cookbook}:#{name} is never ambiguous."
-  end
-
   def message({:legacy_form, ref, entry, suggestion}) do
     """
     Recipe #{ref} uses an old step form: #{format(entry)}
 
-    Write it as #{suggestion} instead. Steps are now referenced by string, \
-    "cookbook:path" (or an unqualified "path"), and recipes with \
-    {:use, "cookbook:path"}.
+    Write it as #{suggestion} instead. Steps are addressed by string, \
+    "cookbook:path:to:step", and recipes are included by address, \
+    "cookbook/chapter/name" or "./name".
     """
   end
 
@@ -320,14 +323,14 @@ defmodule Composer.Error do
 
     Expected one of:
 
-        "cookbook:path"                  # a step
-        {"cookbook:path", if: :flag}     # a step that runs only with --flag
-        {"cookbook:path", argv: ["--opt"], if: :flag}
+        "cookbook:path:to:step"          # a step (":path:to:step" in this cookbook)
+        {"cookbook:step", if: :flag}     # a step that runs only with --flag
+        {"cookbook:step", argv: ["--opt"], if: :flag}
         "hex:pkg"                        # a package, and its installer
         {"hex:pkg", argv: ["--opt"], only: :dev, version: "~> 1.0"}
-        {:use, "cookbook:chapter/name"}    # another recipe, in place
-        {:use, "name"}                   # a recipe in the same chapter
-        {:use, "cookbook:chapter/name", if: :flag}
+        "cookbook/chapter/name"          # another recipe, in place
+        "./name", "../other/name"        # a recipe relative to this chapter
+        {"/chapter/name", if: :flag}     # a gated include, in this cookbook
         {:task, "x.y", ["arg"]}          # compose an Igniter task
         {:queue, "x.y", ["arg"]}         # run a Mix task after changes apply
     """
@@ -348,7 +351,7 @@ defmodule Composer.Error do
     #{where(origin)}#{inspect(written)} names the step #{step_ref}, but has \
     package options #{Enum.map_join(keys, ", ", &"#{&1}:")}. Those are only \
     for a Hex package. Remove them, or, if you meant the package, write \
-    {#{inspect("hex:" <> Path.basename(written))}, ...}.
+    {#{inspect("hex:" <> last_segment(written))}, ...}.
     """
   end
 
@@ -380,41 +383,136 @@ defmodule Composer.Error do
       suggest(suggestions, "List steps with: mix composer.step.list")
   end
 
-  def message({:typo, ref, origin, suggestions}) do
-    """
-    #{where(origin)}no step matches #{inspect(ref)}.
-
-    Did you mean: #{Enum.join(suggestions, ", ")}?
-
-    An unqualified name that matches no step is installed as a Hex package, \
-    but #{inspect(ref)} looks like a typo of a step name. If you meant the \
-    package, write #{inspect("hex:" <> ref)}.
-    """
-  end
-
   def message({:ambiguous, kind, ref, origin, candidates}) do
+    what = if kind == :address, do: "more than one recipe or step", else: "more than one #{kind}"
+
     """
-    #{where(origin)}#{inspect(ref)} matches a #{kind} in more than one cookbook:
+    #{where(origin)}#{inspect(ref)} matches #{what}:
 
     #{Enum.map_join(candidates, "\n", &"    #{&1}")}
 
-    Qualify the reference with its cookbook, e.g. #{inspect(hd(candidates))}.
+    Write the full address, e.g. #{inspect(hd(candidates))}.
     """
   end
 
   def message({:missing_recipe, ref, origin, suggestions}) do
-    hint =
-      if String.contains?(ref, "/"),
-        do: "",
-        else:
-          if(origin,
-            do: "An unqualified name refers to a recipe in the same chapter.\n\n",
-            else:
-              "Recipes are addressed as \"cookbook:chapter/name\" (e.g. \"cb_lab:lv/base\").\n\n"
-          )
-
     "#{where(origin)}no recipe matches #{inspect(ref)}.\n\n" <>
-      hint <> suggest(suggestions, "List recipes with: mix composer.recipe.list")
+      suggest(suggestions, "List recipes with: mix composer.recipe.list")
+  end
+
+  def message({:no_match, kind, word, suggestions, cookbook?}) do
+    what = if kind == :recipe, do: "recipe", else: "step"
+
+    cookbook =
+      if cookbook?,
+        do:
+          "\n\n#{word} is a cookbook: address its recipes as #{word}/... and its steps as #{word}:...",
+        else: ""
+
+    hex = if kind == :step, do: " For a Hex package, write #{inspect("hex:" <> word)}.", else: ""
+
+    "No recipe or step is named #{inspect(word)}, so there is no #{what} to run.#{hex}" <>
+      cookbook <> "\n\n" <> suggest(suggestions, "List them with: mix composer.#{what}.list")
+  end
+
+  def message({:bare_word, word, origin, candidates, close}) do
+    fix =
+      case {candidates, close} do
+        {["hex:" <> _ = hex], _} -> "write #{inspect(hex)}"
+        {[], []} -> "write a full address, e.g. \"cookbook:path:to:step\" or \"hex:#{word}\""
+        {[], close} -> "did you mean " <> Enum.map_join(close, " or ", &inspect/1) <> "?"
+        _ -> "did you mean " <> Enum.map_join(candidates, " or ", &inspect/1) <> "?"
+      end
+
+    "#{where(origin)}#{inspect(word)} is not an address; #{fix}\n\n" <>
+      "In cookbook source, a step or recipe is addressed in full: a bare name is never searched."
+  end
+
+  def message({:kind_mismatch, kind, written, origin, nil}) do
+    {is, wanted, example} =
+      case kind do
+        :recipe -> {"a step address", "a recipe address uses /", "cookbook/chapter/name"}
+        :step -> {"a recipe address", "a step address uses :", "cookbook:path:to:step"}
+      end
+
+    "#{where(origin)}#{inspect(written)} is #{is}, but a #{kind} is expected here; " <>
+      "#{wanted} (#{example})."
+  end
+
+  def message({:kind_mismatch, kind, written, origin, twin}) do
+    other = if kind == :recipe, do: "step", else: "recipe"
+    "#{where(origin)}no #{kind} #{written}; did you mean the #{other} #{twin}?"
+  end
+
+  def message({:short_recipe, written, origin}) do
+    "#{where(origin)}#{inspect(written)} names no chapter: a recipe address is " <>
+      "cookbook/chapter/name (or /chapter/name, ./name)."
+  end
+
+  def message({:not_a_cookbook, written, origin}) do
+    "#{where(origin)}#{inspect(written)} is addressed from this project's cookbook, " <>
+      "but this project is not a cookbook. Name the cookbook, e.g. #{inspect("cookbook" <> written)}."
+  end
+
+  def message({:no_chapter, written, origin}) do
+    "#{where(origin)}#{inspect(written)} is relative to a recipe's chapter, and there is none " <>
+      "here. Write the full address, e.g. \"cookbook/chapter/name\"."
+  end
+
+  def message({:above_root, written, origin, chapter}) do
+    target = written |> String.split("/") |> List.last()
+
+    "#{where(origin)}#{inspect(written)} climbs above recipes/ from chapter #{chapter}: " <>
+      "no chapter for #{target}."
+  end
+
+  def message({:use_entry, ref, entry, rewrites}) do
+    fix =
+      case rewrites do
+        [one] ->
+          "Write #{one} instead (mix composer.cookbook.lint --fix rewrites it)."
+
+        [] ->
+          "Include the recipe by its address instead: \"./name\", \"/chapter/name\" " <>
+            "or \"cookbook/chapter/name\"."
+
+        many ->
+          "It matches more than one recipe; write one of: " <> Enum.join(many, ", ") <> "."
+      end
+
+    "Recipe #{ref} uses #{format(entry)}, which is gone: a recipe is included by its address. " <>
+      fix
+  end
+
+  def message({:include_options, ref, written, keys}) do
+    "Recipe #{ref} includes the recipe #{inspect(written)} with " <>
+      Enum.map_join(keys, ", ", &"#{&1}:") <> "; an include takes only if:."
+  end
+
+  def message({:old_syntax, origin, written, rewrites}) do
+    fix =
+      case rewrites do
+        [one] -> "write #{inspect(one)} (mix composer.cookbook.lint --fix rewrites it)"
+        many -> "it could mean " <> Enum.map_join(many, " or ", &inspect/1) <> "; write one"
+      end
+
+    "#{where(origin)}#{inspect(written)} is in the old address syntax; #{fix}."
+  end
+
+  def message({:old_requires, step_ref, _module, written, rewrites}) do
+    fix =
+      case rewrites do
+        [one] -> "write #{inspect(one)} (mix composer.cookbook.lint --fix rewrites it)"
+        [] -> "write it as \"cookbook:path:to:step\" or \":path:to:step\""
+        many -> "it could mean " <> Enum.map_join(many, " or ", &inspect/1) <> "; write one"
+      end
+
+    "#{step_ref}: requires #{inspect(written)} is in the old address syntax; #{fix}."
+  end
+
+  def message({:old_doc_address, ref, key, found}) do
+    "#{ref}: #{key}: shows the old address syntax (#{Enum.map_join(found, ", ", &inspect/1)}). " <>
+      "Update the text; --fix leaves it alone."
   end
 
   def message({:cycle, path}) do
@@ -610,7 +708,6 @@ defmodule Composer.Error do
   def anchor({:unprefixed_templates, dir, _template_dir}), do: {:file, dir}
   def anchor({:not_a_step, path}), do: {:file, path}
   def anchor({:missing_template, ref, path, _file}), do: {:step, ref, {:template, path}}
-  def anchor({:chapter_recipe_clash, cookbook, name}), do: {:recipe_named, cookbook, name}
 
   def anchor({tag, ref, entry})
       when tag in [:legacy_form, :invalid_entry, :source_conflict],
@@ -637,7 +734,20 @@ defmodule Composer.Error do
   def anchor({:conflicting_install, package, installs}), do: {:install, package, installs}
   def anchor({:unknown_cookbook, _name, ref, origin, _known}), do: {:ref, origin, ref}
   def anchor({:missing_step, ref, origin, _suggestions}), do: {:ref, origin, ref}
-  def anchor({:typo, ref, origin, _suggestions}), do: {:ref, origin, ref}
+  def anchor({:bare_word, written, origin, _candidates, _close}), do: {:ref, origin, written}
+  def anchor({:kind_mismatch, _kind, written, origin, _twin}), do: {:ref, origin, written}
+  def anchor({:short_recipe, written, origin}), do: {:ref, origin, written}
+  def anchor({:not_a_cookbook, written, origin}), do: {:ref, origin, written}
+  def anchor({:no_chapter, written, origin}), do: {:ref, origin, written}
+  def anchor({:above_root, written, origin, _chapter}), do: {:ref, origin, written}
+  def anchor({:use_entry, ref, entry, _rewrites}), do: {:entry, ref, entry}
+  def anchor({:include_options, ref, written, _keys}), do: {:ref, ref, written}
+  def anchor({:old_syntax, origin, written, _rewrites}), do: {:ref, origin, written}
+
+  def anchor({:old_requires, step_ref, _module, written, _rewrites}),
+    do: {:step, step_ref, {:requires, written}}
+
+  def anchor({:old_doc_address, ref, key, _found}), do: {:recipe_key, ref, key}
   def anchor({:ambiguous, _kind, ref, origin, _candidates}), do: {:ref, origin, ref}
   def anchor({:missing_recipe, ref, origin, _suggestions}), do: {:ref, origin, ref}
   def anchor({:cycle, chain}), do: {:cycle, chain}
@@ -666,6 +776,7 @@ defmodule Composer.Error do
   def anchor({:lint_file_missing, _path}), do: nil
   def anchor({:lint_file_unknown, _path}), do: nil
   def anchor(:not_in_project), do: nil
+  def anchor({:no_match, _kind, _word, _suggestions, _cookbook?}), do: nil
 
   def anchor(_other), do: :unknown
 
@@ -696,11 +807,14 @@ defmodule Composer.Error do
     do: "\nIf #{name} is meant as a cookbook alias, declare it in #{origin}'s aliases:.\n"
 
   defp recipe_id(ref) do
-    case String.split(ref, ":", parts: 2) do
+    case String.split(ref, "/", parts: 2) do
       [_cookbook, id] -> id
       [id] -> id
     end
   end
+
+  defp last_segment(written),
+    do: written |> String.split(["/", ":"]) |> List.last() |> String.split("@") |> hd()
 
   defp dashed(flag), do: String.replace(to_string(flag), "_", "-")
 

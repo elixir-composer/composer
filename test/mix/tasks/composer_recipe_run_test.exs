@@ -10,18 +10,17 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
   @moduletag :tmp_dir
 
   @recipes %{
-    "base" => ~s(["cb_std:setup/gitignore"]),
-    "deploy" => ~s(["cb_std:ecto/force_drop"]),
-    "app" =>
-      ~s([{:use, "base"}, {"cb_std:ecto/force_drop", if: :force_drop}, {:queue, "foo.bar", []}]),
-    "gated" => ~s([{:use, "base"}, {:use, "deploy", if: :deploy}]),
-    "reserved" => ~s([{"cb_std:setup/gitignore", if: :yes}]),
-    "cookbook" => ~s(["fake_book:hello", "setup/gitignore"]),
+    "base" => ~s(["cb_std:setup:gitignore"]),
+    "deploy" => ~s(["cb_std:ecto:force_drop"]),
+    "app" => ~s(["./base", {"cb_std:ecto:force_drop", if: :force_drop}, {:queue, "foo.bar", []}]),
+    "gated" => ~s(["./base", {"./deploy", if: :deploy}]),
+    "reserved" => ~s([{"cb_std:setup:gitignore", if: :yes}]),
+    "cookbook" => ~s(["fake_book:hello", "cb_std:setup:gitignore"]),
     "cookbook_gated" => ~s([{"fake_book:hello", if: :hello}]),
     "cookbook_missing" => ~s(["fake_book:nope"]),
     "legacy" => "[{:gen, :gitignore}]",
     "tool" => ~s(["fake_book:needs_tool"]),
-    "uses_gated" => ~s([{:use, "cookbook_gated"}])
+    "uses_gated" => ~s(["./cookbook_gated"])
   }
 
   @mix_exs """
@@ -113,7 +112,7 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
   end
 
   test "applies the resolved recipe" do
-    run(["t/app"])
+    run(["mine/t/app"])
     |> assert_changed(".gitignore")
     |> assert_unchanged("mix.exs")
   end
@@ -121,7 +120,7 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
   test "hands the runner the resolved, active internal steps" do
     Application.put_env(:composer, :runner, RecordingRunner)
 
-    run(["t/cookbook", "--no-commit"])
+    run(["mine/t/cookbook", "--no-commit"])
 
     assert_received {:steps,
                      [
@@ -129,7 +128,7 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
                        {:module, Composer.CbStd.Steps.Setup.Gitignore}
                      ]}
 
-    run(["t/app", "--no-commit", "--force-drop"])
+    run(["mine/t/app", "--no-commit", "--force-drop"])
 
     assert_received {:steps,
                      [
@@ -140,9 +139,9 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
   end
 
   test "a flagged step is skipped without its flag and applied with it" do
-    assert_unchanged(run(["t/app"]), "mix.exs")
+    assert_unchanged(run(["mine/t/app"]), "mix.exs")
 
-    run(["t/app", "--force-drop"])
+    run(["mine/t/app", "--force-drop"])
     |> assert_has_patch(
       "mix.exs",
       ~S(+ |    ["ecto.reset": ["ecto.drop --force-drop", "ecto.setup"]])
@@ -150,11 +149,11 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
   end
 
   test "a gated use is skipped without its flag and applied with it" do
-    run(["t/gated"])
+    run(["mine/t/gated"])
     |> assert_changed(".gitignore")
     |> assert_unchanged("mix.exs")
 
-    run(["mine:t/gated", "--deploy"])
+    run(["mine/t/gated", "--deploy"])
     |> assert_has_patch(
       "mix.exs",
       ~S(+ |    ["ecto.reset": ["ecto.drop --force-drop", "ecto.setup"]])
@@ -162,31 +161,31 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
   end
 
   test "queues the commit last, with the message" do
-    igniter = run(["t/app", "--force-drop"])
+    igniter = run(["mine/t/app", "--force-drop"])
 
     assert [{"foo.bar", ["--yes"]}, {"composer.git.commit", ["--message-file", file]}] =
              igniter.tasks
 
     assert File.read!(file) == """
-           composer: apply recipe mine:t/app
+           composer: apply recipe mine/t/app
 
            Flags: --force-drop
 
            Steps:
-           1. cb_std:setup/gitignore [mine:t/base]
-           2. cb_std:ecto/force_drop [mine:t/app]
-           3. {:queue, "foo.bar", []} [mine:t/app]
+           1. cb_std:setup:gitignore [mine/t/base]
+           2. cb_std:ecto:force_drop [mine/t/app]
+           3. {:queue, "foo.bar", []} [mine/t/app]
            """
   end
 
   test "the message lists only steps that ran" do
-    [["--message-file", file]] = run(["t/app"]) |> commit_tasks()
+    [["--message-file", file]] = run(["mine/t/app"]) |> commit_tasks()
     refute File.read!(file) =~ "force_drop"
     assert File.read!(file) =~ "Flags: (none)"
   end
 
   test "a dry run queues the commit but writes no message file" do
-    [["--message-file", file]] = run(["t/app", "--dry-run"]) |> commit_tasks()
+    [["--message-file", file]] = run(["mine/t/app", "--dry-run"]) |> commit_tasks()
     refute File.exists?(file)
   end
 
@@ -195,12 +194,12 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
     File.write!(stale, "x")
     File.touch!(stale, System.os_time(:second) - 7200)
 
-    run(["t/app"])
+    run(["mine/t/app"])
     refute File.exists?(stale)
   end
 
   test "--no-commit queues no commit" do
-    igniter = run(["t/app", "--no-commit"])
+    igniter = run(["mine/t/app", "--no-commit"])
     assert commit_tasks(igniter) == []
     assert_changed(igniter, ".gitignore")
   end
@@ -208,8 +207,8 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
   test "refuses a dirty tree, unless --no-commit", %{app: app} do
     File.write!(Path.join(app, "untracked.txt"), "x")
 
-    assert_raise Mix.Error, ~r/uncommitted changes/, fn -> run(["t/app"]) end
-    assert_changed(run(["t/app", "--no-commit"]), ".gitignore")
+    assert_raise Mix.Error, ~r/uncommitted changes/, fn -> run(["mine/t/app"]) end
+    assert_changed(run(["mine/t/app", "--no-commit"]), ".gitignore")
   end
 
   test "refuses outside a git repo, unless --no-commit" do
@@ -218,53 +217,53 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
     File.cd!(outside)
     on_exit(fn -> File.rm_rf!(outside) end)
 
-    assert_raise Mix.Error, ~r/git init/, fn -> run(["t/app"]) end
-    assert_changed(run(["t/app", "--no-commit"]), ".gitignore")
+    assert_raise Mix.Error, ~r/git init/, fn -> run(["mine/t/app"]) end
+    assert_changed(run(["mine/t/app", "--no-commit"]), ".gitignore")
   end
 
   test "cookbook steps run as their module" do
-    run(["t/cookbook"])
+    run(["mine/t/cookbook"])
     |> assert_creates("hello.txt", "hello\n")
     |> assert_changed(".gitignore")
   end
 
   test "a cookbook step's if: becomes a flag" do
-    assert Mix.Tasks.Composer.Recipe.Run.info(["t/cookbook_gated"], nil).schema[
+    assert Mix.Tasks.Composer.Recipe.Run.info(["mine/t/cookbook_gated"], nil).schema[
              :hello
            ] == :boolean
 
-    refute_creates(run(["t/cookbook_gated"]), "hello.txt")
-    assert_creates(run(["t/cookbook_gated", "--hello"]), "hello.txt")
+    refute_creates(run(["mine/t/cookbook_gated"]), "hello.txt")
+    assert_creates(run(["mine/t/cookbook_gated", "--hello"]), "hello.txt")
   end
 
   test "a missing step fails before anything runs, naming the recipe" do
     assert_raise Mix.Error,
-                 ~r/In recipe mine:t\/cookbook_missing: no step matches "fake_book:nope"/,
+                 ~r/In recipe mine\/t\/cookbook_missing: no step matches "fake_book:nope"/,
                  fn ->
-                   run(["t/cookbook_missing"])
+                   run(["mine/t/cookbook_missing"])
                  end
   end
 
   test "an old step form is rejected with the new syntax" do
     assert_raise Mix.Error, ~r/Write it as "gitignore" instead/, fn ->
-      run(["t/legacy"])
+      run(["mine/t/legacy"])
     end
   end
 
   test "an unmet requires stops the run" do
     assert_raise Mix.Error, ~r/composer-fixture-missing-tool/, fn ->
-      run(["t/tool", "--no-commit"])
+      run(["mine/t/tool", "--no-commit"])
     end
   end
 
   test "info/2 publishes a boolean per flag" do
-    info = Mix.Tasks.Composer.Recipe.Run.info(["--force-drop", "t/app"], nil)
+    info = Mix.Tasks.Composer.Recipe.Run.info(["--force-drop", "mine/t/app"], nil)
     assert info.positional == [:recipe]
     assert info.schema[:force_drop] == :boolean
     assert info.schema[:no_commit] == :boolean
     assert info.aliases == []
 
-    gated = Mix.Tasks.Composer.Recipe.Run.info(["t/gated"], nil)
+    gated = Mix.Tasks.Composer.Recipe.Run.info(["mine/t/gated"], nil)
     assert gated.schema[:deploy] == :boolean
 
     assert Mix.Tasks.Composer.Recipe.Run.info([], nil).schema == [no_commit: :boolean]
@@ -272,35 +271,35 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
 
   test "an undeclared --flag is rejected, naming the declared ones" do
     assert_raise Mix.Error,
-                 ~r/Unknown flag --deplyo for recipe mine:t\/gated. Its flags: --deploy/,
+                 ~r/Unknown flag --deplyo for recipe mine\/t\/gated. Its flags: --deploy/,
                  fn ->
-                   run(["t/gated", "--deplyo"])
+                   run(["mine/t/gated", "--deplyo"])
                  end
 
     assert_raise Mix.Error, ~r/Unknown flag --force-drop .* It declares no flags/, fn ->
-      run(["t/base", "--force-drop"])
+      run(["mine/t/base", "--force-drop"])
     end
 
     # Igniter's own options and the task's are fine.
-    assert_changed(run(["t/base", "--no-commit", "--verbose"]), ".gitignore")
+    assert_changed(run(["mine/t/base", "--no-commit", "--verbose"]), ".gitignore")
   end
 
   test "a flag declared by a used recipe is accepted" do
-    assert Mix.Tasks.Composer.Recipe.Run.info(["t/uses_gated"], nil).schema[:hello] ==
+    assert Mix.Tasks.Composer.Recipe.Run.info(["mine/t/uses_gated"], nil).schema[:hello] ==
              :boolean
 
-    assert_creates(run(["t/uses_gated", "--hello"]), "hello.txt")
+    assert_creates(run(["mine/t/uses_gated", "--hello"]), "hello.txt")
   end
 
   test "flags that collide with task options are rejected" do
     assert_raise Mix.Error, ~r/flag :yes, but --yes is reserved/, fn ->
-      Mix.Tasks.Composer.Recipe.Run.info(["t/reserved"], nil)
+      Mix.Tasks.Composer.Recipe.Run.info(["mine/t/reserved"], nil)
     end
   end
 
   test "an unknown recipe raises with suggestions" do
-    assert_raise Mix.Error, ~r/no recipe matches "t\/bsae".*mine:t\/base/s, fn ->
-      run(["t/bsae"])
+    assert_raise Mix.Error, ~r/no recipe matches "mine\/t\/bsae".*mine\/t\/base/s, fn ->
+      run(["mine/t/bsae"])
     end
   end
 end

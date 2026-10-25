@@ -13,7 +13,7 @@ defmodule Composer.LSP.ConvertTest do
 
   defp typo do
     :error
-    |> Diagnostic.new({:typo, "credoo", "mine:a/x", ["cb_std:setup/credo"]})
+    |> Diagnostic.new({:bare_word, "credoo", "mine/a/x", [], ["cb_std:setup:credo"]})
     |> Diagnostic.locate("/r/a.exs", {{1, 21}, {1, 29}}, [
       %{file: "/r/b.exs", range: {{1, 6}, {1, 9}}, message: "here"},
       %{file: "/r/c.exs", range: nil, message: "no range"},
@@ -25,10 +25,15 @@ defmodule Composer.LSP.ConvertTest do
     lsp = Convert.diagnostic(typo(), :utf16, line_fun())
 
     assert lsp.severity == 1
-    assert lsp.code == "typo"
+    assert lsp.code == "bare_word"
     assert lsp.source == "composer"
     assert lsp.message =~ "credoo"
-    assert lsp.data == %{"code" => "typo", "suggestions" => ["cb_std:setup/credo"]}
+
+    assert lsp.data == %{
+             "code" => "bare_word",
+             "suggestions" => ["cb_std:setup:credo"],
+             "fix" => nil
+           }
 
     warning = Diagnostic.new(:warning, {:empty_chapter, "/r/a.exs"})
     assert Convert.diagnostic(warning, :utf16, line_fun()).severity == 2

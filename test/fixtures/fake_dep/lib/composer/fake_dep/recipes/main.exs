@@ -1,3 +1,3 @@
 [
-  default: [shortdoc: "Says hi", steps: ["hi"]]
+  default: [shortdoc: "Says hi", steps: [":hi"]]
 ]

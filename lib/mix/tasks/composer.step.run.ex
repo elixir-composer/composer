@@ -4,17 +4,18 @@ defmodule Mix.Tasks.Composer.Step.Run do
   @moduledoc """
   Runs one or more steps, as one diff.
 
-      mix composer.step.run cb_std:setup/credo
-      mix composer.step.run setup/credo,phx/remove_topbar,hex:oban
-      mix composer.step.run cc_lab:ash/postgres --dry-run
+      mix composer.step.run cb_std:setup:credo
+      mix composer.step.run credo,remove_topbar,hex:oban
+      mix composer.step.run cc_lab:ash:postgres --dry-run
       mix composer.step.run cc_lab:foo -- --bar baz
       mix composer.step.run hex:my_lib@path:../my_lib
       mix composer.step.run hex:ash_authentication -- --auth-strategy password
 
-  References are `"cookbook:path"` or an unqualified `"path"`, looked up in
-  the current project's cookbook first, then in every cookbook. An
-  unqualified name that matches no step is a Hex package (`"oban"` is
-  `"hex:oban"`). A `hex:` reference may name its source after an `@`:
+  A step is addressed as `cookbook:path:to:step`, or `:path:to:step` in
+  the current project's cookbook. A bare name (`credo`) searches every
+  cookbook for the one recipe or step whose last segment it is; it never
+  means a Hex package, so write `hex:oban` for one. A `hex:` address may
+  name its source after an `@`:
   `hex:ash@3.5`, `hex:ash@github:ash-project/ash`, `hex:x@git:<url>`,
   `hex:my_lib@path:../my_lib` (see `Composer.Ref`). References are split
   on `,`, so a source containing a comma needs a recipe entry instead.
@@ -37,7 +38,7 @@ defmodule Mix.Tasks.Composer.Step.Run do
   def info(_argv, _composing_task) do
     %Igniter.Mix.Task.Info{
       positional: [{:refs, optional: true}],
-      example: "mix composer.step.run cb_std:setup/credo,cb_std:setup/quokka"
+      example: "mix composer.step.run cb_std:setup:credo,cb_std:setup:quokka"
     }
   end
 

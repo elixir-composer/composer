@@ -14,7 +14,7 @@ defmodule Mix.Tasks.Composer.Cookbook.Lint do
 
   With `--file`, checks one chapter file of any installed cookbook
   (found from its path), and reports only the problems in that file, plus one at
-  each `{:use, ...}` of a recipe that has problems of its own. This is
+  each include of a recipe that has problems of its own. This is
   what an editor runs on save; see the lint guide.
 
   Exits non-zero when there is an error, in every format, so it can run in
@@ -38,32 +38,109 @@ defmodule Mix.Tasks.Composer.Cookbook.Lint do
   Dependencies that need compiling are compiled by Mix before this task
   starts; set `MIX_QUIET=1` to silence that too.
 
+  ## Rewriting the old address syntax
+
+  With `--fix`, every problem that has exactly one rewrite is rewritten in
+  place, in the chapter files and the step modules of this project's
+  cookbook, then the cookbook is linted again:
+
+  | Old                    | New                                                |
+  |------------------------|----------------------------------------------------|
+  | `{:use, "name"}`       | `"./name"`                                         |
+  | `{:use, "x:a/b"}`      | `"x/a/b"`                                          |
+  | `{:use, "a/b"}`        | `"/a/b"` if this cookbook has it, else the one `x/a/b` |
+  | `{:use, r, opts}`      | `{new(r), opts}`                                   |
+  | `"x:a/b/c"` (step)     | `"x:a:b:c"`                                        |
+  | `"a/b"` (step)         | `":a:b"` if this cookbook has it, else the one `x:a:b` |
+  | `"name"` (step)        | as above, else `"hex:name"`                        |
+
+  Unqualified old addresses are read as they resolved before, against the
+  cookbooks installed now, so run it with the project's usual
+  dependencies. Only string literals and `{:use, ...}` entries are
+  replaced; comments and layout are kept. A reference that could mean
+  several things is reported, not guessed, as are addresses in `shortdoc:`
+  and `doc:` text.
+
   ## Options
 
     * `--file PATH` - lint one chapter file
     * `--format FORMAT` - `text`, `compact`, `json` or `github`
+    * `--fix` - rewrite what has one rewrite (see above), then lint
   """
 
   use Mix.Task
 
   alias Composer.{CLI, Discovery, Lint, Manifest}
-  alias Composer.Lint.{Diagnostic, Format}
+  alias Composer.Lint.{Diagnostic, Fix, Format}
 
   @formats ~w(text compact json github)
 
   @impl Mix.Task
   def run(argv) do
     CLI.require_project!()
-    {opts, _args} = CLI.parse!(argv, format: :string, file: :string)
+    {opts, _args} = CLI.parse!(argv, format: :string, file: :string, fix: :boolean)
     format = format!(opts[:format])
     cookbooks = CLI.cookbooks!(quiet: format != :text)
 
-    result =
+    lint = fn ->
       if opts[:file],
         do: lint_file(opts[:file], cookbooks),
         else: lint_cookbook(cookbooks)
+    end
 
+    result = if opts[:fix], do: fix(lint, format), else: lint.()
     report(format, result)
+  end
+
+  @rewrite_codes [
+    :old_syntax,
+    :use_entry,
+    :bare_word,
+    :kind_mismatch,
+    :old_requires,
+    :old_doc_address,
+    :include_options,
+    :relative_step,
+    :above_root
+  ]
+
+  # Fixing one problem can uncover another (a recipe written in the old
+  # syntax throughout is reported entry by entry), so fixes are applied
+  # until there are none left.
+  @rounds 10
+
+  defp fix(lint, format) do
+    {result, fixed} =
+      Enum.reduce_while(1..@rounds, {nil, []}, fn _round, {_result, fixed} ->
+        result = lint.()
+
+        case Fix.apply(result.diagnostics) do
+          %{fixed: []} -> {:halt, {result, fixed}}
+          %{fixed: more} -> {:cont, {result, fixed ++ more}}
+        end
+      end)
+
+    result = result || lint.()
+
+    if format == :text do
+      for d <- fixed do
+        Mix.shell().info(
+          "fixed: #{Path.relative_to_cwd(d.file)}:#{d.line}: #{d.fix.text} [#{d.code}]"
+        )
+      end
+
+      unfixed = for d <- result.diagnostics, d.code in @rewrite_codes, do: d
+
+      if unfixed != [] do
+        Mix.shell().info([
+          :yellow,
+          "not fixed (no single rewrite), #{length(unfixed)}: see below",
+          :reset
+        ])
+      end
+    end
+
+    result
   end
 
   defp format!(nil), do: :text

@@ -87,14 +87,18 @@ defmodule Composer.CLI do
   end
 
   @doc """
-  The cookbook an unqualified command-line reference is looked up in first:
-  the current project's own.
+  The resolution context of a command-line address (see
+  `Composer.Resolver`): the current project's own cookbook, if it is one,
+  no chapter, and CLI mode, where a bare name is searched.
   """
   def context(cookbooks) do
-    case Discovery.own(cookbooks) do
-      nil -> nil
-      cookbook -> cookbook.name
-    end
+    own =
+      case Discovery.own(cookbooks) do
+        nil -> nil
+        cookbook -> cookbook.name
+      end
+
+    %{cookbook: own, chapter: nil, cli?: true}
   end
 
   @doc "Raises unless running inside a Mix project."
@@ -155,10 +159,10 @@ defmodule Composer.CLI do
   end
 
   @doc """
-  Renders numbered entries: `   4. cb_std:setup/credo  [cb_lab:dev/tooling] if :dev`.
+  Renders numbered entries: `   4. cb_std:setup:credo  [cb_lab/dev/tooling] if :dev`.
 
-  With `aliases: true`, a step referenced through a cookbook alias is
-  followed by the alias: `cc_lab:auth/passkeys (as lab)`.
+  With `aliases: true`, a step addressed through a cookbook alias is
+  followed by the alias: `cc_lab:auth:passkeys (as lab)`.
   """
   def render_entries(entries, opts \\ []) do
     width = entries |> length() |> Integer.to_string() |> String.length()

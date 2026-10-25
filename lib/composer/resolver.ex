@@ -1,54 +1,75 @@
 defmodule Composer.Resolver do
   @moduledoc """
-  Resolves references and expands recipes into one flat, acyclic,
+  Resolves addresses and expands recipes into one flat, acyclic,
   de-duplicated step list for `Composer.Runner`.
 
-  ## Resolving a step reference
+  ## Context
 
-  A bare string in a recipe names a step:
+  Every address (see `Composer.Ref`) is resolved against a context:
 
-    0. In a recipe, a cookbook part that is one of the recipe's own
-       `aliases` is first replaced by the real cookbook name
-       (`"lab:auth/passkeys"` with `lab: "cc_lab"` is
-       `"cc_lab:auth/passkeys"`); errors show the reference as
-       written, with the alias noted. Aliases never apply inside an
-       included recipe, nor to references given on the command line. An
-       alias that is the name of an installed cookbook is an error.
-    1. `"cookbook:path"` is looked up exactly. An unknown cookbook is an
-       error that suggests adding the package that ships it.
-    2. An unqualified `"path"` is looked up first in the referring
-       recipe's own cookbook (on the command line, the current project's
-       cookbook).
-    3. Otherwise every cookbook is searched. Exactly one match resolves to
-       it; more than one is an `:ambiguous` error listing every candidate.
-       No match, for a name without a `/`, is the Hex package of that name
-       (`"oban"` is `"hex:oban"`) - unless the name is very close to an
-       existing step id, which is reported as a likely typo instead.
-    4. `"hex:pkg"` (or `"hex:org.pkg"` for a private repo) adds the package
-       to `mix.exs` and runs its own installer, if it ships one. Its `@`
-       source (`"hex:pkg@path:../pkg"`, see `Composer.Ref`) and the entry's
-       options (`argv`, `only`, `runtime`, a source and git options) are
-       carried into one `{:install, package, opts}` step, whose `opts` are
-       canonical (see `Composer.Runner`). An unqualified name that falls
-       back to Hex keeps its options; one that names a step must not have
-       package options (`{:dep_opts_on_step, ...}`).
+      %{cookbook: "cb_lab" | nil, chapter: "ash/ui/tailwind" | nil, cli?: boolean}
 
-  A step in the referring cookbook wins over a Hex package of the same name,
-  so an unqualified name is never ambiguous with `hex:`.
+  In a recipe, the context is the recipe's own cookbook and chapter. On the
+  command line it is the current project's cookbook (`nil` when the project
+  is not a cookbook), no chapter, and `cli?: true` (see `context/1`).
 
-  `{:use, ref}` names a recipe, `"cookbook:chapter/name"`. An unqualified
-  name without a `/` (`{:use, "base"}`) is the recipe of that name in the
-  same chapter as the referring recipe; nothing outside the chapter can match
-  it. Any other reference is resolved like a step reference, except that
-  there is no Hex fallback.
+  | Scope        | Resolves to                                       | Error when                                  |
+  |--------------|---------------------------------------------------|---------------------------------------------|
+  | `:qualified` | the alias-expanded cookbook and the segments      | unknown cookbook; missing                   |
+  | `:root`      | the context cookbook and the segments             | no context cookbook                         |
+  | `:relative`  | the context chapter, `up` levels up, + segments   | no chapter (CLI); climbs above `recipes/`; missing |
+  | `:search`    | the one recipe or step, in any cookbook, whose last segment matches | not on the CLI; none or several match |
+
+  Relative addresses always stay in the context cookbook. From chapter
+  `ash/ui/tailwind`, `./base` is `ash/ui/tailwind/base`, `../buttons` is
+  `ash/ui/buttons` and `../../core` is `ash/core`; `../../../core` climbs
+  above `recipes/`.
+
+  A resolved recipe address has at least two segments, a chapter and a
+  name: `cb_std/echo` is an error, which names the step `cb_std:echo` when
+  there is one. Any missing address whose other-kind twin exists says so
+  (`{:kind_mismatch, ...}`).
+
+  ## In cookbook source
+
+  Cookbook source never searches and never falls back to Hex. A bare word
+  in a recipe is a `{:bare_word, ...}` error listing what it could have
+  meant (`"oban"` is not an address; write `"hex:oban"`), so installing
+  another cookbook can never change what a recipe means.
+
+  In a recipe, a qualified cookbook part that is one of the recipe's own
+  `aliases` is first replaced by the real cookbook name (`"lab:auth:passkeys"`
+  with `lab: "cc_lab"` is `"cc_lab:auth:passkeys"`, `"lab/auth/base"` is
+  `"cc_lab/auth/base"`); errors show the address as written, with the
+  alias noted. Aliases never apply to root or relative addresses, inside an
+  included recipe, nor on the command line. An alias that is the name of
+  an installed cookbook is an error.
+
+  `"hex:pkg"` (or `"hex:org.pkg"` for a private repo) adds the package to
+  `mix.exs` and runs its own installer, if it ships one. Its `@` source
+  (`"hex:pkg@path:../pkg"`) and the entry's options (`argv`, `only`,
+  `runtime`, a source and git options) are carried into one
+  `{:install, package, opts}` step, whose `opts` are canonical (see
+  `Composer.Runner`). A step must not have package options
+  (`{:dep_opts_on_step, ...}`).
 
   ## Entries
 
+  The kind of a recipe's entry comes from its address: a recipe address
+  (`"./base"`, `{"cb_std/debug/echo", if: :x}`) includes that recipe in
+  place, and may only be gated with `if:` (`{:include_options, ...}`); a
+  step address (including `hex:`) is a step. `{:use, ...}` is gone: it is
+  a `{:use_entry, ...}` error with the rewritten entry.
+
+  Old-syntax addresses (`"cb_std:setup/credo"`, an unqualified `"a/b"`
+  step) are `{:old_syntax, ...}` errors naming the new spelling, which
+  `mix composer.cookbook.lint --fix` writes.
+
   Every leaf becomes an entry:
 
-      %{ref: "cb_std:setup/credo", label: "cb_std:setup/credo",
+      %{ref: "cb_std:setup:credo", label: "cb_std:setup:credo",
         step: {:module, Composer.CbStd.Steps.Setup.Credo},
-        origin: "my_app:phx/app", gates: [:dev_tools], if: nil, meta: %Composer.Step.Meta{}}
+        origin: "my_app/phx/app", gates: [:dev_tools], if: nil, meta: %Composer.Step.Meta{}}
 
   `origin` is the recipe the step came from, `gates` the `if:` flags of the
   includes it was reached through, and `if` its own flag. `step` is the
@@ -56,8 +77,8 @@ defmodule Composer.Resolver do
   `"hex:pkg"`, whatever its source, so `requires: ["hex:pkg"]` matches it
   by name; its `label` shows the source and installer argv
   (`"hex:my_lib (path ../my_lib)"`). `alias` is the cookbook alias the
-  reference was written with (`"lab"`), or `nil`; `ref` and `label` always
-  use the real cookbook name.
+  address was written with (`"lab"`), or `nil`; `ref` and `label` always
+  use the real cookbook name. Refs are canonical ids (`Composer.Ref.id/3`).
 
   The result also lists the recipes visited, root first, as
   `%Composer.Recipe{}` structs; `declared_flags/1` collects their flags.
@@ -67,11 +88,12 @@ defmodule Composer.Resolver do
     * **Include-once.** A recipe is expanded at most once per resolution;
       later includes of it are no-ops. A diamond is not a cycle.
     * **No cycles.** Re-entering a recipe that is still being expanded is a
-      `{:cycle, path}` error, with the full `cookbook:path` chain.
+      `{:cycle, path}` error, with the full chain of recipe ids.
     * **De-duplication.** A step equal to an earlier one is dropped (first
       occurrence wins) and reported in `duplicates`. Equality uses the
-      resolved step, so `"setup/credo"` and `"cb_std:setup/credo"` are
-      duplicates. Steps that differ only in their `if:` are distinct.
+      resolved step, so `":setup:credo"` in a `cb_std` recipe and
+      `"cb_std:setup:credo"` are duplicates. Steps that differ only in
+      their `if:` are distinct.
     * **One install per package.** Installs of one package with different
       options (argv, source or dep options, or none against some) are a
       `{:conflicting_install, package, [{origin, label}, ...]}` error,
@@ -88,6 +110,8 @@ defmodule Composer.Resolver do
   """
 
   alias Composer.{Recipe, Ref, Cookbook}
+
+  @type context :: %{cookbook: String.t() | nil, chapter: String.t() | nil, cli?: boolean()}
 
   @type entry :: %{
           ref: String.t() | nil,
@@ -119,20 +143,50 @@ defmodule Composer.Resolver do
   # -- public API ---------------------------------------------------------
 
   @doc """
+  Builds a resolution context: from a recipe (its cookbook and chapter), a
+  context map (missing keys default), a cookbook name, or `nil`.
+  """
+  @spec context(Recipe.t() | map() | String.t() | nil) :: context()
+  def context(%Recipe{cookbook: cookbook, chapter: chapter}),
+    do: %{cookbook: cookbook, chapter: chapter, cli?: false}
+
+  def context(nil), do: %{cookbook: nil, chapter: nil, cli?: false}
+  def context(name) when is_binary(name), do: %{cookbook: name, chapter: nil, cli?: false}
+
+  def context(%{} = context),
+    do: Map.merge(context(nil), Map.take(context, [:cookbook, :chapter, :cli?]))
+
+  @doc """
+  The recipe id that relative `segments`, `up` levels above `chapter`,
+  name: `relative("ash/ui", 1, ["core"])` is `{:ok, "ash/core"}`. An
+  address that climbs above `recipes/`, or names no chapter, is
+  `{:error, :above_root}`.
+  """
+  @spec relative(String.t(), non_neg_integer(), [String.t()]) ::
+          {:ok, String.t()} | {:error, :above_root}
+  def relative(chapter, up, segments) do
+    base = String.split(chapter, "/")
+
+    if up > length(base) or length(base) - up + length(segments) < 2,
+      do: {:error, :above_root},
+      else: {:ok, Enum.join(Enum.drop(base, -up) ++ segments, "/")}
+  end
+
+  @doc """
   Resolves recipe `ref` and expands it.
 
   ## Options
 
     * `:flags` - `:all` (default) or a keyword of flag values
-    * `:context` - the cookbook name an unqualified `ref` is looked up in
-      first, normally the current project's cookbook
+    * `:context` - what `ref` is resolved against (see `context/1`); on
+      the command line, `Composer.CLI.context/1`
   """
   @spec resolve_recipe([Cookbook.t()], String.t(), keyword()) ::
           {:ok, result()} | {:error, term()}
   def resolve_recipe(cookbooks, ref, opts \\ []) do
     index = index(cookbooks)
 
-    with {:ok, root} <- find_recipe(index, ref, opts[:context], nil) do
+    with {:ok, root} <- find_recipe(index, ref, context(opts[:context]), nil) do
       state = %{
         index: index,
         flags: Keyword.get(opts, :flags, :all),
@@ -159,7 +213,7 @@ defmodule Composer.Resolver do
   end
 
   @doc """
-  Resolves step references from the command line into entries, in order.
+  Resolves step addresses from the command line into entries, in order.
 
   ## Options
 
@@ -172,10 +226,11 @@ defmodule Composer.Resolver do
   def resolve_steps(cookbooks, refs, opts \\ []) do
     index = index(cookbooks)
     argv = Keyword.get(opts, :argv, [])
+    context = context(opts[:context])
 
     refs
     |> Enum.reduce_while({:ok, []}, fn ref, {:ok, acc} ->
-      case find_step(index, ref, opts[:context], nil) do
+      case find_step(index, ref, context, nil) do
         {:ok, found} -> {:cont, {:ok, [leaf(found, nil, [], nil, argv: argv) | acc]}}
         error -> {:halt, error}
       end
@@ -190,13 +245,13 @@ defmodule Composer.Resolver do
   end
 
   @doc """
-  Resolves one step reference to its metadata or Hex package, without
-  building an entry. Used by `mix composer.step.show`.
+  Resolves one step address to its metadata or Hex package, without
+  building an entry. Used by `mix composer.step.show` and lint.
   """
-  @spec find_step([Cookbook.t()], String.t(), String.t() | nil) ::
+  @spec find_step([Cookbook.t()] | index(), String.t(), context() | String.t() | nil) ::
           {:ok, {:step, Composer.Step.Meta.t()} | {:hex, String.t()}} | {:error, term()}
-  def find_step(cookbooks, ref, context) when is_list(cookbooks) do
-    case find_step(index(cookbooks), ref, context, nil) do
+  def find_step(cookbooks, ref, context) do
+    case find_step(index(cookbooks), ref, context(context), nil) do
       {:ok, {:module, meta}} -> {:ok, {:step, meta}}
       {:ok, {:install, package, _source}} -> {:ok, {:hex, package}}
       error -> error
@@ -204,12 +259,12 @@ defmodule Composer.Resolver do
   end
 
   @doc """
-  Resolves one recipe reference to its qualified id.
+  Resolves one recipe address to its canonical id.
   """
-  @spec find_recipe([Cookbook.t()], String.t(), String.t() | nil) ::
+  @spec find_recipe([Cookbook.t()] | index(), String.t(), context() | String.t() | nil) ::
           {:ok, String.t()} | {:error, term()}
-  def find_recipe(cookbooks, ref, context) when is_list(cookbooks) do
-    find_recipe(index(cookbooks), ref, context, nil)
+  def find_recipe(cookbooks, ref, context) do
+    find_recipe(index(cookbooks), ref, context(context), nil)
   end
 
   @doc """
@@ -225,7 +280,7 @@ defmodule Composer.Resolver do
     cookbooks
     |> Enum.filter(&(only == nil or &1.name in only))
     |> Enum.flat_map(fn cookbook ->
-      Enum.map(Cookbook.recipes(cookbook), &Ref.Legacy.id(cookbook.name, &1))
+      Enum.map(Cookbook.recipes(cookbook), &Ref.id(:recipe, cookbook.name, &1))
     end)
     |> Enum.reduce_while(:ok, fn ref, :ok ->
       case resolve_recipe(cookbooks, ref, flags: :all) do
@@ -287,12 +342,11 @@ defmodule Composer.Resolver do
 
   @doc """
   Checks each of `recipe`'s own entries on its own, as resolving it would,
-  and returns every error found (one per bad entry), in order: a step or
-  package reference, with the recipe's aliases expanded and its cookbook
-  first, or a `{:use, ...}` target. An alias that hides an installed
-  cookbook comes first. Included recipes are not followed; see
-  `resolve_recipe/3` for what only the whole tree shows (cycles,
-  conflicting installs).
+  and returns every error found (one per bad entry), in order: a step,
+  package or include address, with the recipe's aliases expanded, or a
+  `{:use, ...}` entry. An alias that hides an installed cookbook comes
+  first. Included recipes are not followed; see `resolve_recipe/3` for
+  what only the whole tree shows (cycles, conflicting installs).
 
   `cookbooks` may be an index from `index/1`, to check many recipes.
   """
@@ -315,8 +369,8 @@ defmodule Composer.Resolver do
   end
 
   @doc """
-  Returns `recipe`'s own `{:use, ...}` entries as `{written, result}`, in
-  order, where `result` is `{:ok, recipe_id}` or `{:error, reason}`.
+  Returns `recipe`'s own recipe includes as `{written, result}`, in order,
+  where `result` is `{:ok, recipe_id}` or `{:error, reason}`.
 
   `cookbooks` may be an index from `index/1`.
   """
@@ -326,31 +380,216 @@ defmodule Composer.Resolver do
     index = index(cookbooks)
 
     for entry <- recipe.steps,
-        written = use_ref(entry),
+        written = include_ref(entry),
         is_binary(written),
         do: {written, find_included(index, written, recipe)}
   end
 
-  defp use_ref({:use, ref}), do: ref
-  defp use_ref({:use, ref, _opts}), do: ref
-  defp use_ref(_entry), do: nil
+  @doc """
+  Resolves an address written in `recipe` (with its aliases and its
+  chapter for relative addresses) to the canonical id of the recipe or
+  step it names. A `hex:` address is returned as written.
+  """
+  @spec address_id([Cookbook.t()] | index(), Recipe.t(), String.t()) ::
+          {:ok, String.t()} | {:error, term()}
+  def address_id(cookbooks, %Recipe{} = recipe, string) do
+    case entry_target(index(cookbooks), {string, []}, recipe) do
+      {:ok, {:include, id, _flag}} -> {:ok, id}
+      {:ok, {:step, {:module, meta}, _via}} -> {:ok, meta.ref}
+      {:ok, {:step, {:install, _package, _source}, _via}} -> {:ok, string}
+      error -> error
+    end
+  end
 
-  defp check_entry({:use, _ref} = entry, recipe, index), do: check_use(entry, recipe, index)
+  @doc """
+  Every recipe and step, in any cookbook, whose last segment is `word`, as
+  canonical ids, recipes first.
+  """
+  @spec search([Cookbook.t()] | index(), String.t()) :: [String.t()]
+  def search(cookbooks, word) do
+    index = index(cookbooks)
 
-  defp check_entry({:use, _ref, _opts} = entry, recipe, index),
-    do: check_use(entry, recipe, index)
+    recipes =
+      for {name, ids} <- index.recipes,
+          id <- ids,
+          Path.basename(id) == word,
+          do: Ref.id(:recipe, name, id)
+
+    steps =
+      for {_name, steps} <- index.steps,
+          {id, meta} <- steps,
+          Path.basename(id) == word,
+          do: meta.ref
+
+    Enum.sort(recipes) ++ Enum.sort(steps)
+  end
+
+  # The address of a recipe-include entry, or nil.
+  defp include_ref(entry) do
+    case entry do
+      string when is_binary(string) -> recipe_address(string)
+      {string, opts} when is_binary(string) and is_list(opts) -> recipe_address(string)
+      _ -> nil
+    end
+  end
+
+  defp recipe_address(string) do
+    case Ref.parse(string) do
+      {:ok, %Ref{kind: :recipe}} -> string
+      _ -> nil
+    end
+  end
+
+  defp check_entry({:use, _} = entry, recipe, index),
+    do: {:error, use_entry(index, recipe, entry)}
+
+  defp check_entry({:use, _, _} = entry, recipe, index),
+    do: {:error, use_entry(index, recipe, entry)}
 
   defp check_entry(ref, recipe, index) when is_binary(ref),
     do: check_entry({ref, []}, recipe, index)
 
-  defp check_entry({ref, opts}, recipe, index) when is_binary(ref) and is_list(opts) do
-    with {:ok, _found, _via} <- lookup_step(index, ref, opts, recipe), do: :ok
+  defp check_entry({ref, opts} = entry, recipe, index) when is_binary(ref) and is_list(opts) do
+    with {:ok, _target} <- entry_target(index, entry, recipe), do: :ok
   end
 
   defp check_entry(_entry, _recipe, _index), do: :ok
 
-  defp check_use(entry, recipe, index) do
-    with {:ok, _id} <- find_included(index, use_ref(entry), recipe), do: :ok
+  # What a string entry of `recipe` names: {:include, id, flag} or
+  # {:step, found, via}. An old-syntax address is reported as such.
+  defp entry_target(index, {string, opts}, recipe) do
+    result =
+      case Ref.parse(string) do
+        {:ok, %Ref{kind: :recipe}} ->
+          with {:ok, id} <- find_included(index, string, recipe),
+               :ok <- include_options(string, opts, recipe),
+               do: {:ok, {:include, id, opts[:if]}}
+
+        _ ->
+          with {:ok, found, via} <- lookup_step(index, string, opts, recipe),
+               do: {:ok, {:step, found, via}}
+      end
+
+    old_syntax(result, index, recipe, string)
+  end
+
+  defp include_options(string, opts, recipe) do
+    case Keyword.keys(opts) -- [:if] do
+      [] -> :ok
+      keys -> {:error, {:include_options, recipe.ref, string, Enum.uniq(keys)}}
+    end
+  end
+
+  @old_syntax_errors [
+    :invalid_ref,
+    :unknown_cookbook,
+    :missing_recipe,
+    :missing_step,
+    :kind_mismatch,
+    :short_recipe
+  ]
+
+  # A failed lookup of an address that the old syntax read differently is
+  # reported with its new spelling.
+  defp old_syntax({:error, reason} = error, index, recipe, string)
+       when elem(reason, 0) in @old_syntax_errors do
+    case legacy_rewrite(index, recipe, :step, string) do
+      {:ok, ^string} -> error
+      {:ok, new} -> {:error, {:old_syntax, recipe.ref, string, [new]}}
+      {:ambiguous, ids} -> {:error, {:old_syntax, recipe.ref, string, ids}}
+      :error -> error
+    end
+  end
+
+  defp old_syntax(result, _index, _recipe, _string), do: result
+
+  defp use_entry(index, recipe, entry) do
+    {written, opts} =
+      case entry do
+        {:use, written} -> {written, nil}
+        {:use, written, opts} -> {written, opts}
+      end
+
+    rewrites =
+      case is_binary(written) && legacy_rewrite(index, recipe, :use, written) do
+        {:ok, new} -> [new]
+        {:ambiguous, ids} -> ids
+        _ -> []
+      end
+
+    {:use_entry, recipe.ref, entry, Enum.map(rewrites, &use_rewrite(&1, opts))}
+  end
+
+  # The text of a rewritten {:use, ...} entry.
+  defp use_rewrite(new, nil), do: inspect(new)
+
+  defp use_rewrite(new, opts),
+    do: "{" <> inspect(new) <> ", " <> String.slice(Macro.to_string(opts), 1..-2//1) <> "}"
+
+  # -- old syntax ---------------------------------------------------------
+
+  @doc false
+  # The new spelling of an address written in the old syntax, read with
+  # Composer.Ref.Legacy as it resolved before addressing schemes, in a
+  # recipe of `context`'s cookbook: `:step` for a string entry (or a step's
+  # requires), `:use` for the target of a {:use, ...} include. Returns
+  # {:ok, address}, {:ambiguous, ids} or :error. Unqualified references
+  # resolve against the cookbooks in `index`. Used by the old-syntax
+  # errors and mix composer.cookbook.lint --fix; it goes away with
+  # Composer.Ref.Legacy.
+  def legacy_rewrite(cookbooks, context, kind, string) do
+    index = index(cookbooks)
+    own = context(context).cookbook
+
+    case Ref.Legacy.parse(string) do
+      {:ok, %Ref.Legacy{cookbook: "hex"}} ->
+        if kind == :step, do: {:ok, string}, else: :error
+
+      {:ok, %Ref.Legacy{cookbook: nil, path: path}} ->
+        legacy_unqualified(index, own, kind, path)
+
+      {:ok, %Ref.Legacy{cookbook: cookbook, path: path}} ->
+        {:ok, Ref.id(if(kind == :use, do: :recipe, else: :step), cookbook, path)}
+
+      {:error, _} ->
+        :error
+    end
+  end
+
+  defp legacy_unqualified(index, own, :use, path) do
+    cond do
+      not String.contains?(path, "/") ->
+        {:ok, "./" <> path}
+
+      own && path in Map.get(index.recipes, own, []) ->
+        {:ok, "/" <> path}
+
+      true ->
+        case for({name, ids} <- index.recipes, path in ids, do: Ref.id(:recipe, name, path)) do
+          [id] -> {:ok, id}
+          [] -> :error
+          ids -> {:ambiguous, Enum.sort(ids)}
+        end
+    end
+  end
+
+  defp legacy_unqualified(index, own, :step, path) do
+    if own && index.steps[own][path] do
+      {:ok, ":" <> String.replace(path, "/", ":")}
+    else
+      case for({_name, steps} <- index.steps, meta = steps[path], do: meta.ref) do
+        [ref] ->
+          {:ok, ref}
+
+        [] ->
+          if String.contains?(path, "/") or step_suggestions(index, path) != [],
+            do: :error,
+            else: {:ok, "hex:" <> path}
+
+        refs ->
+          {:ambiguous, Enum.sort(refs)}
+      end
+    end
   end
 
   # -- index --------------------------------------------------------------
@@ -380,59 +619,130 @@ defmodule Composer.Resolver do
     }
   end
 
-  # -- step references ----------------------------------------------------
+  # -- step addresses -----------------------------------------------------
 
   defp find_step(index, string, context, origin) do
-    with {:ok, ref} <- Ref.Legacy.parse(string) do
+    with {:ok, ref} <- Ref.parse(string) do
       case ref do
-        %Ref.Legacy{cookbook: "hex", path: package, source: source} ->
+        %Ref{cookbook: "hex", segments: [package], source: source} ->
           {:ok, {:install, package, source}}
 
-        %Ref.Legacy{cookbook: nil} ->
-          find_unqualified_step(index, ref, string, context, origin)
+        %Ref{scope: :search, segments: [word]} ->
+          search_step(index, string, word, context, origin)
 
-        %Ref.Legacy{cookbook: name, path: path} ->
-          cond do
-            not Map.has_key?(index.by_name, name) ->
-              {:error, {:unknown_cookbook, name, string, origin, Map.keys(index.by_name)}}
+        %Ref{kind: :recipe} ->
+          {:error, {:kind_mismatch, :step, string, origin, step_twin(index, ref, context)}}
 
-            meta = index.steps[name][path] ->
-              {:ok, {:module, meta}}
+        %Ref{} ->
+          with {:ok, cookbook} <- scope_cookbook(index, ref, string, context, origin) do
+            path = Ref.path(ref)
 
-            true ->
-              {:error, {:missing_step, string, origin, step_suggestions(index, path)}}
+            cond do
+              meta = index.steps[cookbook][path] ->
+                {:ok, {:module, meta}}
+
+              twin = recipe_twin(index, ref, context) ->
+                {:error, {:kind_mismatch, :step, string, origin, twin}}
+
+              true ->
+                {:error, {:missing_step, string, origin, step_suggestions(index, path)}}
+            end
           end
       end
     end
   end
 
-  defp find_unqualified_step(index, %Ref.Legacy{path: path} = ref, string, context, origin) do
-    own = context && index.steps[context][path]
+  # A bare word: searched on the command line, an error in source.
+  defp search_step(index, string, word, %{cli?: true}, origin) do
+    case search(index, word) do
+      [] ->
+        {:error,
+         {:no_match, :step, string, step_suggestions(index, word), cookbook?(index, word)}}
 
-    if own do
-      {:ok, {:module, own}}
+      [id] ->
+        case Ref.parse!(id) do
+          %Ref{kind: :step} = ref ->
+            {:ok, {:module, index.steps[ref.cookbook][Ref.path(ref)]}}
+
+          _recipe ->
+            {:error, {:kind_mismatch, :step, string, origin, id}}
+        end
+
+      ids ->
+        {:error, {:ambiguous, :address, string, origin, ids}}
+    end
+  end
+
+  defp search_step(index, string, word, context, origin) do
+    case bare_candidates(index, word, context) do
+      [] ->
+        case step_suggestions(index, word) do
+          [] -> {:error, {:bare_word, string, origin, ["hex:" <> word], []}}
+          close -> {:error, {:bare_word, string, origin, [], close}}
+        end
+
+      candidates ->
+        {:error, {:bare_word, string, origin, candidates, []}}
+    end
+  end
+
+  # What a bare word in source could have meant: its old meaning first,
+  # then every step or recipe it matches. When nothing does, it is the Hex
+  # package of that name, unless it is close to a step name (a typo).
+  defp bare_candidates(index, word, context) do
+    old =
+      case context.cookbook && legacy_rewrite(index, context, :step, word) do
+        {:ok, "hex:" <> _} -> []
+        {:ok, new} -> [new]
+        {:ambiguous, ids} -> ids
+        _ -> []
+      end
+
+    Enum.uniq(old ++ search(index, word))
+  end
+
+  defp cookbook?(index, word), do: Map.has_key?(index.by_name, word)
+
+  # The cookbook a qualified or root address is in.
+  defp scope_cookbook(index, %Ref{scope: :qualified, cookbook: name}, string, _context, origin) do
+    if Map.has_key?(index.by_name, name),
+      do: {:ok, name},
+      else: {:error, {:unknown_cookbook, name, string, origin, Map.keys(index.by_name)}}
+  end
+
+  defp scope_cookbook(_index, %Ref{scope: :root}, string, %{cookbook: nil}, origin),
+    do: {:error, {:not_a_cookbook, string, origin}}
+
+  defp scope_cookbook(_index, %Ref{scope: scope}, _string, %{cookbook: own}, _origin)
+       when scope in [:root, :relative],
+       do: {:ok, own}
+
+  # The recipe with the same cookbook and segments as step address `ref`,
+  # or the reverse, when there is one.
+  defp recipe_twin(index, ref, context) do
+    with cookbook when is_binary(cookbook) <- twin_cookbook(ref, context),
+         path = Ref.path(ref),
+         true <- path in Map.get(index.recipes, cookbook, []) do
+      Ref.id(:recipe, cookbook, path)
     else
-      case for({_name, steps} <- index.steps, meta = steps[path], do: meta) do
-        [meta] ->
-          {:ok, {:module, meta}}
-
-        [_ | _] = metas ->
-          {:error,
-           {:ambiguous, :step, string, origin, metas |> Enum.map(& &1.ref) |> Enum.sort()}}
-
-        [] ->
-          suggestions = step_suggestions(index, path)
-
-          cond do
-            Ref.Legacy.nested?(ref) -> {:error, {:missing_step, string, origin, suggestions}}
-            suggestions != [] -> {:error, {:typo, string, origin, suggestions}}
-            true -> {:ok, {:install, path, []}}
-          end
-      end
+      _ -> nil
     end
   end
 
-  # Close names, so a typo is reported instead of becoming a Hex lookup.
+  defp step_twin(index, ref, context) do
+    with cookbook when is_binary(cookbook) <- twin_cookbook(ref, context),
+         %{ref: id} <- index.steps[cookbook][Ref.path(ref)] do
+      id
+    else
+      _ -> nil
+    end
+  end
+
+  defp twin_cookbook(%Ref{scope: :qualified, cookbook: cookbook}, _context), do: cookbook
+  defp twin_cookbook(%Ref{scope: :root}, %{cookbook: cookbook}), do: cookbook
+  defp twin_cookbook(_ref, _context), do: nil
+
+  # Close names, so a typo is reported with what was meant.
   defp step_suggestions(index, path) do
     for({_name, steps} <- index.steps, {id, meta} <- steps, do: {meta.ref, id})
     |> ranked(path)
@@ -457,75 +767,92 @@ defmodule Composer.Resolver do
   end
 
   # gigalixir/libcluster -> cluster/gigalixir/libcluster and
-  # pg_extensions -> pg/extensions, or the reverse.
+  # pg_extensions -> pg/extensions, or the reverse. Ids are segments
+  # joined with /.
   defp regrouped?(id, path) do
     String.ends_with?(id, "/" <> path) or String.ends_with?(path, "/" <> id) or
       String.replace(id, "/", "_") == String.replace(path, "/", "_")
   end
 
-  defp similar?(a, b), do: String.jaro_distance(a, b) > @typo_threshold
-
-  # -- recipe references -------------------------------------------------
+  # -- recipe addresses ---------------------------------------------------
 
   defp find_recipe(index, string, context, origin) do
-    with {:ok, ref} <- Ref.Legacy.parse(string) do
+    with {:ok, ref} <- Ref.parse(string) do
       case ref do
-        %Ref.Legacy{cookbook: nil, path: path} ->
-          if context && path in Map.get(index.recipes, context, []) do
-            {:ok, Ref.Legacy.id(context, path)}
-          else
-            case for({name, ids} <- index.recipes, path in ids, do: Ref.Legacy.id(name, path)) do
-              [id] -> {:ok, id}
-              [_ | _] = ids -> {:error, {:ambiguous, :recipe, string, origin, Enum.sort(ids)}}
-              [] -> {:error, {:missing_recipe, string, origin, recipe_suggestions(index, path)}}
+        %Ref{scope: :search, segments: [word]} ->
+          search_recipe(index, string, word, context, origin)
+
+        %Ref{kind: :step} ->
+          {:error, {:kind_mismatch, :recipe, string, origin, recipe_twin(index, ref, context)}}
+
+        %Ref{scope: :relative} when context.chapter == nil ->
+          {:error, {:no_chapter, string, origin}}
+
+        %Ref{} ->
+          with {:ok, cookbook} <- scope_cookbook(index, ref, string, context, origin),
+               {:ok, path} <- recipe_path(ref, string, context, origin) do
+            cond do
+              length(String.split(path, "/")) < 2 ->
+                case step_twin(index, ref, context) do
+                  nil -> {:error, {:short_recipe, string, origin}}
+                  twin -> {:error, {:kind_mismatch, :recipe, string, origin, twin}}
+                end
+
+              path in Map.get(index.recipes, cookbook, []) ->
+                {:ok, Ref.id(:recipe, cookbook, path)}
+
+              twin = ref.scope != :relative && step_twin(index, ref, context) ->
+                {:error, {:kind_mismatch, :recipe, string, origin, twin}}
+
+              true ->
+                {:error,
+                 {:missing_recipe, string, origin, recipe_suggestions(index, cookbook, path)}}
             end
-          end
-
-        %Ref.Legacy{cookbook: name, path: path} ->
-          cond do
-            not Map.has_key?(index.by_name, name) ->
-              {:error, {:unknown_cookbook, name, string, origin, Map.keys(index.by_name)}}
-
-            path in Map.get(index.recipes, name, []) ->
-              {:ok, Ref.Legacy.id(name, path)}
-
-            true ->
-              {:error, {:missing_recipe, string, origin, recipe_suggestions(index, path)}}
           end
       end
     end
   end
 
-  defp recipe_suggestions(index, path) do
-    all = for {name, ids} <- index.recipes, id <- ids, do: {Ref.Legacy.id(name, id), id}
+  defp recipe_path(%Ref{scope: :relative, up: up, segments: segments}, string, context, origin) do
+    case relative(context.chapter, up, segments) do
+      {:ok, path} -> {:ok, path}
+      {:error, :above_root} -> {:error, {:above_root, string, origin, context.chapter}}
+    end
+  end
+
+  defp recipe_path(ref, _string, _context, _origin), do: {:ok, Ref.path(ref)}
+
+  defp search_recipe(index, string, word, %{cli?: true}, origin) do
+    case search(index, word) do
+      [] ->
+        {:error,
+         {:no_match, :recipe, string, recipe_suggestions(index, nil, word),
+          cookbook?(index, word)}}
+
+      [id] ->
+        case Ref.parse!(id) do
+          %Ref{kind: :recipe} -> {:ok, id}
+          _step -> {:error, {:kind_mismatch, :recipe, string, origin, id}}
+        end
+
+      ids ->
+        {:error, {:ambiguous, :address, string, origin, ids}}
+    end
+  end
+
+  defp search_recipe(index, string, word, _context, origin),
+    do: {:error, {:bare_word, string, origin, search(index, word), []}}
+
+  # Close recipes, the ones in `cookbook` first; every recipe when none is.
+  defp recipe_suggestions(index, cookbook, path) do
+    all =
+      for {name, ids} <- index.recipes, id <- ids do
+        {Ref.id(:recipe, name, id), if(name == cookbook, do: id, else: name <> "/" <> id)}
+      end
 
     case ranked(all, path) do
       [] -> all |> Enum.map(&elem(&1, 0)) |> Enum.sort()
       close -> close
-    end
-  end
-
-  # An unqualified {:use, "name"} is the recipe `name` in the referring
-  # recipe's chapter.
-  defp find_in_chapter(index, name, recipe) do
-    id = recipe.chapter <> "/" <> name
-    ids = Map.get(index.recipes, recipe.cookbook, [])
-
-    if id in ids do
-      {:ok, Ref.Legacy.id(recipe.cookbook, id)}
-    else
-      siblings =
-        for sibling <- ids,
-            Path.dirname(sibling) == recipe.chapter,
-            do: {Ref.Legacy.id(recipe.cookbook, sibling), Path.basename(sibling)}
-
-      suggestions =
-        case for({ref, sibling} <- siblings, similar?(sibling, name), do: ref) do
-          [] -> Enum.map(siblings, &elem(&1, 0))
-          close -> close
-        end
-
-      {:error, {:missing_recipe, name, recipe.ref, Enum.sort(suggestions)}}
     end
   end
 
@@ -560,16 +887,16 @@ defmodule Composer.Resolver do
 
   # Each chapter file is evaluated once per resolution.
   defp load(id, state) do
-    %Ref.Legacy{cookbook: name, path: path} = Ref.Legacy.parse!(id)
+    %Ref{cookbook: name, segments: segments} = ref = Ref.parse!(id)
     cookbook = Map.fetch!(state.index.by_name, name)
 
-    case Cookbook.recipe_path(cookbook, path) do
+    case Cookbook.recipe_path(cookbook, Ref.path(ref)) do
       nil ->
         {:error, {:missing_recipe, id, nil, []}}
 
       file ->
         with {:ok, loaded, state} <- load_chapter(file, name, state),
-             {:ok, recipe} <- Recipe.Chapter.pick(loaded, file, name, Path.basename(path)) do
+             {:ok, recipe} <- Recipe.Chapter.pick(loaded, file, name, List.last(segments)) do
           {:ok, recipe, state}
         end
     end
@@ -595,19 +922,20 @@ defmodule Composer.Resolver do
     end
   end
 
-  # Replaces an aliased cookbook part of a reference written in `recipe`
-  # with the real cookbook name. Returns the string to look up and, for an
-  # aliased reference, `{alias, target, written}` for errors and display.
+  # Replaces an aliased cookbook part of a qualified address written in
+  # `recipe` with the real cookbook name. Returns the string to look up
+  # and, for an aliased address, `{alias, target, written}` for errors and
+  # display.
   defp expand(string, recipe) do
-    with {:ok, %Ref.Legacy{cookbook: name, path: path}} <- Ref.Legacy.parse(string),
+    with {:ok, %Ref{scope: :qualified, cookbook: name} = ref} <- Ref.parse(string),
          target when is_binary(target) <- Recipe.alias_target(recipe, name) do
-      {Ref.Legacy.id(target, path), {name, target, string}}
+      {Ref.to_string(%{ref | cookbook: target}), {name, target, string}}
     else
       _ -> {string, nil}
     end
   end
 
-  # Rewrites a lookup error of an expanded reference to show it as written.
+  # Rewrites a lookup error of an expanded address to show it as written.
   defp via_alias({:error, reason}, {name, target, written}) do
     case reason do
       {:unknown_cookbook, ^target, _ref, origin, known} ->
@@ -620,10 +948,11 @@ defmodule Composer.Resolver do
 
   defp via_alias(result, _via), do: result
 
-  defp step({:use, ref}, recipe, gates, state), do: include(ref, nil, recipe, gates, state)
+  defp step({:use, _} = entry, recipe, _gates, state),
+    do: {:error, use_entry(state.index, recipe, entry)}
 
-  defp step({:use, ref, opts}, recipe, gates, state),
-    do: include(ref, opts[:if], recipe, gates, state)
+  defp step({:use, _, _} = entry, recipe, _gates, state),
+    do: {:error, use_entry(state.index, recipe, entry)}
 
   defp step({kind, task}, recipe, gates, state) when kind in [:task, :queue],
     do: step({kind, task, []}, recipe, gates, state)
@@ -637,10 +966,24 @@ defmodule Composer.Resolver do
   defp step(ref, recipe, gates, state) when is_binary(ref),
     do: step({ref, []}, recipe, gates, state)
 
-  defp step({ref, opts}, recipe, gates, state) when is_binary(ref) do
-    with {:ok, found, via} <- lookup_step(state.index, ref, opts, recipe) do
-      entry = leaf(found, recipe.ref, gates, opts[:if], opts)
-      {:ok, emit(state, %{entry | alias: via && elem(via, 0)})}
+  defp step({ref, opts} = entry, recipe, gates, state) when is_binary(ref) do
+    flag = opts[:if]
+
+    case Ref.parse(ref) do
+      {:ok, %Ref{kind: :recipe}}
+      when flag != nil and state.flags != :all ->
+        if Keyword.get(state.flags, flag, false) == true,
+          do: include(entry, recipe, gates, state),
+          else: {:ok, state}
+
+      {:ok, %Ref{kind: :recipe}} ->
+        include(entry, recipe, gates, state)
+
+      _ ->
+        with {:ok, {:step, found, via}} <- entry_target(state.index, entry, recipe) do
+          entry = leaf(found, recipe.ref, gates, flag, opts)
+          {:ok, emit(state, %{entry | alias: via && elem(via, 0)})}
+        end
     end
   end
 
@@ -650,7 +993,7 @@ defmodule Composer.Resolver do
     {lookup, via} = expand(ref, recipe)
     package_keys = for {key, _} <- opts, key in Recipe.package_options(), do: key
 
-    case via_alias(find_step(index, lookup, recipe.cookbook, recipe.ref), via) do
+    case via_alias(find_step(index, lookup, context(recipe), recipe.ref), via) do
       {:ok, {:module, meta}} when package_keys != [] ->
         {:error, {:dep_opts_on_step, ref, meta.ref, recipe.ref, package_keys}}
 
@@ -662,32 +1005,22 @@ defmodule Composer.Resolver do
     end
   end
 
-  defp include(ref, flag, recipe, gates, state) do
-    if flag && state.flags != :all && Keyword.get(state.flags, flag, false) != true do
-      {:ok, state}
-    else
-      with {:ok, id} <- find_included(state.index, ref, recipe) do
-        if MapSet.member?(state.done, id) do
-          {:ok, state}
-        else
-          state = if flag, do: %{state | gates: [flag | state.gates]}, else: state
-          visit(id, gates ++ List.wrap(flag), state)
-        end
+  defp include({_ref, opts} = entry, recipe, gates, state) do
+    flag = opts[:if]
+
+    with {:ok, {:include, id, _flag}} <- entry_target(state.index, entry, recipe) do
+      if MapSet.member?(state.done, id) do
+        {:ok, state}
+      else
+        state = if flag, do: %{state | gates: [flag | state.gates]}, else: state
+        visit(id, gates ++ List.wrap(flag), state)
       end
     end
   end
 
   defp find_included(index, ref, recipe) do
-    case Ref.Legacy.parse(ref) do
-      {:ok, %Ref.Legacy{cookbook: nil, path: name} = parsed} ->
-        if Ref.Legacy.nested?(parsed),
-          do: find_recipe(index, ref, recipe.cookbook, recipe.ref),
-          else: find_in_chapter(index, name, recipe)
-
-      _ ->
-        {lookup, via} = expand(ref, recipe)
-        via_alias(find_recipe(index, lookup, recipe.cookbook, recipe.ref), via)
-    end
+    {lookup, via} = expand(ref, recipe)
+    via_alias(find_recipe(index, lookup, context(recipe), recipe.ref), via)
   end
 
   defp emit(state, entry), do: %{state | entries: [entry | state.entries]}
@@ -856,7 +1189,8 @@ defmodule Composer.Resolver do
         earlier = Enum.take(entries, index)
 
         for ref when is_binary(ref) <- requires,
-            not Enum.any?(earlier, &satisfies?(&1, ref)),
+            id = requirement_id(ref, entry.meta.cookbook),
+            not Enum.any?(earlier, &(&1.ref == id)),
             do: {:requires_order, entry, ref}
 
       _ ->
@@ -864,11 +1198,25 @@ defmodule Composer.Resolver do
     end)
   end
 
-  defp satisfies?(%{ref: nil}, _ref), do: false
+  @doc """
+  The canonical id a `requires:` string of a step in `cookbook` names: a
+  qualified step address as is, a root one (`":cluster:libcluster"`) in
+  `cookbook`, `"hex:pkg"` without its source. `nil` for anything else.
+  """
+  @spec requirement_id(String.t(), String.t()) :: String.t() | nil
+  def requirement_id(required, cookbook) do
+    case Ref.parse(required) do
+      {:ok, %Ref{cookbook: "hex", segments: [package]}} ->
+        "hex:" <> package
 
-  defp satisfies?(%{ref: ref}, required) do
-    if String.contains?(required, ":"),
-      do: ref == required,
-      else: String.ends_with?(ref, ":" <> required)
+      {:ok, %Ref{kind: :step, scope: :qualified} = ref} ->
+        Ref.id(:step, ref.cookbook, ref.segments)
+
+      {:ok, %Ref{kind: :step, scope: :root} = ref} ->
+        Ref.id(:step, cookbook, ref.segments)
+
+      _ ->
+        nil
+    end
   end
 end

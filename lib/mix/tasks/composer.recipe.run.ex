@@ -5,18 +5,18 @@ defmodule Mix.Tasks.Composer.Recipe.Run do
   Resolves a recipe and applies it to the current app as one diff, then
   records the run as one git commit.
 
-      mix composer.recipe.run app/default
-      mix composer.recipe.run my_app:phx/app --gigalixir --oban-pro
-      mix composer.recipe.run app/default --dry-run
-      mix composer.recipe.run app/default --no-commit
+      mix composer.recipe.run /app/default
+      mix composer.recipe.run my_app/phx/app --gigalixir --oban-pro
+      mix composer.recipe.run /app/default --dry-run
+      mix composer.recipe.run /app/default --no-commit
 
-  The recipe reference is `"cookbook:chapter/name"` or an unqualified
-  `"chapter/name"`, which is looked up in the current project's cookbook
-  first, then in every cookbook.
+  The recipe is addressed as `cookbook/chapter/name`, or `/chapter/name`
+  in the current project's cookbook; a bare name (`default`) searches
+  every cookbook for the one recipe whose name it is.
   `mix composer.recipe.list` lists them.
 
   Every flag declared in the `flags:` of the recipe, or of a recipe it
-  `:use`s, becomes a `--flag` option; `mix composer.recipe.show RECIPE`
+  includes, becomes a `--flag` option; `mix composer.recipe.show RECIPE`
   shows them. Any other `--flag` is rejected.
 
   Before anything runs, every reference is resolved and the steps'
@@ -81,7 +81,7 @@ defmodule Mix.Tasks.Composer.Recipe.Run do
     %Igniter.Mix.Task.Info{
       positional: [:recipe],
       schema: @base_schema ++ flag_schema,
-      example: "mix composer.recipe.run app/default --gigalixir"
+      example: "mix composer.recipe.run /app/default --gigalixir"
     }
   end
 

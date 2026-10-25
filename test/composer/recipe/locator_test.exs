@@ -15,14 +15,14 @@ defmodule Composer.Recipe.LocatorTest do
     do: index |> Locator.line(line) |> String.slice(column - 1, end_column - column)
 
   test "a ref literal, quotes included", %{index: index} do
-    range = Locator.locate(index, "auth", {:ref, "lab:auth/passkeys"})
+    range = Locator.locate(index, "auth", {:ref, "lab:auth:passkeys"})
     assert range == {{12, 7}, {12, 26}}
-    assert text(index, range) == ~s("lab:auth/passkeys")
+    assert text(index, range) == ~s("lab:auth:passkeys")
   end
 
   test "a ref written twice is found at its first occurrence", %{index: index} do
-    assert {{12, _}, _} = Locator.locate(index, "auth", {:ref, "lab:auth/passkeys"})
-    assert [{{12, _}, _}, {{19, _}, _}] = Locator.refs(index, "auth", "lab:auth/passkeys")
+    assert {{12, _}, _} = Locator.locate(index, "auth", {:ref, "lab:auth:passkeys"})
+    assert [{{12, _}, _}, {{19, _}, _}] = Locator.refs(index, "auth", "lab:auth:passkeys")
   end
 
   test "an escaped string covers its source, not its value", %{index: index} do
@@ -37,8 +37,8 @@ defmodule Composer.Recipe.LocatorTest do
   end
 
   test "the string of a {ref, opts} entry, and its if: flag", %{index: index} do
-    assert text(index, Locator.locate(index, "auth", {:ref, "cb_std:setup/credo"})) ==
-             ~s("cb_std:setup/credo")
+    assert text(index, Locator.locate(index, "auth", {:ref, "cb_std:setup:credo"})) ==
+             ~s("cb_std:setup:credo")
 
     assert text(index, Locator.locate(index, "auth", {:if, :credo})) == ":credo"
     # An undeclared flag that is not written falls back to steps:.
@@ -52,8 +52,11 @@ defmodule Composer.Recipe.LocatorTest do
     assert {{16, 8}, _} = Locator.locate(index, "auth", {:entry, {"hex:igniter", argv: [:x]}})
   end
 
-  test "uses, keys and recipe names", %{index: index} do
-    assert text(index, Locator.locate(index, "auth", {:use, "base"})) == ~s("base")
+  test "includes, keys and recipe names", %{index: index} do
+    assert text(index, Locator.locate(index, "auth", {:ref, "./base"})) == ~s("./base")
+    # {:use, ...} is an entry like any other, located whole.
+    {:ok, old} = Locator.index(~s|[a: [steps: [{:use, "base"}]]]|, "o.exs")
+    assert Locator.locate(old, "a", {:entry, {:use, "base"}}) == {{1, 14}, {1, 28}}
     assert text(index, Locator.locate(index, "auth", {:key, :flags})) == "flags:"
     assert text(index, Locator.locate(index, "auth", :recipe)) == "auth:"
     # A key the recipe does not have falls back to its name.
@@ -66,8 +69,8 @@ defmodule Composer.Recipe.LocatorTest do
     assert range == {{2, 12}, {2, 16}}
     assert text(index, range) == "lab:"
 
-    assert text(index, Locator.locate(index, "bound", {:ref, "cb_std:setup/gitignore"})) ==
-             ~s("cb_std:setup/gitignore")
+    assert text(index, Locator.locate(index, "bound", {:ref, "cb_std:setup:gitignore"})) ==
+             ~s("cb_std:setup:gitignore")
 
     assert {{3, 1}, {3, 7}} = index.bindings[:shared]
   end
@@ -81,9 +84,9 @@ defmodule Composer.Recipe.LocatorTest do
   end
 
   test "columns count characters after non-ASCII text", %{index: index} do
-    range = Locator.locate(index, "base", {:ref, "cb_std:setup/sort_deps"})
-    assert text(index, range) == ~s("cb_std:setup/sort_deps")
-    assert text(index, Locator.locate(index, "base", {:use, "bound"})) == ~s("bound")
+    range = Locator.locate(index, "base", {:ref, "cb_std:setup:sort_deps"})
+    assert text(index, range) == ~s("cb_std:setup:sort_deps")
+    assert text(index, Locator.locate(index, "base", {:ref, "./bound"})) == ~s("./bound")
     assert text(index, Locator.locate(index, "base", {:if, :x})) == ":x"
   end
 
@@ -93,7 +96,6 @@ defmodule Composer.Recipe.LocatorTest do
         [{:recipe, recipe.name, recipe.key}] ++
           for({key, range} <- recipe.keys, do: {:key, key, range}) ++
           for({string, range} <- recipe.refs, do: {:ref, string, range}) ++
-          for({string, range} <- recipe.uses, do: {:use, string, range}) ++
           for({name, range} <- recipe.aliases, do: {:alias, name, range})
 
       for {kind, value, {{line, column}, _} = range} <- ranges do
@@ -101,7 +103,7 @@ defmodule Composer.Recipe.LocatorTest do
       end
     end
 
-    assert {:ref, "auth", "cb_std:setup/credo", _} = Locator.at(index, 13, 10)
+    assert {:ref, "auth", "cb_std:setup:credo", _} = Locator.at(index, 13, 10)
     assert Locator.at(index, 1, 1) == nil
   end
 

@@ -15,6 +15,7 @@ defmodule Composer.LSP.Diagnostics do
   """
 
   alias Composer.{Lint, Ref}
+  alias Composer.LSP.Lookup
   alias Composer.Recipe.Locator
 
   @type args :: %{
@@ -33,7 +34,7 @@ defmodule Composer.LSP.Diagnostics do
     case Lint.owner(args.cookbooks, path) do
       {:ok, owner} ->
         found =
-          case refs(owner, path) do
+          case refs(args.cookbooks, owner, path) do
             [] ->
               []
 
@@ -55,14 +56,14 @@ defmodule Composer.LSP.Diagnostics do
   end
 
   # The refs of the recipes written in the file, read without evaluating it.
-  defp refs(owner, path) do
-    chapter = Path.basename(path, ".exs")
+  defp refs(cookbooks, owner, path) do
+    %{chapter: chapter} = Lookup.context(cookbooks, path)
 
     case Locator.index_file(path) do
       {:ok, index} ->
         for recipe <- index.recipes,
             uniq: true,
-            do: Ref.Legacy.id(owner.name, chapter <> "/" <> recipe.name)
+            do: Ref.id(:recipe, owner.name, chapter <> "/" <> recipe.name)
 
       {:error, _} ->
         []

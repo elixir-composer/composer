@@ -2,7 +2,7 @@
 [
   base: [
     shortdoc: "The base",
-    steps: ["cb_std:setup/gitignore"]
+    steps: ["cb_std:setup:gitignore"]
   ],
   app: [
     shortdoc: "The app",
@@ -10,6 +10,6 @@
     Builds on clean/base.
     """,
     flags: [credo: "Add Credo"],
-    steps: [{:use, "base"}, {"cb_std:setup/credo", if: :credo}]
+    steps: ["./base", {"cb_std:setup:credo", if: :credo}]
   ]
 ]

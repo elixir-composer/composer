@@ -16,7 +16,7 @@ defmodule Composer.Lint.Locate do
 
   @doc """
   `cookbooks` are every cookbook references resolve against; `recipes` the
-  loaded recipes (to follow `{:use, ...}` entries through aliases).
+  loaded recipes (to follow includes through aliases).
   `:root` is the project root, where step tests are looked for.
   """
   def new(cookbooks, recipes, opts \\ []) do
@@ -135,7 +135,7 @@ defmodule Composer.Lint.Locate do
   def recipe_named(locate, cookbook, name) do
     with %Cookbook{} = book <- locate.cookbooks[cookbook],
          id when is_binary(id) <- Enum.find(Cookbook.recipes(book), &(Path.basename(&1) == name)) do
-      Ref.Legacy.id(cookbook, id)
+      Ref.id(:recipe, cookbook, id)
     end
   end
 
@@ -154,18 +154,19 @@ defmodule Composer.Lint.Locate do
         {path, name}
 
       nil ->
-        with {:ok, %Ref.Legacy{cookbook: cookbook, path: id}} <- Ref.Legacy.parse(ref),
+        with {:ok, %Ref{kind: :recipe, cookbook: cookbook} = parsed} <- Ref.parse(ref),
              %Cookbook{} = book <- locate.cookbooks[cookbook],
-             [chapter, name] <- String.split(id, "/"),
+             id = Ref.path(parsed),
+             chapter when chapter != "." <- Path.dirname(id),
              path when is_binary(path) <- Cookbook.chapter_path(book, chapter) do
-          {path, name}
+          {path, Path.basename(id)}
         else
           _ -> nil
         end
     end
   end
 
-  # The {:use, ...} in recipe `from` that includes recipe `to`.
+  # The include in recipe `from` of recipe `to`.
   defp use_of(locate, from, to) do
     written =
       case locate.recipes[from] do
@@ -179,7 +180,7 @@ defmodule Composer.Lint.Locate do
           end)
       end
 
-    match = written || fn s -> s == to or String.ends_with?(to, [":" <> s, "/" <> s]) end
+    match = written || to
     in_recipe(locate, from, {:ref, match})
   end
 
@@ -207,10 +208,7 @@ defmodule Composer.Lint.Locate do
   end
 
   defp names_package?(string, package) do
-    case Ref.Legacy.parse(string) do
-      {:ok, %Ref.Legacy{cookbook: cookbook, path: ^package}} when cookbook in [nil, "hex"] -> true
-      _ -> false
-    end
+    match?({:ok, %Ref{cookbook: "hex", segments: [^package]}}, Ref.parse(string))
   end
 
   # -- files ------------------------------------------------------------------

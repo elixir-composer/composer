@@ -27,10 +27,29 @@ defmodule Composer.FacetsTest do
     assert {:ok, _, []} =
              Facets.validate(
                requires: [
-                 "cb_std:setup/credo",
+                 "cb_std:setup:credo",
                  {:executable, "bun"},
                  {:package, :phoenix, "~> 1.8"}
                ]
              )
+  end
+
+  test "requires takes qualified, root and hex: step addresses" do
+    for ok <- ["cb_std:cluster:libcluster", ":cluster:libcluster", "hex:oban"] do
+      assert Facets.requirement?(ok), ok
+    end
+
+    for bad <- ["libcluster", ".:dns", "cb_std/debug/echo", "/a/b", "hex:oban@1.0"] do
+      refute Facets.requirement?(bad), bad
+      assert {:error, "invalid requires entry" <> _} = Facets.validate(requires: [bad])
+    end
+  end
+
+  test "an old-syntax requirement compiles with a warning naming the rewrite" do
+    assert {:ok, %{requires: ["cb_std:cluster/libcluster"]}, [warning]} =
+             Facets.validate(requires: ["cb_std:cluster/libcluster"])
+
+    assert warning =~ ~s(write "cb_std:cluster:libcluster")
+    assert warning =~ "--fix"
   end
 end

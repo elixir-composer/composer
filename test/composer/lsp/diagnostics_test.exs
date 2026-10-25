@@ -13,8 +13,8 @@ defmodule Composer.LSP.DiagnosticsTest do
 
     write = fn name, source -> File.write!(Path.join([dir, "recipes", name]), source) end
     write.("ash.exs", ~s|[\n  base: [shortdoc: "x", steps: ["credoo"]]\n]\n|)
-    write.("app.exs", ~s|[\n  full: [shortdoc: "x", steps: [{:use, "mine:ash/base"}]]\n]\n|)
-    write.("other.exs", ~s|[\n  ok: [shortdoc: "x", steps: ["cb_std:setup/gitignore"]]\n]\n|)
+    write.("app.exs", ~s|[\n  full: [shortdoc: "x", steps: ["mine/ash/base"]]\n]\n|)
+    write.("other.exs", ~s|[\n  ok: [shortdoc: "x", steps: ["cb_std:setup:gitignore"]]\n]\n|)
 
     args = %{cookbooks: cookbooks, root: File.cwd!(), known_dependents: []}
     %{args: args, ash: Path.join(dir, "recipes/ash.exs"), app: Path.join(dir, "recipes/app.exs")}
@@ -27,7 +27,7 @@ defmodule Composer.LSP.DiagnosticsTest do
   } do
     assert {:ok, results, [^app]} = Diagnostics.run(ash, args)
     assert Map.keys(results) |> Enum.sort() == Enum.sort([ash, app])
-    assert [%{code: :typo}] = results[ash]
+    assert [%{code: :bare_word}] = results[ash]
     assert [%{code: :include_problems}] = results[app]
 
     # The saved file's own diagnostics are lint --file's.

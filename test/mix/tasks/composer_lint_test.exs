@@ -12,7 +12,7 @@ defmodule Mix.Tasks.Composer.Cookbook.LintTest do
     broken = Path.join(dir, "recipes/broken.exs")
     clean = Path.join(dir, "recipes/clean.exs")
     File.write!(broken, ~s|[\n  a: [shortdoc: "x", steps: ["credoo", "cb_std:nope"]]\n]\n|)
-    File.write!(clean, ~s|[\n  b: [shortdoc: "x", steps: ["cb_std:setup/gitignore"]]\n]\n|)
+    File.write!(clean, ~s|[\n  b: [shortdoc: "x", steps: ["cb_std:setup:gitignore"]]\n]\n|)
 
     Application.put_env(:composer, :discovery,
       modules: [Composer.FakeBook],
@@ -50,7 +50,7 @@ defmodule Mix.Tasks.Composer.Cookbook.LintTest do
 
     assert result == {:exit, {:shutdown, 1}}
     assert [typo, missing] = Jason.decode!(output)
-    assert %{"code" => "typo", "file" => ^broken, "line" => 2, "column" => 30} = typo
+    assert %{"code" => "bare_word", "file" => ^broken, "line" => 2, "column" => 30} = typo
     assert %{"code" => "missing_step", "column" => 40} = missing
     # The shell is restored afterwards.
     assert Mix.shell() == Mix.Shell.IO
@@ -62,7 +62,7 @@ defmodule Mix.Tasks.Composer.Cookbook.LintTest do
     assert [first, second] = String.split(output, "\n", trim: true)
 
     assert first =~
-             ~r/^#{Regex.escape(broken)}:2:30: error: In recipe mine:broken\/a: .* \[typo\]$/
+             ~r/^#{Regex.escape(broken)}:2:30: error: In recipe mine\/broken\/a: .* \[bare_word\]$/
 
     assert second =~ ~r/^#{Regex.escape(broken)}:2:40: error: .* \[missing_step\]$/
   end
@@ -71,7 +71,7 @@ defmodule Mix.Tasks.Composer.Cookbook.LintTest do
     {output, {:exit, {:shutdown, 1}}} = lint(["--file", broken, "--format", "github"])
 
     assert output =~
-             ~r/^::error file=.*broken.exs,line=2,col=30,endLine=2,endColumn=38,title=composer lint \[typo\]::/m
+             ~r/^::error file=.*broken.exs,line=2,col=30,endLine=2,endColumn=38,title=composer lint \[bare_word\]::/m
   end
 
   test "text: located problems, raising on errors", %{broken: broken} do
@@ -83,7 +83,7 @@ defmodule Mix.Tasks.Composer.Cookbook.LintTest do
     assert error.message =~ "has 2 problem(s)"
 
     assert error.message =~
-             ~r/\* \S*broken.exs:2:30: In recipe mine:broken\/a: no step matches "credoo"/
+             ~r/\* \S*broken.exs:2:30: In recipe mine\/broken\/a: "credoo" is not an address/
   end
 
   test "--file: only that file, even when another one is broken", %{

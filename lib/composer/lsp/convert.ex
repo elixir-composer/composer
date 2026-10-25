@@ -23,7 +23,8 @@ defmodule Composer.LSP.Convert do
   @doc """
   The LSP diagnostic of `d`, a diagnostic in file `d.file`. One with no
   position is placed at the start of the file. Its `data` carries the
-  code and the suggestions, for code actions.
+  code, the suggestions and the text of its one rewrite (`fix`, or
+  `nil`), for code actions.
   """
   @spec diagnostic(Diagnostic.t(), Position.encoding(), line_fun()) :: map()
   def diagnostic(%Diagnostic{} = d, encoding, line_fun) do
@@ -43,7 +44,11 @@ defmodule Composer.LSP.Convert do
             message: message
           }
         end,
-      data: %{"code" => Atom.to_string(d.code), "suggestions" => d.suggestions}
+      data: %{
+        "code" => Atom.to_string(d.code),
+        "suggestions" => d.suggestions,
+        "fix" => d.fix && d.fix.text
+      }
     }
   end
 

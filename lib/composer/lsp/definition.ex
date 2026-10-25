@@ -72,7 +72,7 @@ defmodule Composer.LSP.Definition do
       case Locator.index(text, path) do
         {:ok, index} ->
           for recipe <- index.recipes,
-              {string, range} <- recipe.refs ++ recipe.uses,
+              {string, range} <- recipe.refs,
               do: {string, range}
 
         {:error, _} ->
@@ -88,11 +88,11 @@ defmodule Composer.LSP.Definition do
         do: {range, url}
   end
 
-  @doc "The HexDocs URL of a `hex:` reference, or `nil`."
+  @doc "The HexDocs URL of a `hex:` address, or `nil`."
   @spec hexdocs(String.t()) :: String.t() | nil
   def hexdocs(string) do
-    case Ref.Legacy.parse(string) do
-      {:ok, %Ref.Legacy{cookbook: "hex", path: package}} ->
+    case Ref.parse(string) do
+      {:ok, %Ref{cookbook: "hex", segments: [package]}} ->
         case String.split(package, ".") do
           [org, name] -> "https://#{org}.hexdocs.pm/#{name}"
           [name] -> "https://hexdocs.pm/#{name}"

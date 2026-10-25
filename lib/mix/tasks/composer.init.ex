@@ -6,7 +6,7 @@ defmodule Mix.Tasks.Composer.Init do
   listing every built-in step:
 
       lib/composer/<app>.ex
-      lib/composer/<app>/recipes/app.exs   (the recipe app/default)
+      lib/composer/<app>/recipes/app.exs   (the recipe /app/default)
       lib/composer/<app>/steps/             (your own one-off steps)
 
   The recipe lists every built-in step in a sensible order, each with a
@@ -14,7 +14,7 @@ defmodule Mix.Tasks.Composer.Init do
   machinery: delete what you don't want, reorder freely, add your own steps.
   Run it with:
 
-      mix composer.recipe.run app/default
+      mix composer.recipe.run /app/default
 
   The cookbook module is guarded with `if Code.ensure_loaded?(Composer)`, so
   the app still compiles where composer, a dev-only dependency, is absent.
@@ -24,10 +24,11 @@ defmodule Mix.Tasks.Composer.Init do
   Pass `--from` with a recipe reference (from any installed cookbook) to
   copy *that* recipe instead of the built-in cookbook:
 
-      mix composer.init --from cb_lab:lv/base
+      mix composer.init --from cb_lab/lv/base
 
-  The copy becomes `app/default`. Unqualified `{:use, ...}` entries are
-  qualified, so they still name the recipes they did in the source chapter.
+  The copy becomes `/app/default`. Root (`/...`, `:...`) and relative
+  (`./...`) addresses, and cookbook aliases, are written out in full, so
+  they still name what they did in the source chapter.
   Comments in the source are not copied. The app owns and can edit its
   copy, while the shared recipe stays the template.
 
@@ -50,55 +51,55 @@ defmodule Mix.Tasks.Composer.Init do
   @sections [
     {"Undo phx.new defaults you don't want",
      [
-       "cb_std:phx/remove_agents_md",
-       "cb_std:phx/remove_daisy_ui",
-       "cb_std:phx/remove_live_title_suffix",
-       "cb_std:phx/remove_theme_toggle",
-       "cb_std:phx/remove_topbar"
+       "cb_std:phx:remove_agents_md",
+       "cb_std:phx:remove_daisy_ui",
+       "cb_std:phx:remove_live_title_suffix",
+       "cb_std:phx:remove_theme_toggle",
+       "cb_std:phx:remove_topbar"
      ]},
     {"Generate configuration and code",
      [
-       "cb_std:phx/minimal_app_layout",
-       "cb_std:phx/minimal_home_page",
-       "cb_std:phx/tailwind_formatter",
-       "cb_std:setup/gitignore",
-       "cb_std:pg/extensions",
-       "cb_std:setup/generator_defaults",
-       "cb_std:ecto/base_schema",
-       "cb_std:setup/mix_env_config"
+       "cb_std:phx:minimal_app_layout",
+       "cb_std:phx:minimal_home_page",
+       "cb_std:phx:tailwind_formatter",
+       "cb_std:setup:gitignore",
+       "cb_std:pg:extensions",
+       "cb_std:setup:generator_defaults",
+       "cb_std:ecto:base_schema",
+       "cb_std:setup:mix_env_config"
      ]},
     {"Add packages",
      [
-       "cb_std:phx/bun",
-       "cb_std:setup/credo",
-       "cb_std:setup/dotenv_parser",
-       {"cb_std:setup/exsync", if: :exsync},
-       "cb_std:cluster/libcluster",
-       "cb_std:pg/vector",
-       "cb_std:setup/quokka",
-       "cb_std:phx/remixicons",
-       "cb_std:ecto/uuidv7",
-       {"cb_std:setup/mix_test_watch", if: :mix_test_watch},
+       "cb_std:phx:bun",
+       "cb_std:setup:credo",
+       "cb_std:setup:dotenv_parser",
+       {"cb_std:setup:exsync", if: :exsync},
+       "cb_std:cluster:libcluster",
+       "cb_std:pg:vector",
+       "cb_std:setup:quokka",
+       "cb_std:phx:remixicons",
+       "cb_std:ecto:uuidv7",
+       {"cb_std:setup:mix_test_watch", if: :mix_test_watch},
        {:comment, "No built-in step: these ship their own installers, which run here."},
        "hex:oban",
        "hex:oban_web",
        "hex:tidewave",
        {:comment,
         "tidewave's own installer only wires the plug — it writes no MCP config, so this follows it in the list to fill that gap."},
-       "cb_std:tidewave/tidewave_config",
+       "cb_std:tidewave:tidewave_config",
        {:comment, "Patches what oban's installer wrote, so it follows it in the list."},
        {"cb_std:oban_pro", if: :oban_pro}
      ]},
     {"Deployment",
      [
-       {"cb_std:cluster/gigalixir", if: :gigalixir},
-       {"cb_std:cluster/gigalixir/libcluster", if: :gigalixir}
+       {"cb_std:cluster:gigalixir", if: :gigalixir},
+       {"cb_std:cluster:gigalixir:libcluster", if: :gigalixir}
      ]},
     {"Tidy mix.exs",
      [
-       "cb_std:ecto/force_drop",
+       "cb_std:ecto:force_drop",
        {:comment, "Last, so it also sorts the deps the steps above added"},
-       "cb_std:setup/sort_deps"
+       "cb_std:setup:sort_deps"
      ]}
   ]
 
@@ -113,7 +114,7 @@ defmodule Mix.Tasks.Composer.Init do
     %Igniter.Mix.Task.Info{
       schema: [from: :string],
       composes: ["composer.gen.cookbook"],
-      example: "mix composer.init --from cb_lab:lv/base"
+      example: "mix composer.init --from cb_lab/lv/base"
     }
   end
 
@@ -134,10 +135,10 @@ defmodule Mix.Tasks.Composer.Init do
     |> Igniter.create_new_file(path, source)
     |> Igniter.compose_task("composer.gen.cookbook", ["--bundled"])
     |> Igniter.add_notice("""
-    Your default recipe is app/default in #{path} — every step is
+    Your default recipe is /app/default in #{path} — every step is
     documented in place. Edit the list, then run it with:
 
-        mix composer.recipe.run app/default
+        mix composer.recipe.run /app/default
 
     When it finishes, set up the database and start the server:
 
@@ -167,10 +168,10 @@ defmodule Mix.Tasks.Composer.Init do
 
     """
     # This project's chapter, generated by `mix composer.init`. Each
-    # recipe here is addressed as app/<name>:
+    # recipe here is addressed as /app/<name>:
     #
-    #     mix composer.recipe.run app/default
-    #     mix composer.recipe.run app/default --oban-pro --gigalixir
+    #     mix composer.recipe.run /app/default
+    #     mix composer.recipe.run /app/default --oban-pro --gigalixir
     #
     # Steps run top to bottom, and every change is shown as one diff before it
     # is applied. This file is yours: delete steps you don't want, reorder
@@ -178,10 +179,10 @@ defmodule Mix.Tasks.Composer.Init do
     # optional (it then runs only when you pass the matching `--flag`), and
     # describe the flag under flags:.
     #
-    #   "cb_std:setup/credo"        a step, as "cookbook:path"
+    #   "cb_std:setup:credo"      a step, as "cookbook:path:to:step"
     #   "hex:oban"                a Hex package and its own installer
-    #   {:use, "other"}           another recipe in this chapter, in place
-    #   {:use, "cb_lab:lv/base"}  a recipe in another chapter or cookbook
+    #   "./other"                 another recipe in this chapter, in place
+    #   "cb_lab/lv/base"          a recipe in another cookbook
     #   {:task, "x.y", []}        compose any Igniter task
     #
     # Write your own steps with `mix composer.gen.step NAME`, and browse the
@@ -242,9 +243,7 @@ defmodule Mix.Tasks.Composer.Init do
   end
 
   defp describe(ref, cb_std) do
-    %Ref.Legacy{path: id} = Ref.Legacy.parse!(ref)
-
-    case Cookbook.step(cb_std, id) do
+    case Cookbook.step(cb_std, Ref.path(Ref.parse!(ref))) do
       {:ok, meta} -> meta.summary || ref
       :error -> raise "the default recipe references unknown step: #{ref}"
     end
@@ -252,13 +251,15 @@ defmodule Mix.Tasks.Composer.Init do
 
   defp from_source(from) do
     cookbooks = CLI.cookbooks!()
-    id = CLI.ok!(Composer.Resolver.find_recipe(cookbooks, from, nil))
-    %Ref.Legacy{cookbook: name, path: path} = Ref.Legacy.parse!(id)
+    id = CLI.ok!(Composer.Resolver.find_recipe(cookbooks, from, CLI.context(cookbooks)))
+    %Ref{cookbook: name, segments: segments} = ref = Ref.parse!(id)
     cookbook = Enum.find(cookbooks, &(&1.name == name))
-    [_chapter, recipe_name] = String.split(path, "/")
+    path = Ref.path(ref)
 
     recipe =
-      CLI.ok!(Composer.Recipe.load(Cookbook.recipe_path(cookbook, path), name, recipe_name))
+      CLI.ok!(
+        Composer.Recipe.load(Cookbook.recipe_path(cookbook, path), name, List.last(segments))
+      )
 
     steps = Enum.map(recipe.steps, &qualify(&1, recipe, cookbooks))
 
@@ -276,33 +277,22 @@ defmodule Mix.Tasks.Composer.Init do
     # Copied from #{id} (#{recipe.path}) by `mix composer.init --from #{from}`.
     # Edits here do not affect the shared recipe. Run it with:
     #
-    #     mix composer.recipe.run app/default
+    #     mix composer.recipe.run /app/default
     """ <> body <> "\n"
   end
 
-  # Unqualified includes are resolved where the source recipe lives, so the
-  # copy still names the same recipes.
-  defp qualify({:use, ref}, recipe, cookbooks), do: {:use, qualified(ref, recipe, cookbooks)}
+  # Root and relative addresses, and aliases, are resolved where the
+  # source recipe lives, so the copy still names the same recipes and steps.
+  defp qualify({ref, opts}, recipe, cookbooks) when is_binary(ref),
+    do: {qualified(ref, recipe, cookbooks), opts}
 
-  defp qualify({:use, ref, opts}, recipe, cookbooks),
-    do: {:use, qualified(ref, recipe, cookbooks), opts}
-
+  defp qualify(ref, recipe, cookbooks) when is_binary(ref), do: qualified(ref, recipe, cookbooks)
   defp qualify(entry, _recipe, _cookbooks), do: entry
 
   defp qualified(ref, recipe, cookbooks) do
-    case Ref.Legacy.parse(ref) do
-      {:ok, %Ref.Legacy{cookbook: nil, path: path} = parsed} ->
-        if Ref.Legacy.nested?(parsed) do
-          case Composer.Resolver.find_recipe(cookbooks, ref, recipe.cookbook) do
-            {:ok, id} -> id
-            {:error, _} -> ref
-          end
-        else
-          Ref.Legacy.id(recipe.cookbook, recipe.chapter <> "/" <> path)
-        end
-
-      _ ->
-        ref
+    case Composer.Resolver.address_id(cookbooks, recipe, ref) do
+      {:ok, id} -> id
+      {:error, _} -> ref
     end
   end
 end

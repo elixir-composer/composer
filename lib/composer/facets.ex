@@ -16,7 +16,11 @@ defmodule Composer.Facets do
 
   `requires` entries are checked before a run:
 
-    * `"cookbook:path"` - another step that should run earlier
+    * a step that should run earlier: qualified (`"cb_std:cluster:libcluster"`),
+      root (`":cluster:libcluster"`, in the step's own cookbook) or
+      `"hex:pkg"`. A bare or relative address is an error; a qualified one
+      in the old syntax (`"cb_std:cluster/libcluster"`) is a warning, which
+      `mix composer.cookbook.lint --fix` rewrites
     * `{:executable, "bun"}` - an executable on `PATH`
     * `{:package, :phoenix, "~> 1.8"}` - a version requirement on a dependency
       the target app declares
@@ -89,7 +93,8 @@ defmodule Composer.Facets do
       Enum.reduce_while(@known, {:ok, %{}, []}, fn key, {:ok, acc, warnings} ->
         case normalize(key, Keyword.get(opts, key)) do
           {:ok, value} ->
-            {:cont, {:ok, Map.put(acc, key, value), warnings ++ unknown_values(key, value)}}
+            warnings = warnings ++ unknown_values(key, value) ++ old_requirements(key, value)
+            {:cont, {:ok, Map.put(acc, key, value), warnings}}
 
           {:error, message} ->
             {:halt, {:error, message}}
@@ -100,10 +105,18 @@ defmodule Composer.Facets do
 
   def validate(other), do: {:error, "step options must be a keyword list, got: #{inspect(other)}"}
 
-  @doc "True for a well-formed `requires` entry."
+  @doc """
+  True for a well-formed `requires` entry: a qualified or root step
+  address, `"hex:pkg"`, `{:executable, name}` or `{:package, name,
+  requirement}`.
+  """
   @spec requirement?(term()) :: boolean()
-  def requirement?(ref) when is_binary(ref),
-    do: match?({:ok, %Composer.Ref.Legacy{source: []}}, Composer.Ref.Legacy.parse(ref))
+  def requirement?(ref) when is_binary(ref) do
+    case Composer.Ref.parse(ref) do
+      {:ok, %Composer.Ref{kind: :step, scope: scope, source: []}} -> scope in [:qualified, :root]
+      _ -> false
+    end
+  end
 
   def requirement?({:executable, name}), do: is_binary(name) and name != ""
 
@@ -162,14 +175,15 @@ defmodule Composer.Facets do
   defp normalize(:tags, tags), do: type_error(:tags, tags, "a list of atoms or strings")
 
   defp normalize(:requires, requires) when is_list(requires) do
-    case Enum.reject(requires, &requirement?/1) do
+    case Enum.reject(requires, &(requirement?(&1) or old_requirement?(&1))) do
       [] ->
         {:ok, requires}
 
       [bad | _] ->
         {:error,
-         "invalid requires entry #{inspect(bad)}. Expected \"cookbook:path\", " <>
-           "{:executable, \"name\"} or {:package, :name, \"~> 1.0\"}"}
+         "invalid requires entry #{inspect(bad)}. Expected a step address, " <>
+           "\"cookbook:path:to:step\" or \":path:to:step\" (in this cookbook), " <>
+           "\"hex:pkg\", {:executable, \"name\"} or {:package, :name, \"~> 1.0\"}"}
     end
   end
 
@@ -178,6 +192,31 @@ defmodule Composer.Facets do
   defp type_error(key, value, expected) do
     {:error, "#{key}: expected #{expected}, got: #{inspect(value)}"}
   end
+
+  # A requirement in the old address syntax still compiles, so that
+  # mix composer.cookbook.lint --fix can run and rewrite it.
+  # Only the qualified old form (`"cb_std:cluster/libcluster"`): a bare or
+  # unqualified one never named one step for sure.
+  defp old_requirement?(ref) when is_binary(ref) do
+    match?({:error, _}, Composer.Ref.parse(ref)) and
+      match?(
+        {:ok, %Composer.Ref.Legacy{cookbook: cookbook, source: []}} when is_binary(cookbook),
+        Composer.Ref.Legacy.parse(ref)
+      )
+  end
+
+  defp old_requirement?(_ref), do: false
+
+  defp old_requirements(:requires, requires) do
+    for ref <- requires, is_binary(ref), not requirement?(ref) do
+      {:ok, %{cookbook: cookbook, path: path}} = Composer.Ref.Legacy.parse(ref)
+
+      "requires #{inspect(ref)} is in the old address syntax; write " <>
+        "#{inspect(Composer.Ref.id(:step, cookbook, path))} (mix composer.cookbook.lint --fix rewrites it)"
+    end
+  end
+
+  defp old_requirements(_key, _value), do: []
 
   defp unknown_values(key, value) when is_map_key(@vocabulary, key) do
     known = Map.fetch!(@vocabulary, key)

@@ -6,9 +6,13 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
   does not exist.
 
       mix composer.gen.recipe ash/base
+      mix composer.gen.recipe ash/ui/tailwind/base
 
-  adds the recipe `base` to `lib/composer/<app>/recipes/ash.exs` in the
-  current project's cookbook. The argument is always `chapter/name`.
+  adds the recipe `base` to `lib/composer/<app>/recipes/ash.exs` (or
+  `recipes/ash/ui/tailwind.exs`) in the current project's cookbook. The
+  argument is `chapter/name`, where the chapter may be a nested path; the
+  root address `/ash/base` is accepted too. The recipe is then addressed
+  as `<app>/ash/base`, or `/ash/base` from inside the cookbook.
 
   A new chapter file starts with a comment listing the entry forms. Adding
   to an existing chapter appends to its keyword list; a recipe of the same
@@ -31,21 +35,22 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
   @impl Igniter.Mix.Task
   def igniter(igniter) do
     arg = igniter.args.positional.path
+    path = arg |> String.trim() |> String.trim_leading("/") |> String.replace("-", "_")
 
     {chapter, name} =
-      case String.split(arg, "/") do
-        [chapter, name] ->
-          if Chapter.valid_name?(chapter) and Chapter.valid_name?(name),
+      case {Path.dirname(path), Path.basename(path)} do
+        {"." <> _, _name} ->
+          invalid!(arg)
+
+        {chapter, name} ->
+          if Chapter.valid_path?(chapter) and Chapter.valid_name?(name),
             do: {chapter, name},
             else: invalid!(arg)
-
-        _ ->
-          invalid!(arg)
       end
 
     cookbook = igniter |> Igniter.Project.Application.app_name() |> GenCookbook.cookbook_name()
     file = "lib/composer/#{cookbook}/recipes/#{chapter}.exs"
-    ref = "#{cookbook}:#{chapter}/#{name}"
+    ref = Composer.Ref.id(:recipe, cookbook, path)
 
     igniter =
       if Igniter.exists?(igniter, file),
@@ -62,9 +67,9 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
 
   defp invalid!(arg) do
     Mix.raise("""
-    Invalid recipe #{inspect(arg)}. Give it as chapter/name (e.g. ash/base): \
-    the recipe name in the chapter file recipes/<chapter>.exs. Both are \
-    lowercase [a-z0-9_] segments.
+    Invalid recipe #{inspect(arg)}. Give it as chapter/name (e.g. ash/base, \
+    or ash/ui/base for a nested chapter): the recipe name in the chapter \
+    file recipes/<chapter>.exs. Every segment is lowercase [a-z0-9_].
     """)
   end
 
@@ -125,18 +130,19 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
     #   shortdoc: "..."            one line, shown by mix composer.recipe.list
     #   doc: "..."                 longer help, shown by mix composer.recipe.show
     #   flags: [flag: "..."]       every if: :flag used in steps, described
-    #   aliases: [lab: "cc_lab"]  short cookbook names for this recipe's refs
+    #   aliases: [lab: "cc_lab"]   short cookbook names for this recipe's addresses
     #   steps: [...]               run top to bottom, as one diff
     #
     # Step entries:
     #
-    #   "cb_std:setup/credo"             a step ("cookbook:path", or "path")
-    #   "hex:oban"                     a Hex package and its own installer
-    #   {"cb_std:oban_pro", if: :flag}   only with --flag
-    #   {:use, "other"}                another recipe in this chapter, in place
-    #   {:use, "cb_lab:lv/base"}       a recipe in another chapter or cookbook
-    #   {:task, "x.y", ["arg"]}        compose an Igniter-aware Mix task
-    #   {:queue, "x.y", ["arg"]}       run a Mix task after changes apply
+    #   "cb_std:setup:credo"            a step (":path:to:step" in this cookbook)
+    #   "hex:oban"                      a Hex package and its own installer
+    #   {"cb_std:oban_pro", if: :flag}  only with --flag
+    #   "./other"                       another recipe in this chapter, in place
+    #   "/chapter/name"                 a recipe in another chapter of this cookbook
+    #   "cb_lab/lv/base"                a recipe in another cookbook
+    #   {:task, "x.y", ["arg"]}         compose an Igniter-aware Mix task
+    #   {:queue, "x.y", ["arg"]}        run a Mix task after changes apply
     #
     # Browse steps with `mix composer.step.list`. This file is evaluated as
     # Elixir code.

@@ -1,28 +1,29 @@
 defmodule Composer.LSP.Lookup do
   @moduledoc """
   Resolves what is under the cursor (`Composer.LSP.Cursor`) as a run
-  would: the recipe's aliases are expanded, and the cookbook owning the
-  buffer's file is the context unqualified references are looked up in
-  first. Shared by hover and goto-definition.
+  would: against the buffer's context, the cookbook owning the buffer's
+  file and the chapter path of the file (see `context/2`), with the
+  recipe's aliases expanded. Shared by hover, goto-definition and
+  completion.
 
   Results:
 
-    * `{:step, meta}` - a step reference
-    * `{:recipe, recipe}` - a `{:use, ...}` target, or the recipe whose
-      name key is under the cursor, as a loaded `%Composer.Recipe{}`
-    * `{:hex, package, :explicit | :fallthrough}` - a `hex:` reference,
-      or an unqualified name no cookbook has as a step
+    * `{:step, meta}` - a step address
+    * `{:recipe, recipe}` - a recipe address (an include), or the recipe
+      whose name key is under the cursor, as a loaded `%Composer.Recipe{}`
+    * `{:hex, package, :explicit}` - a `hex:` address
     * `{:alias, name, target}` - a cookbook alias name
-    * `{:error, reason}` - a reference that does not resolve
+    * `{:error, reason}` - an address that does not resolve
     * `nil` - nothing to resolve (a recipe key)
   """
 
   alias Composer.{Cookbook, Lint, Recipe, Ref, Resolver}
+  alias Composer.Recipe.Chapter
 
   @type result ::
           {:step, Composer.Step.Meta.t()}
           | {:recipe, Recipe.t()}
-          | {:hex, String.t(), :explicit | :fallthrough}
+          | {:hex, String.t(), :explicit}
           | {:alias, String.t(), String.t() | nil}
           | {:error, term()}
           | nil
@@ -36,46 +37,61 @@ defmodule Composer.LSP.Lookup do
 
   def resolve(cursor, path, snapshot) do
     cookbooks = cookbooks(snapshot)
-    owner = owner(cookbooks, path)
-    resolve(cursor, cookbooks, owner, Path.basename(path, ".exs"))
+    lookup(cursor, cookbooks, context(cookbooks, path))
   end
 
-  defp resolve(%{kind: :alias, value: name, aliases: aliases}, _cookbooks, _owner, _chapter) do
+  @doc """
+  The resolution context of a buffer (see `Composer.Resolver`): the
+  cookbook whose `recipes/` holds the file at `path`, and the file's
+  chapter path (`"ash/ui/tailwind"`), or `nil` for both.
+  """
+  @spec context([Cookbook.t()], Path.t()) :: Resolver.context()
+  def context(cookbooks, path) do
+    case Lint.owner(cookbooks, path) do
+      {:ok, owner} ->
+        recipes = owner |> Cookbook.source_dir() |> Path.join("recipes") |> Path.expand()
+        file = Path.expand(path)
+
+        chapter =
+          if String.starts_with?(file, recipes <> "/"),
+            do: Chapter.path(recipes, file),
+            else: Chapter.path(file)
+
+        %{cookbook: owner.name, chapter: chapter, cli?: false}
+
+      {:error, _} ->
+        %{cookbook: nil, chapter: nil, cli?: false}
+    end
+  end
+
+  defp lookup(%{kind: :alias, value: name, aliases: aliases}, _cookbooks, _context) do
     name = to_string(name)
     {:alias, name, Map.get(aliases, name)}
   end
 
-  defp resolve(%{kind: :ref, value: written} = cursor, cookbooks, owner, _chapter)
+  defp lookup(%{kind: :ref, value: written} = cursor, cookbooks, context)
        when is_binary(written) do
-    case Resolver.find_step(cookbooks, expand(written, cursor.aliases), owner && owner.name) do
-      {:ok, {:step, meta}} -> {:step, meta}
-      {:ok, {:hex, package}} -> {:hex, package, hex_kind(written)}
-      {:error, reason} -> {:error, reason}
+    lookup = expand(written, cursor.aliases)
+
+    case Ref.parse(lookup) do
+      {:ok, %Ref{kind: :recipe}} ->
+        with {:ok, id} <- Resolver.find_recipe(cookbooks, lookup, context),
+             do: load(cookbooks, id)
+
+      _ ->
+        case Resolver.find_step(cookbooks, lookup, context) do
+          {:ok, {:step, meta}} -> {:step, meta}
+          {:ok, {:hex, package}} -> {:hex, package, :explicit}
+          {:error, reason} -> {:error, reason}
+        end
     end
   end
 
-  defp resolve(%{kind: :use, value: written} = cursor, cookbooks, owner, chapter)
-       when is_binary(written) do
-    context = owner && owner.name
+  defp lookup(%{kind: :recipe, value: name}, cookbooks, %{cookbook: own, chapter: chapter})
+       when is_binary(own) and is_binary(chapter),
+       do: load(cookbooks, Ref.id(:recipe, own, chapter <> "/" <> name))
 
-    found =
-      case Ref.Legacy.parse(written) do
-        {:ok, %Ref.Legacy{cookbook: nil} = ref} when context != nil ->
-          if Ref.Legacy.nested?(ref),
-            do: Resolver.find_recipe(cookbooks, written, context),
-            else: in_chapter(cookbooks, context, chapter, written)
-
-        _ ->
-          Resolver.find_recipe(cookbooks, expand(written, cursor.aliases), context)
-      end
-
-    with {:ok, id} <- found, do: load(cookbooks, id)
-  end
-
-  defp resolve(%{kind: :recipe, value: name}, cookbooks, owner, chapter) when owner != nil,
-    do: load(cookbooks, Ref.Legacy.id(owner.name, chapter <> "/" <> name))
-
-  defp resolve(_cursor, _cookbooks, _owner, _chapter), do: nil
+  defp lookup(_cursor, _cookbooks, _context), do: nil
 
   @doc """
   The cookbooks a lookup resolves against: the snapshot's.
@@ -83,30 +99,13 @@ defmodule Composer.LSP.Lookup do
   @spec cookbooks(map()) :: [Cookbook.t()]
   def cookbooks(%{cookbooks: cookbooks}), do: cookbooks
 
-  defp owner(cookbooks, path) do
-    case Lint.owner(cookbooks, path) do
-      {:ok, owner} -> owner
-      {:error, _} -> nil
-    end
-  end
-
-  # An unqualified {:use, "name"} is the recipe `name` in the same chapter.
-  defp in_chapter(cookbooks, context, chapter, name) do
-    id = chapter <> "/" <> name
-    book = Enum.find(cookbooks, &(&1.name == context))
-
-    if book && id in Cookbook.recipes(book),
-      do: {:ok, Ref.Legacy.id(context, id)},
-      else: {:error, {:missing_recipe, name, nil, []}}
-  end
-
   defp load(cookbooks, id) do
-    %Ref.Legacy{cookbook: name, path: recipe_id} = Ref.Legacy.parse!(id)
+    %Ref{cookbook: name, segments: segments} = ref = Ref.parse!(id)
     book = Enum.find(cookbooks, &(&1.name == name))
 
-    case book && Cookbook.recipe_path(book, recipe_id) do
+    case book && Cookbook.recipe_path(book, Ref.path(ref)) do
       path when is_binary(path) ->
-        with {:ok, recipe} <- Recipe.load(path, name, Path.basename(recipe_id)),
+        with {:ok, recipe} <- Recipe.load(path, name, List.last(segments)),
              do: {:recipe, recipe}
 
       _ ->
@@ -115,24 +114,16 @@ defmodule Composer.LSP.Lookup do
   end
 
   @doc """
-  Replaces an aliased cookbook part of `written` with the cookbook it
-  names in `aliases` (`%{"lab" => "cc_lab"}`).
+  Replaces an aliased cookbook part of a qualified address `written` with
+  the cookbook it names in `aliases` (`%{"lab" => "cc_lab"}`).
   """
   @spec expand(String.t(), %{String.t() => String.t()}) :: String.t()
   def expand(written, aliases) do
-    with {:ok, %Ref.Legacy{cookbook: name, path: path}} when is_binary(name) <-
-           Ref.Legacy.parse(written),
+    with {:ok, %Ref{scope: :qualified, cookbook: name} = ref} <- Ref.parse(written),
          target when is_binary(target) <- Map.get(aliases, name) do
-      Ref.Legacy.id(target, path)
+      Ref.to_string(%{ref | cookbook: target})
     else
       _ -> written
-    end
-  end
-
-  defp hex_kind(written) do
-    case Ref.Legacy.parse(written) do
-      {:ok, %Ref.Legacy{cookbook: "hex"}} -> :explicit
-      _ -> :fallthrough
     end
   end
 end

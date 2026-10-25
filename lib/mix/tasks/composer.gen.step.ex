@@ -17,9 +17,10 @@ defmodule Mix.Tasks.Composer.Gen.Step do
   them by a path relative to it. The directory is not created; add it when
   the step needs a template.
 
-  Group related steps with `/`: `ash/postgres` and `ash/sqlite` read better,
-  and list together, than `ash_postgres` and `ash_sqlite`. Use a flat name
-  for a step that stands alone.
+  Group related steps with `/`: `ash/postgres` and `ash/sqlite` (addressed
+  as `<app>:ash:postgres` and `<app>:ash:sqlite`) read better, and list
+  together, than `ash_postgres` and `ash_sqlite`. Use a flat name for a step
+  that stands alone. The root address `:ash:postgres` is accepted too.
 
   If the cookbook module is guarded for bundling (see
   `mix composer.gen.cookbook --bundled`), the step and its test get the same
@@ -67,20 +68,28 @@ defmodule Mix.Tasks.Composer.Gen.Step do
       end
     end)
     |> Igniter.add_notice(
-      "Run `mix composer.cookbook.manifest` after filling in the step's summary and facets."
+      "The step's address is #{Composer.Ref.id(:step, name, path)} (:#{String.replace(path, "/", ":")} " <>
+        "in this cookbook). Run `mix composer.cookbook.manifest` after filling in its summary and facets."
     )
   end
 
+  # A step path, ash/postgres, or its root address, :ash:postgres.
   defp normalize!(path) do
-    case Composer.Ref.Legacy.parse(path) do
-      {:ok, %Composer.Ref.Legacy{cookbook: nil, path: path}} ->
-        path
+    segments =
+      path
+      |> String.trim()
+      |> String.replace("-", "_")
+      |> String.trim_leading(":")
+      |> String.split(if(String.starts_with?(String.trim(path), ":"), do: ":", else: "/"))
 
-      _ ->
-        Mix.raise("""
-        Invalid step path #{inspect(path)}. A step path is one or more \
-        `/`-separated lowercase [a-z0-9_] segments, e.g. ash/postgres.
-        """)
+    if Enum.all?(segments, &Regex.match?(~r/\A[a-z0-9_]+\z/, &1)) do
+      Enum.join(segments, "/")
+    else
+      Mix.raise("""
+      Invalid step path #{inspect(path)}. A step path is one or more \
+      `/`-separated lowercase [a-z0-9_] segments, e.g. ash/postgres (the \
+      step :ash:postgres).
+      """)
     end
   end
 
@@ -113,7 +122,7 @@ defmodule Mix.Tasks.Composer.Gen.Step do
         # :experimental, :beta, :stable or :deprecated
         stability: :experimental,
         tags: [],
-        # step refs ("cb_std:setup/credo"), {:executable, "bun"}, {:package, :phoenix, "~> 1.8"}
+        # step refs ("cb_std:setup:credo"), {:executable, "bun"}, {:package, :phoenix, "~> 1.8"}
         requires: [],
         provides: [],
         conflicts: []

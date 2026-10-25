@@ -6,7 +6,7 @@ defmodule Mix.Tasks.Composer.Step.Show do
   then dry-runs it against the current project to report the files it
   touches and the dependencies it adds. Nothing is written.
 
-      mix composer.step.show cb_std:setup/credo
+      mix composer.step.show cb_std:setup:credo
       mix composer.step.show ash/postgres --json
 
   The dry run stays offline (package versions fall back to permissive
@@ -37,11 +37,10 @@ defmodule Mix.Tasks.Composer.Step.Show do
     case CLI.ok!(Resolver.find_step(cookbooks, ref, CLI.context(cookbooks))) do
       {:step, meta} ->
         dry_run = dry_run(meta.module)
-        unqualified? = Resolver.find_step(cookbooks, meta.id, nil) == {:ok, {:step, meta}}
 
         if opts[:json],
           do: CLI.json(Map.put(Meta.to_data(meta), "dry_run", dry_run)),
-          else: print(meta, dry_run, unqualified?)
+          else: print(meta, dry_run)
 
       {:hex, package} ->
         if opts[:json] do
@@ -52,7 +51,7 @@ defmodule Mix.Tasks.Composer.Step.Show do
     end
   end
 
-  defp print(meta, dry_run, unqualified?) do
+  defp print(meta, dry_run) do
     Mix.shell().info("#{meta.ref} - #{meta.summary || "(no summary)"}\n")
 
     meta
@@ -60,14 +59,6 @@ defmodule Mix.Tasks.Composer.Step.Show do
     |> Enum.map(fn {label, value} -> [label <> ":", value] end)
     |> CLI.table()
     |> Mix.shell().info()
-
-    if unqualified? do
-      Mix.shell().info("""
-
-      An unqualified #{inspect(meta.id)} resolves to this step. Write \
-      #{inspect("hex:" <> meta.id)} for a Hex package of the same name.\
-      """)
-    end
 
     case dry_run do
       %{"error" => error} ->

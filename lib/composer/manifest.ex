@@ -3,9 +3,10 @@ defmodule Composer.Manifest do
   A cookbook's static manifest: `lib/composer/<package>/manifest.exs`.
 
   The manifest is plain data - the cookbook's name and package, and
-  every step's id, summary and facets, and every recipe's id
-  (`"chapter/name"`) and shortdoc - so tools such as shell completion can read a cookbook without
-  running its code.
+  every step's id, summary and facets, and every recipe's id and
+  shortdoc - so tools such as shell completion can read a cookbook without
+  running its code. Ids are canonical addresses (`"cb_std:setup:credo"`,
+  `"cb_std/debug/echo"`, see `Composer.Ref`).
 
   It is written by `mix composer.cookbook.manifest` and committed. It is
   never written at compile time, and `mix composer.cookbook.lint` fails when
@@ -26,13 +27,14 @@ defmodule Composer.Manifest do
       name: cookbook.name,
       package: cookbook.app,
       steps: cookbook |> Cookbook.steps() |> Enum.map(&step/1),
-      recipes: recipes(cookbook)
+      recipes:
+        for(r <- recipes(cookbook), do: %{r | id: Composer.Ref.id(:recipe, cookbook.name, r.id)})
     }
   end
 
   @doc """
   Returns `%{id: "chapter/name", shortdoc: "..."}` for every recipe of a
-  cookbook, sorted by id. A recipe whose chapter fails to load gets an empty
+  cookbook, sorted by id; `id` is the internal id, without the cookbook. A recipe whose chapter fails to load gets an empty
   shortdoc; lint reports the chapter.
   """
   @spec recipes(Cookbook.t()) :: [%{id: String.t(), shortdoc: String.t()}]
@@ -91,7 +93,7 @@ defmodule Composer.Manifest do
 
   defp step(meta) do
     %{
-      id: meta.id,
+      id: meta.ref,
       summary: meta.summary,
       action: meta.action,
       frameworks: meta.frameworks,

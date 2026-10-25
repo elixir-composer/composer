@@ -18,16 +18,16 @@ defmodule Composer.LSP.CursorTest do
       test "a ref, with the recipe's aliases", context do
         text = context[unquote(key)]
 
-        assert %{kind: :ref, value: "lab:auth/passkeys", range: {{12, 7}, {12, 26}}} =
+        assert %{kind: :ref, value: "lab:auth:passkeys", range: {{12, 7}, {12, 26}}} =
                  cursor = Cursor.at(text, @fixture, 12, 10)
 
         assert cursor.recipe == "auth"
         assert cursor.aliases == %{"lab" => "cc_lab"}
       end
 
-      test "a {:use, ...} target", context do
-        assert %{kind: :use, value: "base", range: {{18, 14}, {18, 20}}} =
-                 Cursor.at(context[unquote(key)], @fixture, 18, 15)
+      test "an include is an address like any other", context do
+        assert %{kind: :ref, value: "./base", range: {{18, 7}, {18, 15}}} =
+                 Cursor.at(context[unquote(key)], @fixture, 18, 9)
       end
 
       test "an escaped quote", context do
@@ -62,9 +62,9 @@ defmodule Composer.LSP.CursorTest do
         aliases: [fb: "fake_book"],
         steps: [
           "co",
-          {"cb_std:setup/credo",
+          {"cb_std:setup:credo",
            if: :credo},
-          "x", {:use, "fake
+          "x", {"./fake
     """
 
     test "a literal in steps:, the literal's contents replaced" do
@@ -75,8 +75,13 @@ defmodule Composer.LSP.CursorTest do
       assert {:steps, "", _} = Cursor.context(@source, 9, 8)
     end
 
-    test "{:use, \" in an unclosed literal" do
-      assert Cursor.context(@source, 9, 24) == {:use, "fake", {{9, 20}, {9, 24}}}
+    test "an unclosed literal" do
+      assert Cursor.context(@source, 9, 20) == {:steps, "./fake", {{9, 14}, {9, 20}}}
+    end
+
+    test "a step's requires: list" do
+      source = ~s|  use Composer.Step,\n    requires: ["cb_std:cl", ":x"]\n|
+      assert Cursor.context(source, 2, 26) == {:requires, "cb_std:cl", {{2, 17}, {2, 26}}}
     end
 
     test "not in shortdoc:, aliases: or outside a literal" do

@@ -5,7 +5,7 @@ defmodule Mix.Tasks.Composer.Recipe.Edit do
   Opens the chapter file that holds a recipe in your editor, at the line
   where the recipe starts.
 
-      $ mix composer.recipe.edit my_app:phx/app
+      $ mix composer.recipe.edit my_app/phx/app
 
   The editor command comes from `COMPOSER_EDITOR`, then `VISUAL`, then
   `EDITOR`; `__FILE__` and `__LINE__` in it are replaced with the file and
@@ -45,7 +45,8 @@ defmodule Mix.Tasks.Composer.Recipe.Edit do
 
     cookbooks = CLI.cookbooks!()
     id = CLI.ok!(Resolver.find_recipe(cookbooks, ref, CLI.context(cookbooks)))
-    %Ref.Legacy{cookbook: name, path: recipe} = Ref.Legacy.parse!(id)
+    %Ref{cookbook: name} = parsed = Ref.parse!(id)
+    recipe = Ref.path(parsed)
     cookbook = Enum.find(cookbooks, &(&1.name == name))
 
     path =

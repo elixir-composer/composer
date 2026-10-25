@@ -87,14 +87,14 @@ defmodule Composer.Integration.HostAppTest do
     assert mix!(app, ["composer.cookbook.lint"]) =~ "Cookbook host_app is valid."
 
     steps = mix!(app, ["composer.step.list", "--cookbook", "host_app"])
-    assert steps =~ "host_app:tools/thing"
+    assert steps =~ "host_app:tools:thing"
 
     list = mix!(app, ["composer.recipe.list", "host_app"])
-    assert list =~ ~r/host_app:app\/default\s+Mine/
-    assert list =~ "host_app:tools/more"
+    assert list =~ ~r/host_app\/app\/default\s+Mine/
+    assert list =~ "host_app/tools/more"
 
-    # An unqualified recipe reference prefers the project's own cookbook.
-    mix!(app, ["composer.recipe.run", "app/default", "--yes", "--no-commit"])
+    # A root address is the project's own cookbook.
+    mix!(app, ["composer.recipe.run", "/app/default", "--yes", "--no-commit"])
   end
 
   test "composer compiles cleanly in a host", %{app: app} do
@@ -151,15 +151,15 @@ defmodule Composer.Integration.HostAppTest do
     mix!(app, ["compile"])
     assert mix!(app, ["composer.cookbook.lint", "--file", chapter]) =~ "mine.exs is valid."
 
-    show = mix!(app, ["composer.recipe.show", "fake_dep:mine/app"])
+    show = mix!(app, ["composer.recipe.show", "fake_dep/mine/app"])
     assert show =~ ~r/--ignore\s+Add macOS files/
-    assert show =~ "fake_dep:hi  [fake_dep:mine/base]"
+    assert show =~ "fake_dep:hi  [fake_dep/mine/base]"
 
-    {output, status} = mix(app, ["composer.recipe.run", "fake_dep:mine/app", "--nope"])
+    {output, status} = mix(app, ["composer.recipe.run", "fake_dep/mine/app", "--nope"])
     assert status != 0
     assert output =~ "Unknown flag --nope"
 
-    mix!(app, ["composer.recipe.run", "fake_dep:mine/app", "--ignore", "--yes", "--no-commit"])
+    mix!(app, ["composer.recipe.run", "fake_dep/mine/app", "--ignore", "--yes", "--no-commit"])
     assert File.read!(Path.join(app, "hi.txt")) == "hi from host_app\n"
     assert File.exists?(Path.join(app, ".gitignore"))
   end

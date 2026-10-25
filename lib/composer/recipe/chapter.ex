@@ -7,17 +7,17 @@ defmodule Composer.Recipe.Chapter do
       [
         base: [
           shortdoc: "Ash core: sourceror, ash and ash_phoenix",
-          steps: ["cc_lab:sourceror", "cc_lab:ash", "cc_lab:ash/phoenix"]
+          steps: ["cc_lab:sourceror", "cc_lab:ash", "cc_lab:ash:phoenix"]
         ],
         ecto: [
           shortdoc: "Ash with the Postgres data layer",
-          steps: [{:use, "base"}, "cc_lab:ash/postgres"]
+          steps: ["./base", "cc_lab:ash:postgres"]
         ]
       ]
 
   A chapter's **path** is its file's path under `recipes/` without
-  `.exs`, so `ecto` above is `<cookbook>:ash/ecto`, and a recipe in
-  `recipes/ash/ui/tailwind.exs` is `<cookbook>:ash/ui/tailwind/<name>`.
+  `.exs`, so `ecto` above is `<cookbook>/ash/ecto`, and a recipe in
+  `recipes/ash/ui/tailwind.exs` is `<cookbook>/ash/ui/tailwind/<name>`.
   `recipes/ash/ui.exs` and the directory `recipes/ash/ui/` may coexist: the
   last segment of a recipe id is always its name. Every directory, chapter
   and recipe name is a lowercase `[a-z0-9_]` segment.
@@ -39,12 +39,12 @@ defmodule Composer.Recipe.Chapter do
         passkeys: [
           shortdoc: "Passkey sign-in",
           aliases: aliases,
-          steps: ["lab:auth/passkeys"]
+          steps: ["lab:auth:passkeys"]
         ],
         magic: [
           shortdoc: "Magic-link sign-in",
           aliases: aliases,
-          steps: ["lab:auth/magic_link"]
+          steps: ["lab:auth:magic_link"]
         ]
       ]
 
@@ -172,7 +172,7 @@ defmodule Composer.Recipe.Chapter do
   @spec pick({[Recipe.t()], [term()]}, Path.t(), String.t(), String.t()) ::
           {:ok, Recipe.t()} | {:error, term()}
   def pick({recipes, errors}, path, cookbook, name) do
-    ref = Composer.Ref.Legacy.id(cookbook, path(path) <> "/" <> name)
+    ref = Composer.Ref.id(:recipe, cookbook, path(path) <> "/" <> name)
 
     cond do
       recipe = Enum.find(recipes, &(&1.name == name)) ->
@@ -236,7 +236,7 @@ defmodule Composer.Recipe.Chapter do
 
   defp recipe(cookbook, chapter, name, value, path) do
     id = "#{chapter}/#{name}"
-    ref = Composer.Ref.Legacy.id(cookbook, id)
+    ref = Composer.Ref.id(:recipe, cookbook, id)
 
     errors =
       cond do
@@ -372,7 +372,7 @@ defmodule Composer.Recipe.Chapter do
   rescue
     exception ->
       line = eval_line(exception, __STACKTRACE__, path)
-      {:error, {:recipe_eval, "#{cookbook}:#{path(path)}/", path, exception, line}}
+      {:error, {:recipe_eval, "#{cookbook}/#{path(path)}/", path, exception, line}}
   end
 
   defp eval_line(exception, stacktrace, path) do
