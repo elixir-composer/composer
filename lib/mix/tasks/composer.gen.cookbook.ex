@@ -21,7 +21,8 @@ defmodule Mix.Tasks.Composer.Gen.Cookbook do
   wrapped in `if Code.ensure_loaded?(Composer) do ... end`, so it compiles to
   nothing - and costs nothing - when composer is absent. Steps generated
   later with `mix composer.gen.step` get the same guard. Use it too when
-  composer is a dev-only dependency of an app.
+  composer is a dev-only dependency of an app. See the Bundling guide
+  (`guides/bundling.md`) for the dependency to declare.
 
   ## Options
 

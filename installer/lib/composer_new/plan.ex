@@ -10,9 +10,9 @@ defmodule ComposerNew.Plan do
       rm -rf APP                                              (--reset)
       mix igniter.new APP --no-git --yes [--local REL] [--with TASK]
           [--with-args=ARGS]
-      (in APP) mix composer_new.install PKG,... --yes      (--install PKG,...)
-      (in APP) mix composer_new.install composer@SRC[,COOKBOOK[@SRC],...][,EXTRA,...]
+      (in APP) mix composer_new.install composer@SRC[,COOKBOOK[@SRC],...]
           --only dev,test --yes
+      (in APP) mix composer_new.install PKG,... --yes      (--install PKG,...)
       (in APP) git init
       (in APP) git add -A
       (in APP) git commit -m "mix composer.new <argv as typed>"
@@ -20,8 +20,14 @@ defmodule ComposerNew.Plan do
                                                             (--recipe)
 
   The cookbooks are each `--cookbook`, then the cookbook `--recipe` names,
-  from Hex, when it is neither `cb_std` (which ships with composer) nor
-  given with `--cookbook`.
+  from Hex, when it is neither `cb_std` (which ships with composer), nor
+  given with `--cookbook`, nor an `--install` package (a framework that
+  bundles its cookbook).
+
+  Composer and the cookbooks are installed before the `--install`
+  packages, so a framework that bundles a cookbook compiles with composer
+  present: Mix doesn't recompile a dep when an optional dep of it appears
+  later.
 
   `igniter.new` gets `--no-git`, so the history starts with the commit
   above rather than with igniter's own. `git init` is harmless in a repo
@@ -67,11 +73,9 @@ defmodule ComposerNew.Plan do
          {:ok, ref} <- parse_recipe(opts[:recipe]),
          {:ok, composer} <- composer_spec(opts[:composer], env),
          {:ok, install} <- packages(opts[:install], "--install", env),
-         {:ok, cookbooks} <- cookbooks(opts[:cookbook], ref, env),
-         {:ok, extra} <- packages(opts[:extra_dep], "--extra-dep", env),
-         :ok <- distinct(cookbooks, opts[:extra_dep]),
+         {:ok, cookbooks} <- cookbooks(opts[:cookbook], ref, install_names(opts[:install]), env),
          :ok <- check_app(parsed.app) do
-      packages = %{composer: composer, install: install, cookbooks: cookbooks, extra: extra}
+      packages = %{composer: composer, install: install, cookbooks: cookbooks}
       {:ok, plan(argv, parsed, ref, packages, env)}
     end
   end
@@ -118,7 +122,11 @@ defmodule ComposerNew.Plan do
     end)
   end
 
-  defp cookbooks(strings, ref, env) do
+  defp install_names(strings) do
+    for string <- strings, {:ok, dep} = Dep.parse(string), do: dep.name
+  end
+
+  defp cookbooks(strings, ref, installed, env) do
     given =
       Enum.reduce_while(strings, {:ok, []}, fn string, {:ok, acc} ->
         case cookbook(string, env) do
@@ -134,8 +142,25 @@ defmodule ComposerNew.Plan do
         names != Enum.uniq(names) ->
           {:error, "--cookbook #{hd(names -- Enum.uniq(names))} is given more than once"}
 
+        both = Enum.find(names, &(&1 in installed)) ->
+          {:error,
+           "#{both} is given with both --install and --cookbook; a framework that bundles " <>
+             "its cookbook is given only with --install"}
+
         ref == nil or ref.cookbook == "cb_std" or ref.cookbook in names ->
           {:ok, given}
+
+        # A framework that bundles its cookbook: installed by --install, as a prod dep.
+        ref.cookbook in installed ->
+          bundled = %{
+            name: ref.cookbook,
+            spec: nil,
+            source: "bundled; installed by --install",
+            hex?: false,
+            implied?: false
+          }
+
+          {:ok, given ++ [bundled]}
 
         true ->
           implied = %{
@@ -179,18 +204,6 @@ defmodule ComposerNew.Plan do
     end
   end
 
-  # A package given with both --cookbook and --extra-dep would be installed twice.
-  defp distinct(cookbooks, extra_deps) do
-    names = MapSet.new(cookbooks, & &1.name)
-
-    Enum.find_value(extra_deps, :ok, fn string ->
-      {:ok, %{name: name}} = Dep.parse(string)
-
-      if name in names,
-        do: {:error, "--extra-dep #{string}: #{name} is a cookbook; give it only with --cookbook"}
-    end)
-  end
-
   defp check_app(app) do
     name = Path.basename(app)
 
@@ -211,7 +224,7 @@ defmodule ComposerNew.Plan do
     dir = Ref.expand(app_arg, env)
     install = packages.install
     cookbooks = packages.cookbooks
-    deps = [packages.composer | Enum.map(cookbooks, & &1.spec)] ++ packages.extra
+    deps = [packages.composer | for(%{spec: spec} <- cookbooks, spec, do: spec)]
 
     recipe = ref && Ref.recipe(ref)
     recipe_args = if opts[:recipe_args], do: OptionParser.split(opts[:recipe_args]), else: []
@@ -227,6 +240,14 @@ defmodule ComposerNew.Plan do
         [
           %Command{label: :create, cmd: "mix", args: create}
         ] ++
+        [
+          %Command{
+            label: :install,
+            cmd: "mix",
+            args: ["composer_new.install", Enum.join(deps, ","), "--only", "dev,test", "--yes"],
+            cd: dir
+          }
+        ] ++
         if(install != [],
           do: [
             %Command{
@@ -239,12 +260,6 @@ defmodule ComposerNew.Plan do
           else: []
         ) ++
         [
-          %Command{
-            label: :install,
-            cmd: "mix",
-            args: ["composer_new.install", Enum.join(deps, ","), "--only", "dev,test", "--yes"],
-            cd: dir
-          },
           %Command{label: :record, cmd: "git", args: ["init", "--quiet"], cd: dir},
           %Command{label: :record, cmd: "git", args: ["add", "-A"], cd: dir},
           %Command{

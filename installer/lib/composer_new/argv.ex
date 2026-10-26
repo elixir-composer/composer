@@ -10,8 +10,8 @@ defmodule ComposerNew.Argv do
     * an option with a value takes `--opt=value` or `--opt value`; for
       `--with-args` and `--recipe-args`, the separate form takes the next
       argument as it is, even when it starts with `-`
-    * `--install`, `--cookbook` and `--extra-dep` repeat, and `--install`
-      also splits on `,`; any other option may be given once
+    * `--install` and `--cookbook` repeat, and `--install` also splits on
+      `,`; any other option may be given once
     * `--reset` and `--dry-run` are booleans
     * any other switch is an error: recipe flags go in `--recipe-args`
     * `--recipe-args` needs `--recipe`
@@ -25,7 +25,6 @@ defmodule ComposerNew.Argv do
     "--cookbook" => :cookbook,
     "--recipe" => :recipe,
     "--recipe-args" => :recipe_args,
-    "--extra-dep" => :extra_dep,
     "--igniter-local" => :igniter_local
   }
 
@@ -34,7 +33,7 @@ defmodule ComposerNew.Argv do
   # Options whose separate form takes the next argument even if it starts with -.
   @verbatim [:with_args, :recipe_args]
 
-  @repeated [:install, :cookbook, :extra_dep]
+  @repeated [:install, :cookbook]
 
   @defaults [
     with: nil,
@@ -44,7 +43,6 @@ defmodule ComposerNew.Argv do
     cookbook: [],
     recipe: nil,
     recipe_args: nil,
-    extra_dep: [],
     igniter_local: nil,
     reset: false,
     dry_run: false

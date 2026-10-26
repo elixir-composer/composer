@@ -297,6 +297,14 @@ defmodule Composer.ResolverTest do
       assert Composer.Error.message(reason) =~ "{:cc_lab, \"~> x.y\", only: :dev}"
     end
 
+    test "an unknown cookbook that is a dependency suggests recompiling it" do
+      # igniter is one of composer's deps, and defines no cookbook.
+      message = Composer.Error.message({:unknown_cookbook, "igniter", "igniter/x/y", nil, []})
+      assert message =~ "igniter is a dependency, but defines no cookbook"
+      assert message =~ "mix deps.compile igniter --force"
+      refute message =~ "~> x.y"
+    end
+
     test "relative steps are reserved", %{tmp_dir: dir} do
       books = cookbooks(dir, %{"g/p" => ~s([".:dns"])})
 

@@ -102,10 +102,10 @@ defmodule ComposerNew.PlanTest do
       assert Enum.take(commands(argv), 3) == [
                {nil, "mix igniter.new my_blog --no-git --yes"},
                {"/work/my_blog",
-                "mix composer_new.install astral@path:/home/me/src/Fork/astral --yes"},
-               {"/work/my_blog",
                 "mix composer_new.install 'composer@~> 0.3,cb_home@path:/home/me/src/Gen/cb_home' " <>
-                  "--only dev,test --yes"}
+                  "--only dev,test --yes"},
+               {"/work/my_blog",
+                "mix composer_new.install astral@path:/home/me/src/Fork/astral --yes"}
              ]
 
       assert List.last(commands(argv)) ==
@@ -161,6 +161,25 @@ defmodule ComposerNew.PlanTest do
     assert [%{name: "cb_a", hex?: true, implied?: false}] = plan.summary.cookbooks
   end
 
+  test "a recipe from a framework's bundled cookbook installs nothing more" do
+    argv = ~w(my_blog --install astral@path:~/src/Fork/astral --recipe astral/blog/min)
+    plan = build!(argv)
+
+    assert plan.summary.deps == ["composer@~> 0.3"]
+    assert [%{name: "astral", spec: nil, hex?: false}] = plan.summary.cookbooks
+
+    assert Enum.take(commands(argv), 3) == [
+             {nil, "mix igniter.new my_blog --no-git --yes"},
+             {"/work/my_blog",
+              "mix composer_new.install 'composer@~> 0.3' --only dev,test --yes"},
+             {"/work/my_blog",
+              "mix composer_new.install astral@path:/home/me/src/Fork/astral --yes"}
+           ]
+
+    assert List.last(commands(argv)) ==
+             {"/work/my_blog", "mix composer.recipe.run astral/blog/min"}
+  end
+
   test "no --recipe and no --cookbook installs only composer and runs no recipe" do
     assert commands(~w(my_app)) ==
              [
@@ -180,24 +199,15 @@ defmodule ComposerNew.PlanTest do
   test "version requirements are kept, in every package" do
     argv =
       ["my_app", "--cookbook", "cb_lab@~> 0.4", "--composer", "~> 0.3"] ++
-        ["--install", "jason@>= 1.4.0", "--extra-dep", "cb_more@~> 1.2"]
+        ["--install", "jason@>= 1.4.0", "--cookbook", "cb_more@~> 1.2"]
 
-    assert [_create, base, dev | _] = commands(argv)
+    assert [_create, dev, base | _] = commands(argv)
     assert base == {"/work/my_app", "mix composer_new.install 'jason@>= 1.4.0' --yes"}
 
     assert dev ==
              {"/work/my_app",
               "mix composer_new.install 'composer@~> 0.3,cb_lab@~> 0.4,cb_more@~> 1.2' " <>
                 "--only dev,test --yes"}
-  end
-
-  test "--extra-dep, given twice" do
-    plan =
-      build!(
-        ~w(my_app --recipe cb_lab/lv/base --extra-dep cb_more@path:../more --extra-dep=jason)
-      )
-
-    assert plan.summary.deps == ["composer@~> 0.3", "cb_lab", "cb_more@path:/more", "jason"]
   end
 
   describe "--igniter-local is relative to APP's parent" do
@@ -283,11 +293,11 @@ defmodule ComposerNew.PlanTest do
       assert {:error, "--cookbook: cb_std ships with composer" <> _} =
                Plan.build(~w(my_app --cookbook cb_std), @env)
 
+      assert {:error, "astral is given with both --install and --cookbook" <> _} =
+               Plan.build(~w(my_app --install astral --cookbook astral), @env)
+
       assert {:error, "--cookbook cb_a is given more than once"} =
                Plan.build(~w(my_app --cookbook cb_a --cookbook cb_a@path:../a), @env)
-
-      assert {:error, "--extra-dep cb_a@1.0: cb_a is a cookbook" <> _} =
-               Plan.build(~w(my_app --cookbook cb_a --extra-dep cb_a@1.0), @env)
     end
 
     test "a bad app name" do
@@ -297,12 +307,12 @@ defmodule ComposerNew.PlanTest do
                Plan.build(~w(/tmp/my-app), @env)
     end
 
-    test "a bad --install or --extra-dep package" do
+    test "a bad --install package" do
       assert {:error, "--install: Invalid package \"astral@svn:x\": Invalid source" <> _} =
                Plan.build(~w(my_app --install astral@svn:x), @env)
 
-      assert {:error, "--extra-dep: Invalid package \"Jason\": package names" <> _} =
-               Plan.build(~w(my_app --extra-dep Jason), @env)
+      assert {:error, "--install: Invalid package \"Jason\": package names" <> _} =
+               Plan.build(~w(my_app --install Jason), @env)
     end
 
     test "a bad --composer source" do

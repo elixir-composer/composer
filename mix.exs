@@ -61,6 +61,7 @@ defmodule Composer.MixProject do
       extras: [
         "README.md",
         "guides/cookbooks.md",
+        "guides/bundling.md",
         "guides/recipes.md",
         "guides/templates.md",
         "guides/lint.md",

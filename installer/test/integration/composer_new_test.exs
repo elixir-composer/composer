@@ -11,6 +11,7 @@ defmodule ComposerNew.IntegrationTest do
   @installer Path.expand("../..", __DIR__)
   @composer Path.dirname(@installer)
   @fixture Path.join(@composer, "test/fixtures/fake_dep")
+  @framework Path.join(@composer, "test/fixtures/fake_framework")
   @cookbook ["--cookbook", "fake_dep@path:#{@fixture}"]
   @recipe ["--recipe", "fake_dep/main/default"]
 
@@ -121,6 +122,25 @@ defmodule ComposerNew.IntegrationTest do
     assert out =~ "no_such_recipe"
     assert out =~ "is at its generation commit"
     assert [_only] = log(Path.join(dir, "nope_app"))
+  end
+
+  test "a recipe from a framework's bundled cookbook, installed with --install", %{
+    tmp_dir: dir,
+    archives: archives
+  } do
+    args =
+      ["fw_app", "--install", "fake_framework@path:#{@framework}"] ++
+        ["--recipe", "fake_framework/main/default", "--composer", "path:#{@composer}"]
+
+    {out, status} = composer_new(args, dir, archives)
+    assert status == 0, out
+
+    app = Path.join(dir, "fw_app")
+    assert File.read!(Path.join(app, "hi.txt")) =~ "hi from fw_app, by fake_framework"
+
+    # The framework is a prod dep; only composer is dev/test.
+    [framework] = Regex.run(~r/\{:fake_framework,[^}]*\}/, File.read!(Path.join(app, "mix.exs")))
+    refute framework =~ "only:"
   end
 
   test "the default composer comes from Hex, and requirements are kept as written", %{

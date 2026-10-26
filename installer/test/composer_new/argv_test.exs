@@ -21,7 +21,6 @@ defmodule ComposerNew.ArgvTest do
                cookbook: [],
                recipe: nil,
                recipe_args: nil,
-               extra_dep: [],
                igniter_local: nil,
                reset: false,
                dry_run: false
@@ -59,17 +58,15 @@ defmodule ComposerNew.ArgvTest do
   test "= inside a value is kept" do
     assert parse!(["a", "--with-args=--x=1"]).opts[:with_args] == "--x=1"
 
-    assert parse!(["a", "--extra-dep=foo@git:https://h/x?a=b"]).opts[:extra_dep] ==
+    assert parse!(["a", "--cookbook=foo@git:https://h/x?a=b"]).opts[:cookbook] ==
              ["foo@git:https://h/x?a=b"]
   end
 
-  test "--install, --cookbook and --extra-dep repeat; --install splits on ," do
-    parsed =
-      parse!(~w(a --install a,b --install c --extra-dep x --extra-dep=y@path:../y --cookbook p))
+  test "--install and --cookbook repeat; --install splits on ," do
+    parsed = parse!(~w(a --install a,b --install c --cookbook x --cookbook=y@path:../y))
 
     assert parsed.opts[:install] == ~w(a b c)
-    assert parsed.opts[:extra_dep] == ~w(x y@path:../y)
-    assert parsed.opts[:cookbook] == ~w(p)
+    assert parsed.opts[:cookbook] == ~w(x y@path:../y)
   end
 
   test "help?/1 skips the values of --with-args and --recipe-args" do
@@ -100,6 +97,7 @@ defmodule ComposerNew.ArgvTest do
     assert {:error, "--with needs a value"} = Argv.parse(~w(a --with))
     assert {:error, "--composer needs a value"} = Argv.parse(~w(a --composer --reset))
     assert {:error, "--with-args needs a value"} = Argv.parse(~w(a --with-args))
+    assert {:error, "Unknown option --extra-dep" <> _} = Argv.parse(~w(a --extra-dep x))
 
     assert {:error, "--recipe may be given only once"} =
              Argv.parse(~w(a --recipe x/y/z --recipe=x/y/w))

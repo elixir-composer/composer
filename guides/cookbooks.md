@@ -310,22 +310,11 @@ of Igniter's global switches (`yes`, `dry_run`, `only`, ...), since
 
 ## Bundling a cookbook with a framework
 
-A framework can ship a cookbook alongside its own code, with composer as an
-optional dependency:
-
-```elixir
-{:composer, "~> 0.0.1", optional: true, only: :dev}
-```
-
-```bash
-mix composer.gen.cookbook --bundled
-```
-
-`--bundled` wraps the cookbook module (and every step `mix composer.gen.step`
-writes later) in `if Code.ensure_loaded?(Composer) do ... end`, so the tree
-compiles to nothing — and costs nothing — where composer is absent. An app
-whose composer dependency is dev-only needs the same guard, which is why
-`mix composer.init` writes it.
+A framework can ship a cookbook inside its own package, with composer as an
+optional dependency and the cookbook guarded by
+`if Code.ensure_loaded?(Composer)`. See the
+[Bundling guide](bundling.md). An app whose composer dependency is dev-only
+needs the same guard, which is why `mix composer.init` writes it.
 
 ## Files your tools will see
 

@@ -109,7 +109,7 @@ defmodule Composer.Recipe.ChapterTest do
         do: assert(flag in reserved, "#{flag} is not reserved")
 
     # composer.new takes recipe flags in --recipe-args, apart from its own options.
-    for flag <- ~w(with with_args install composer cookbook recipe extra_dep reset)a,
+    for flag <- ~w(with with_args install composer cookbook recipe reset)a,
         do: refute(flag in reserved, "#{flag} is reserved")
 
     assert reserved == Enum.uniq(reserved)

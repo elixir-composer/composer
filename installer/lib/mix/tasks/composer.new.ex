@@ -42,7 +42,9 @@ defmodule Mix.Tasks.Composer.New do
   `@SOURCE`: its cookbook is
 
     * `cb_std`, which ships with composer, or
-    * a `--cookbook` of that name, or else
+    * a `--cookbook` of that name, or
+    * an `--install` package of that name: a framework that bundles its
+      cookbook (see composer's Bundling guide), or else
     * the latest Hex release of that name. If there is no such package on
       Hex, preflight fails before anything is created.
 
@@ -67,15 +69,13 @@ defmodule Mix.Tasks.Composer.New do
     * `--composer SOURCE` - where composer comes from (`path:...`,
       `github:...`, a version); default `~> MAJOR.MINOR` of this archive's
       version
-    * `--extra-dep PKG` - another dev/test dep that isn't a cookbook
-      (repeatable); `PKG[@SOURCE]`, as `--install`
     * `--igniter-local PATH` - a local igniter checkout, passed to
       `igniter.new --local` relative to the app's parent directory
     * `--reset` - delete APP first
     * `--dry-run` - print the plan and run nothing
 
-  Any other switch is an error. Options other than `--install`,
-  `--cookbook` and `--extra-dep` may be given once. There is no `--yes`:
+  Any other switch is an error. Options other than `--install` and
+  `--cookbook` may be given once. There is no `--yes`:
   the command runs unattended.
 
   ## What it runs
@@ -84,8 +84,10 @@ defmodule Mix.Tasks.Composer.New do
 
     1. `mix igniter.new APP --no-git --yes ...`, with `--with`,
        `--with-args` and `--local`
-    2. in APP, `mix composer_new.install PKG,... --yes`, for `--install`
-    3. in APP, `mix composer_new.install composer,COOKBOOK,... --only dev,test --yes`
+    2. in APP, `mix composer_new.install composer,COOKBOOK,... --only dev,test --yes`
+    3. in APP, `mix composer_new.install PKG,... --yes`, for `--install`;
+       after composer, so a framework that bundles a cookbook compiles
+       with composer present
     4. in APP, `git init`, `git add -A` and `git commit`, with this command
        line as the message: `git log --reverse` shows how to rebuild the app
     5. in APP, `mix composer.recipe.run COOKBOOK/CHAPTER/RECIPE [RECIPE-ARGS]`,

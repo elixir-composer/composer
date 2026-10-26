@@ -372,8 +372,7 @@ defmodule Composer.Error do
 
     Available cookbooks: #{Enum.join(Enum.sort(known), ", ")}
 
-    If #{name} is a package that ships a composer cookbook, add it to your \
-    dependencies, e.g. {:#{name}, "~> x.y", only: :dev}, and run mix deps.get.
+    #{install_hint(name)}
     #{alias_hint(name, origin)}\
     """
   end
@@ -792,6 +791,25 @@ defmodule Composer.Error do
 
   # Aliases are per recipe: one declared in an including recipe does not
   # apply inside the recipe it includes.
+  # A dependency whose cookbook isn't loaded most likely bundles it behind
+  # Code.ensure_loaded?(Composer) and was compiled before composer was added;
+  # Mix doesn't recompile it by itself.
+  defp install_hint(name) do
+    if dependency?(name) do
+      "#{name} is a dependency, but defines no cookbook. If it bundles one, it was " <>
+        "probably compiled before composer was added. Recompile it: " <>
+        "mix deps.compile #{name} --force"
+    else
+      "If #{name} is a package that ships a composer cookbook, add it to your " <>
+        "dependencies, e.g. {:#{name}, \"~> x.y\", only: :dev}, and run mix deps.get."
+    end
+  end
+
+  defp dependency?(name) do
+    Mix.Project.get() != nil and
+      Enum.any?(Map.keys(Mix.Project.deps_paths()), &(Atom.to_string(&1) == name))
+  end
+
   defp alias_hint(_name, nil), do: ""
 
   defp alias_hint(name, origin),

@@ -74,8 +74,11 @@ are step addresses (`cb_lab:lv:x`) and `hex:` addresses. A recipe takes no
 `@SOURCE`; its cookbook is:
 
 1. `cb_std`, which ships with composer; or
-2. the `--cookbook` of that name; or else
-3. the latest Hex release of that name. If Hex has no such package,
+2. the `--cookbook` of that name; or
+3. the `--install` package of that name: a framework that bundles its
+   cookbook (see composer's
+   [Bundling guide](https://hexdocs.pm/composer/bundling.html)); or else
+4. the latest Hex release of that name. If Hex has no such package,
    preflight fails before anything is created.
 
 If the cookbook has no such recipe, `mix composer.recipe.run` says so, and
@@ -119,14 +122,13 @@ app's own cookbook.
 | `--with-args ARGS`     | arguments for `--with`; prefer `--with-args="--no-ecto --binary-id"`          |
 | `--install PKG[,PKG]`  | base packages installed with the app as prod deps (repeatable); `PKG[@SOURCE]` |
 | `--composer SOURCE`    | composer's source: `path:...`, `github:...` or a version; default `~> MAJOR.MINOR` of the archive |
-| `--extra-dep PKG`      | another dev/test dep that isn't a cookbook (repeatable); `PKG[@SOURCE]`       |
 | `--igniter-local PATH` | a local igniter checkout, passed as `igniter.new --local` (made relative to APP's parent) |
 | `--reset`              | delete APP first                                                              |
 | `--dry-run`            | print the plan and run nothing                                                |
 
-Any other switch is an error. Options other than `--cookbook`,
-`--install` and `--extra-dep` may be given once. There is no `--yes`: the
-command runs unattended.
+Any other switch is an error. Options other than `--cookbook` and
+`--install` may be given once. There is no `--yes`: the command runs
+unattended.
 
 A `path:` source, relative or starting with `~`, is made absolute, since
 the install runs inside the new app.
@@ -143,10 +145,13 @@ every command) is printed first, every time. `--dry-run` stops there.
    `HEX_OFFLINE` is set).
 1. **Create**: `mix igniter.new APP --no-git --yes`, with `--with`,
    `--with-args` and `--local`.
-2. **Install**: in APP, `mix composer_new.install PKG,... --yes` for the
-   `--install` packages, then
-   `mix composer_new.install composer@SRC,COOKBOOK@SRC,... --only dev,test --yes`.
-   The cookbooks' own deps come with them.
+2. **Install**: in APP,
+   `mix composer_new.install composer@SRC,COOKBOOK@SRC,... --only dev,test --yes`
+   (the cookbooks' own deps come with them), then
+   `mix composer_new.install PKG,... --yes` for the `--install` packages.
+   Composer goes first so that a framework that bundles a cookbook
+   compiles with composer present: Mix doesn't recompile it when composer
+   appears later.
 
    `composer_new.install` ships in this archive. It is
    `mix igniter.install`, except that it reads each `PKG@SOURCE` as

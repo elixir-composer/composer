@@ -104,7 +104,7 @@ defmodule ComposerNew.Ref do
 
   @doc """
   Like `install_spec/3`, for a whole `package[@spec]` string as
-  `--install`, `--cookbook` and `--extra-dep` take it.
+  `--install` and `--cookbook` take it.
   """
   @spec expand_package(String.t(), %{cwd: Path.t(), home: Path.t()}) :: String.t()
   def expand_package(string, env) do
