@@ -12,24 +12,14 @@ defmodule Composer.CbStd.Steps.Completions.Mix do
   "mix task completions are stale; run mix complete" (running `mix complete`
   alone is enough).
 
-  ## Why a fork
+  ## Completing after `mix help`
 
-  The mix_completions release on Hex (0.3.0) completes task names only right
-  after `mix`, so `mix help comp<Tab>` offers nothing. toupeira's fork
-  (branch `feat/help-completion`) also completes them after `mix help`; it is
-  upstream PR erikareads/mix_completions#2, which has not been merged. The
-  change is in the shell function, not the cache, so the step installs the
-  archive from the fork and rewrites `~/.complete/mix_autocomplete.bash`. An
-  installed archive whose `mix complete.bash` output does not complete after
-  `help` (the Hex release) is replaced by the fork.
-
-  ## Reverting to the Hex package
-
-  Once the PR is merged and released (a version after 0.3.0), set
-  `@archive_source` to `~w(hex mix_completions)`, remove the "Why a fork"
-  section and the fork's reference below. The `help` check can stay: the new
-  release passes it. An installed fork also passes it, so replace the fork
-  by hand with `mix archive.install hex mix_completions --force`.
+  mix_completions completes task names after `mix help` since 0.4.1 (upstream
+  PR erikareads/mix_completions#2); 0.3.0 completed them only right after
+  `mix`. The change is in the shell function, not the cache, so an installed
+  archive whose `mix complete.bash` output does not complete after `help` is
+  replaced by the Hex release and `~/.complete/mix_autocomplete.bash` is
+  rewritten.
 
   The completion script lives outside the project, so it is written directly
   and never shows in Igniter's diff.
@@ -37,9 +27,9 @@ defmodule Composer.CbStd.Steps.Completions.Mix do
   References:
 
   - https://erikarow.land/articles/mix-completions
+  - https://hex.pm/packages/mix_completions
   - https://github.com/erikareads/mix_completions
   - https://github.com/erikareads/mix_completions/pull/2
-  - https://github.com/toupeira/mix_completions/tree/feat/help-completion
   """
 
   use Composer.Step,
@@ -50,7 +40,7 @@ defmodule Composer.CbStd.Steps.Completions.Mix do
     stability: :experimental,
     tags: [:completions]
 
-  @archive_source ~w(github toupeira/mix_completions branch feat/help-completion)
+  @archive_source ~w(hex mix_completions)
   @complete_dir "~/.complete"
   @script_file "mix_autocomplete.bash"
   @help_case "[[ $prev == 'help' ]]"

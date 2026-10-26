@@ -337,7 +337,7 @@ as `"cb_std:<group>:<name>"`, e.g. `"cb_std:setup:credo"` for the id
 | `tidewave/tidewave_config`     | add    | Creates `.mcp.json` pointing at a local Tidewave MCP server (follows `hex:tidewave`)                                                       |
 | `oban_pro`                     | add    | Oban Pro 1.8: Pro engine, Cron/Lifeline/Pruner/Queues services, migration (requires a license and an Oban 2.24+ setup; follows `hex:oban`) |
 | `completions/composer`         | gen    | Installs composer's shell completion script in `~` (bash, zsh or fish)                                                                     |
-| `completions/mix`              | gen    | Installs mix_completions (fork) and caches the project's mix tasks                                                                         |
+| `completions/mix`              | gen    | Installs mix_completions and caches       the project's mix tasks                                                                         |
 | `echo`                         | debug  | Prints a message to stdout; changes nothing (for debugging recipes)                                                                        |
 
 Steps that pattern-match against `phx.new` output warn loudly when they find
@@ -453,7 +453,7 @@ mix composer.step.run cb_std:completions:composer -- --shell zsh  # or fish
 | `mix compo<TAB>`                 | [mix_completions]      | the task cache          |
 | `mix composer.<TAB>`             | mix_completions        | the task cache          |
 | `mix composer.recipe.show <TAB>` | composer's script      | `_build/composer/index` |
-| `mix help composer.rec<TAB>`     | mix_completions (fork) | the task cache          |
+| `mix help composer.rec<TAB>`     | mix_completions        | the task cache          |
 
 Composer's script completes step and recipe addresses from a plain-text
 index, so it never starts the BEAM, and hands every other `mix` completion

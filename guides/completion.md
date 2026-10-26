@@ -33,7 +33,7 @@ one into `~`. The
 | command_completion  | `mix compo<TAB>` -> `composer.new` | mix_completions        | project or global task cache |
 | composer_completion | `mix composer.<TAB>`               | mix_completions        | project task cache           |
 | cookbook_completion | `mix composer.recipe.show <TAB>`   | composer's script      | `_build/composer/index`      |
-| help_completion     | `mix help composer.rec<TAB>`       | mix_completions (fork) | project task cache           |
+| help_completion     | `mix help composer.rec<TAB>`       | mix_completions        | project task cache           |
 
 ### Task caches (command, composer and help completion)
 
@@ -70,16 +70,14 @@ A task cache has one `name<TAB>shortdoc` line per task.
   space after them); a leading `/` or `:` is the project's own cookbook
   (`self`); `step.run`'s comma lists complete their last item.
 
-### help_completion needs the fork
+### help_completion needs mix_completions 0.4.1
 
-The mix_completions release on Hex (0.3.0) completes task names only right
-after `mix`, so `mix help comp<TAB>` offers nothing. The fix,
-[erikareads/mix_completions#2], is in the generated shell function, not the
-cache, and is not yet released; the
-[toupeira fork](https://github.com/toupeira/mix_completions/tree/feat/help-completion)
-has it. The `cb_std:completions:mix` step installs the fork; its moduledoc
-has the procedure to revert to the Hex package once a release includes the
-fix. Composer's script passes `mix help ...` through unchanged either way.
+mix_completions 0.3.0 completes task names only right after `mix`, so
+`mix help comp<TAB>` offers nothing. The fix, [erikareads/mix_completions#2],
+is in the generated shell function, not the cache, and was released in
+0.4.1. The `cb_std:completions:mix` step replaces an older archive with the
+Hex release. Composer's script passes `mix help ...` through unchanged
+either way.
 
 ## Install order
 
