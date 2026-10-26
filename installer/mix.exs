@@ -17,7 +17,7 @@ defmodule ComposerNew.MixProject do
   #   * lib/mix/tasks/composer.new.ex - the --composer doc and the install
   #     failure hint both quote that default
   #   * README.md and ../CLAUDE.md - both say the versions match
-  @version "0.3.0"
+  @version "0.4.0"
   @source_url "https://github.com/elixir-composer/composer"
 
   def project do

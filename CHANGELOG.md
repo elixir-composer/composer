@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## v0.4.0 (2026-10-26)
+
+
+
+
+### Features:
+
+* Own shell completion and warn on stale caches by andyl
+
+* Add mix composer and show help when task args are missing by andyl
+
+* Address recipes with / and steps with :, scoped by prefix by andyl
+
+* Allow nested chapters under recipes/ by andyl
+
+* Add the kind/scope address grammar to Composer.Ref by andyl
+
+### Bug Fixes:
+
+* Recompile rewritten steps and prefer old meanings in lint --fix by andyl
+
+* Keep version requirements in composer.new installs by andyl
+
+* Allow selecting only recipe leaves by andyl
+
 ## v0.3.0 (2026-10-24)
 ### Breaking Changes:
 
