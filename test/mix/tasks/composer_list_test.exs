@@ -46,11 +46,11 @@ defmodule Mix.Tasks.Composer.ListTest do
 
   test "cookbook.list shows each cookbook with its counts" do
     output = run("composer.cookbook.list", [])
-    assert output =~ ~r/cb_std\s+composer\s+30 steps\s+1 recipes/
+    assert output =~ ~r/cb_std\s+composer\s+32 steps\s+2 recipes/
     assert output =~ ~r/fake_book\s+fake_book\s+\d+ steps\s+3 recipes\s+A fixture cookbook/
     assert output =~ ~r/mine\s+composer\s+0 steps\s+1 recipes/
 
-    assert %{"cookbooks" => [%{"name" => "cb_std", "steps" => 30} | _]} =
+    assert %{"cookbooks" => [%{"name" => "cb_std", "steps" => 32} | _]} =
              json("composer.cookbook.list", [])
   end
 
@@ -151,8 +151,9 @@ defmodule Mix.Tasks.Composer.ListTest do
 
     assert refs.(["fake_book", "mine"]) == refs.(["fake_book"]) ++ refs.(["mine"])
     assert refs.(["fake_book/main/"]) == ["fake_book/main/base", "fake_book/main/full"]
-    assert refs.(["cb_std"]) == ["cb_std/debug/echo"]
-    assert refs.(["cb_std/"]) == ["cb_std/debug/echo"]
+    assert refs.(["cb_std"]) == ["cb_std/completions/install", "cb_std/debug/echo"]
+    assert refs.(["cb_std/"]) == refs.(["cb_std"])
+    assert refs.(["cb_std/debug/"]) == ["cb_std/debug/echo"]
   end
 
   test "recipe.list takes nested and root stems", %{tmp_dir: dir} do

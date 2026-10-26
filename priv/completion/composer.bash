@@ -1,4 +1,4 @@
-# Bash completion for composer's mix tasks, from `mix composer.completion bash`.
+# Bash completion for composer's mix tasks, installed by `cb_std:completions:composer`.
 #
 # Completes addresses one segment at a time, from _build/composer/index,
 # without starting the BEAM: steps (cb_std:setup:credo) for

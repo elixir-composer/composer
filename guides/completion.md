@@ -20,9 +20,11 @@ mix_completions' function (`_mix_complete_complete` in bash, `_mix` in zsh).
 Neither program starts the BEAM on Tab; each reads a plain-text file that an
 earlier `mix` run wrote.
 
-`mix composer.completion bash|zsh|fish` prints composer's script, and
-`Composer.Completion` gives it, and its default install path, to installers
-such as cb_lab's `completions:composer` step.
+The scripts ship in composer's `priv/completion/`. `Composer.Completion`
+gives each one, and its default install path, to installers such as the
+`cb_std:completions:composer` step, which copies it into `~`. The
+`cb_std/completions/install` recipe runs that step and
+`cb_std:completions:mix`.
 
 ## The four completion types
 
@@ -75,7 +77,7 @@ after `mix`, so `mix help comp<TAB>` offers nothing. The fix,
 [erikareads/mix_completions#2], is in the generated shell function, not the
 cache, and is not yet released; the
 [toupeira fork](https://github.com/toupeira/mix_completions/tree/feat/help-completion)
-has it. cb_lab's `completions:mix` step installs the fork; its moduledoc
+has it. The `cb_std:completions:mix` step installs the fork; its moduledoc
 has the procedure to revert to the Hex package once a release includes the
 fix. Composer's script passes `mix help ...` through unchanged either way.
 
@@ -89,21 +91,20 @@ mix_completions'.
   `mix_autocomplete.bash` sorts before `mix_composer.bash`.
 
   ```bash
-  mix complete.bash > ~/.complete/mix_autocomplete.bash
-  mix composer.completion bash > ~/.complete/mix_composer.bash
+  mix composer.recipe.run cb_std/completions/install
   ```
 
 - **zsh:** put `_composer_mix` on `fpath` after mix_completions' `_mix`;
   it calls `_mix`, autoloading it if needed.
 
   ```bash
-  mix composer.completion zsh > ~/.zsh/functions/_composer_mix
+  mix composer.step.run cb_std:completions:composer -- --shell zsh
   ```
 
 - **fish:** see below.
 
   ```bash
-  mix composer.completion fish > ~/.config/fish/conf.d/composer_mix.fish
+  mix composer.step.run cb_std:completions:composer -- --shell fish
   ```
 
 ## Stale-cache hints

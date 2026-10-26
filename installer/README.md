@@ -5,7 +5,7 @@
 one command:
 
 ```bash
-mix composer.new my_app cb_lab/base/completions --with phx.new --with-args=--no-ecto
+mix composer.new my_app cb_std/completions/install --with phx.new --with-args=--no-ecto
 ```
 
 It drives `igniter.new` and Igniter's installer; it doesn't replace them.
@@ -52,10 +52,10 @@ REF is split on its first `@`: `COOKBOOK/CHAPTER/RECIPE` goes to
 
 ```bash
 # hex
-mix composer.new my_app cb_lab/base/completions
+mix composer.new my_app cb_lab/lv/base
 # github, default branch or pinned
-mix composer.new my_app cb_lab/base/completions@github:elixir-composer/cb_lab
-mix composer.new my_app cb_lab/base/completions@github:elixir-composer/cb_lab@v0.3.0
+mix composer.new my_app cb_lab/lv/base@github:elixir-composer/cb_lab
+mix composer.new my_app cb_lab/lv/base@github:elixir-composer/cb_lab@v0.3.0
 # a local checkout
 mix composer.new my_app cb_home/lv/base@path:~/src/Gen/cb_home --with phx.new
 # a base that is a package, not a task
@@ -141,7 +141,7 @@ The run stops at the first command that fails, and exits non-zero.
   retry is printed:
 
   ```bash
-  cd my_app && mix composer.recipe.run cb_lab/base/completions --gigalixr
+  cd my_app && mix composer.recipe.run cb_lab/lv/base --gigalixr
   ```
 
 - **The install failed with the default `--composer`**: that composer
@@ -160,10 +160,10 @@ machine, just as `igniter.new --install` does. To see what a recipe would do
 first:
 
 ```bash
-mix composer.new my_app cb_lab/base/completions@github:elixir-composer/cb_lab --no-recipe
+mix composer.new my_app cb_lab/lv/base@github:elixir-composer/cb_lab --no-recipe
 cd my_app
-mix composer.recipe.show cb_lab/base/completions
-mix composer.recipe.run cb_lab/base/completions --dry-run
+mix composer.recipe.show cb_lab/lv/base
+mix composer.recipe.run cb_lab/lv/base --dry-run
 ```
 
 ## License

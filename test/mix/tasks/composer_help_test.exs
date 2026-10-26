@@ -12,7 +12,7 @@ defmodule Mix.Tasks.Composer.HelpTest do
     refute output =~ "composer.step.help"
   end
 
-  for task <- ~w(composer.completion composer.gen.recipe composer.gen.step
+  for task <- ~w(composer.gen.recipe composer.gen.step
                  composer.recipe.edit composer.recipe.run composer.recipe.show
                  composer.step.edit composer.step.find composer.step.run
                  composer.step.show) do

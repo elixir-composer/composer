@@ -1,24 +1,18 @@
-defmodule Mix.Tasks.Composer.CompletionTest do
+defmodule Composer.CompletionApiTest do
   use ExUnit.Case, async: true
-
-  import ExUnit.CaptureIO
 
   alias Composer.Completion
 
   doctest Composer.Completion
 
-  test "prints a shell's script" do
+  test "gives each shell's script" do
     for shell <- Completion.shells() do
-      output = capture_io(fn -> Mix.Tasks.Composer.Completion.run([shell]) end)
-      assert output == Completion.script!(shell)
+      assert {:ok, script} = Completion.script(shell)
+      assert Completion.script!(shell) == script
     end
   end
 
-  test "an unknown shell raises the usage" do
-    assert_raise Mix.Error, "Usage: mix composer.completion bash|zsh|fish", fn ->
-      Mix.Tasks.Composer.Completion.run(["nope"])
-    end
-
+  test "an unknown shell is an error" do
     assert Completion.script("nope") == {:error, :unknown_shell}
     assert_raise ArgumentError, fn -> Completion.script!("nope") end
   end

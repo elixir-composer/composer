@@ -7,8 +7,8 @@ defmodule Mix.Tasks.Composer.New do
 
       mix composer.new APP [REF] [RECIPE-FLAGS] [OPTIONS]
 
-      mix composer.new my_app cb_lab/base/completions --with phx.new --with-args=--no-ecto
-      mix composer.new my_app cb_lab/base/completions@github:elixir-composer/cb_lab@v0.3.0
+      mix composer.new my_app cb_std/completions/install --with phx.new --with-args=--no-ecto
+      mix composer.new my_app cb_lab/lv/base@github:elixir-composer/cb_lab@v0.3.0
       mix composer.new my_app cb_home/lv/base@path:~/src/Gen/cb_home --with phx.new
       mix composer.new my_app cb_mine/phx/saas --oban-pro --gigalixir
 

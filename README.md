@@ -71,7 +71,7 @@ steps make changes and can render templates.
 | `composer.cookbook.list`                  | List discovered cookbooks                        |
 | `composer.gen.{step,recipe,cookbook}`     | Scaffold a step, recipe or cookbook              |
 | `composer.cookbook.{manifest,lint}`       | Write a cookbook's manifest; lint it             |
-| `composer.completion`, `composer.index`   | Shell completion                                 |
+| `composer.index`                          | Rebuild the shell completion index               |
 | `composer.lsp`                            | Language server for recipe files                 |
 
 Run `mix composer` to list them all with a one-line summary. A task run
@@ -118,7 +118,7 @@ command:
 ```bash
 mix archive.install hex igniter_new     # 0.5.32 or later
 mix archive.install hex composer_new
-mix composer.new my_app cb_lab/base/completions --with phx.new
+mix composer.new my_app cb_std/completions/install --with phx.new
 ```
 
 It runs `igniter.new`, installs composer and the cookbook as dev/test deps,
@@ -335,6 +335,8 @@ as `"cb_std:<group>:<name>"`, e.g. `"cb_std:setup:credo"` for the id
 | `cluster/libcluster`           | add    | Node clustering: dep, supervision child, Gossip topology in dev                                                                            |
 | `tidewave/tidewave_config`     | add    | Creates `.mcp.json` pointing at a local Tidewave MCP server (follows `hex:tidewave`)                                                       |
 | `oban_pro`                     | add    | Oban Pro 1.8: Pro engine, Cron/Lifeline/Pruner/Queues services, migration (requires a license and an Oban 2.24+ setup; follows `hex:oban`) |
+| `completions/composer`         | gen    | Installs composer's shell completion script in `~` (bash, zsh or fish)                                                                     |
+| `completions/mix`              | gen    | Installs mix_completions (fork) and caches the project's mix tasks                                                                         |
 | `echo`                         | debug  | Prints a message to stdout; changes nothing (for debugging recipes)                                                                        |
 
 Steps that pattern-match against `phx.new` output warn loudly when they find
@@ -441,7 +443,8 @@ against the applied project on disk, after everything else.
 ## Shell completion
 
 ```bash
-mix composer.completion bash > ~/.complete/mix_composer.bash   # or zsh, fish
+mix composer.recipe.run cb_std/completions/install            # mix_completions + bash
+mix composer.step.run cb_std:completions:composer -- --shell zsh  # or fish
 ```
 
 | You type                         | Completed by           | From                    |
@@ -461,8 +464,9 @@ to mix_completions. In bash, source it after mix_completions' script.
   installing or removing an archive, outside one.
 
 The script hints, once per session, when either is stale. The
-experimental `cb_lab:completions:composer` and `cb_lab:completions:mix`
-steps install composer's script and mix_completions for you. See the
+experimental `cb_std:completions:mix` and `cb_std:completions:composer`
+steps install mix_completions and composer's script; `--path` puts
+composer's script somewhere else. See the
 [completion guide](guides/completion.md) for how it all fits together.
 
 [mix_completions]: https://hex.pm/packages/mix_completions

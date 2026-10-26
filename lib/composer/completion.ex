@@ -1,7 +1,7 @@
 defmodule Composer.Completion do
   @moduledoc """
-  Composer's shell completion scripts, for `mix composer.completion` and for
-  installers in other packages.
+  Composer's shell completion scripts, for the `cb_std:completions:composer`
+  step and for installers in other packages.
 
   Each script completes step and recipe addresses for composer's tasks from
   `_build/composer/index` (see `Composer.Index`), without starting the BEAM:

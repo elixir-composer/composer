@@ -7,7 +7,9 @@
 # can define it.
 defmodule Composer.CbStd do
   @moduledoc """
-  Composer's built-in cookbook: steps for setting up a fresh `phx.new` app.
+  Composer's built-in cookbook: steps for setting up a fresh `phx.new` app,
+  and composer's own tooling (`completions/`, which installs shell
+  completion in `~`).
 
   List them with `mix composer.step.list --cookbook cb_std`.
   """

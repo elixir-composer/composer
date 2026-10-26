@@ -74,6 +74,6 @@ defmodule Composer do
     * `mix composer.step.list` / `.find` / `.help` / `.run`
     * `mix composer.recipe.list` / `.show` / `.run`
     * `mix composer.gen.cookbook` / `.step` / `.recipe`
-    * `mix composer.index`, `mix composer.completion`
+    * `mix composer.index`
   """
 end

@@ -5,8 +5,8 @@ defmodule Mix.Tasks.Composer.Recipe.List do
   Lists every cookbook's recipes with their shortdocs, in discovery order.
 
       $ mix composer.recipe.list
-        cb_lab/base/completions  CbLab's base recipe
-        cb_lab/ui/test           Scratch recipe for trying out UI steps
+        cb_std/completions/install  Installs shell completion for mix and composer
+        cb_lab/ui/test              Scratch recipe for trying out UI steps
 
       mix composer.recipe.list                 # every cookbook
       mix composer.recipe.list cb_lab          # one cookbook (or cb_lab/)

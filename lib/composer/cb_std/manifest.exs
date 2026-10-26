@@ -6,6 +6,10 @@
   package: :composer,
   recipes: [
     %{
+      id: "cb_std/completions/install",
+      shortdoc: "Installs shell completion for mix and composer"
+    },
+    %{
       id: "cb_std/debug/echo",
       shortdoc: "Shows how to print messages with cb_std:echo"
     }
@@ -49,6 +53,32 @@
       stability: :stable,
       summary: "Adds libcluster for node clustering",
       tags: []
+    },
+    %{
+      action: :gen,
+      capability: [:devtools],
+      conflicts: [],
+      frameworks: [],
+      id: "cb_std:completions:composer",
+      phase: :finalize,
+      provides: [],
+      requires: [],
+      stability: :experimental,
+      summary: "Installs composer's shell completion script",
+      tags: ["completions"]
+    },
+    %{
+      action: :gen,
+      capability: [:devtools],
+      conflicts: [],
+      frameworks: [],
+      id: "cb_std:completions:mix",
+      phase: :finalize,
+      provides: [],
+      requires: [],
+      stability: :experimental,
+      summary: "Caches mix task names and installs bash completion for mix",
+      tags: ["completions"]
     },
     %{
       action: :debug,
