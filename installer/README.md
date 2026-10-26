@@ -5,7 +5,8 @@
 one command:
 
 ```bash
-mix composer.new my_app cb_std/completions/install --with phx.new --with-args=--no-ecto
+mix composer.new my_app --recipe cb_std/completions/install \
+  --with phx.new --with-args=--no-ecto
 ```
 
 It drives `igniter.new` and Igniter's installer; it doesn't replace them.
@@ -29,16 +30,26 @@ with `mix archive.install hex igniter_new --force`.
 ## Usage
 
 ```
-mix composer.new APP [REF] [RECIPE-FLAGS] [OPTIONS]
+mix composer.new APP [--cookbook PKG]... [--recipe REF [--recipe-args ARGS]] [OPTIONS]
 ```
 
-APP comes first, as with `igniter.new` and `phx.new`. It may have a
-directory part (`/tmp/my_app`); its last segment must be a valid app name.
+APP comes first, as with `igniter.new` and `phx.new`, and is the only
+positional argument. It may have a directory part (`/tmp/my_app`); its
+last segment must be a valid app name. Everything else is a named option,
+so a script reads as what it does:
 
-### REF
+```bash
+mix composer.new my_app \
+  --cookbook cb_lab@github:elixir-composer/cb_lab \
+  --recipe cb_lab/phx/saas \
+  --recipe-args="--oban-pro --gigalixir" \
+  --with phx.new --with-args=--no-ecto
+```
+
+### Cookbooks
 
 ```
-REF    = COOKBOOK/CHAPTER/RECIPE[@SOURCE]
+--cookbook PKG[@SOURCE]
 SOURCE = <requirement>                 hex, kept as written: @~> 0.3, @>= 0.3.1
        | <version>                     hex: @0.3.1 is == 0.3.1, @0.3 is ~> 0.3 (no @: the latest)
        | github:OWNER/REPO[@GITREF]
@@ -46,86 +57,107 @@ SOURCE = <requirement>                 hex, kept as written: @~> 0.3, @>= 0.3.1
        | path:PATH
 ```
 
-REF is split on its first `@`: `COOKBOOK/CHAPTER/RECIPE` goes to
-`mix composer.recipe.run`, and `COOKBOOK@SOURCE` to
-`mix composer_new.install` (see [What it runs](#what-it-runs)).
+Each `--cookbook` is installed as a dev/test dep, with its own deps;
+repeat it for more than one. `cb_std` ships with composer, so it is never
+given here.
 
-```bash
-# hex
-mix composer.new my_app cb_lab/lv/base
-# github, default branch or pinned
-mix composer.new my_app cb_lab/lv/base@github:elixir-composer/cb_lab
-mix composer.new my_app cb_lab/lv/base@github:elixir-composer/cb_lab@v0.3.0
-# a local checkout
-mix composer.new my_app cb_home/lv/base@path:~/src/Gen/cb_home --with phx.new
-# a base that is a package, not a task
-mix composer.new my_blog cb_home/astral/min@path:~/src/Gen/cb_home \
-  --install astral@path:~/src/Fork/astral
-# recipe flags pass through to composer.recipe.run
-mix composer.new my_app cb_mine/phx/saas --oban-pro --gigalixir
+### Recipe
+
+```
+--recipe COOKBOOK/CHAPTER/RECIPE
+--recipe-args ARGS
 ```
 
-Rules:
+`--recipe` is the one recipe to run, a qualified address: a root
+(`/lv/base`), relative (`./base`) or bare (`base`) address is an error, as
+are step addresses (`cb_lab:lv:x`) and `hex:` addresses. A recipe takes no
+`@SOURCE`; its cookbook is:
 
-- REF is a qualified recipe address, `COOKBOOK/CHAPTER/RECIPE`: a root
-  (`/lv/base`), relative (`./base`) or bare (`base`) address is an error.
-- `cb_std/CHAPTER/RECIPE` installs no cookbook (`cb_std` ships with composer), so
-  it takes no `@SOURCE`.
-- Step addresses (`cb_lab:lv:x`) and `hex:` addresses are rejected.
-- Without REF, the app gets composer and nothing else. Run
-  `mix composer.init` in it to start the app's own cookbook.
+1. `cb_std`, which ships with composer; or
+2. the `--cookbook` of that name; or else
+3. the latest Hex release of that name. If Hex has no such package,
+   preflight fails before anything is created.
+
+If the cookbook has no such recipe, `mix composer.recipe.run` says so, and
+the app is left at its generation commit.
+
+`--recipe-args` are the recipe's flags, as one string split the way a
+shell would (`--recipe-args="--title 'My App' --oban-pro"`), and go to
+`mix composer.recipe.run`, which rejects any flag the recipe doesn't
+declare before it changes anything. It needs `--recipe`.
+
+```bash
+# from Hex: --recipe alone names the cookbook
+mix composer.new my_app --recipe cb_lab/lv/base
+# github, default branch or pinned
+mix composer.new my_app --cookbook cb_lab@github:elixir-composer/cb_lab --recipe cb_lab/lv/base
+mix composer.new my_app --cookbook cb_lab@github:elixir-composer/cb_lab@v0.3.0 \
+  --recipe cb_lab/lv/base
+# a local checkout
+mix composer.new my_app --cookbook cb_home@path:~/src/Gen/cb_home \
+  --recipe cb_home/lv/base --with phx.new
+# a base that is a package, not a task
+mix composer.new my_blog --cookbook cb_home@path:~/src/Gen/cb_home \
+  --recipe cb_home/astral/min --install astral@path:~/src/Fork/astral
+# two cookbooks, and recipe flags
+mix composer.new my_app --cookbook cb_mine@path:../cb_mine --cookbook cb_lab \
+  --recipe cb_mine/phx/saas --recipe-args="--oban-pro --gigalixir"
+```
+
+Without `--recipe`, the app gets composer and the `--cookbook`s, and no
+recipe runs. Without either, run `mix composer.init` in it to start the
+app's own cookbook.
 
 ### Options
 
 | Option                 | Meaning                                                                       |
 |------------------------|-------------------------------------------------------------------------------|
+| `--cookbook PKG`       | a cookbook, installed as a dev/test dep (repeatable); `PKG[@SOURCE]`          |
+| `--recipe REF`         | the recipe to run, `COOKBOOK/CHAPTER/RECIPE`                                  |
+| `--recipe-args ARGS`   | the recipe's flags; prefer `--recipe-args="--oban-pro --gigalixir"`           |
 | `--with TASK`          | the base generator, as in `igniter.new` (`phx.new`, ...); default `new`       |
 | `--with-args ARGS`     | arguments for `--with`; prefer `--with-args="--no-ecto --binary-id"`          |
 | `--install PKG[,PKG]`  | base packages installed with the app as prod deps (repeatable); `PKG[@SOURCE]` |
 | `--composer SOURCE`    | composer's source: `path:...`, `github:...` or a version; default `~> MAJOR.MINOR` of the archive |
-| `--extra-dep PKG`      | another dev/test dep, such as a second cookbook (repeatable); `PKG[@SOURCE]`  |
+| `--extra-dep PKG`      | another dev/test dep that isn't a cookbook (repeatable); `PKG[@SOURCE]`       |
 | `--igniter-local PATH` | a local igniter checkout, passed as `igniter.new --local` (made relative to APP's parent) |
 | `--reset`              | delete APP first                                                              |
 | `--dry-run`            | print the plan and run nothing                                                |
-| `--no-recipe`          | create, install and commit, but don't run the recipe                          |
 
-Every other switch is a recipe flag and goes to `mix composer.recipe.run`,
-which rejects any flag the recipe doesn't declare before it changes
-anything. Everything after `--` is a recipe flag too. There is no `--yes`:
-the command runs unattended.
+Any other switch is an error. Options other than `--cookbook`,
+`--install` and `--extra-dep` may be given once. There is no `--yes`: the
+command runs unattended.
 
 A `path:` source, relative or starting with `~`, is made absolute, since
 the install runs inside the new app.
 
-Composer reserves these option names: no recipe may declare a flag called
-`with`, `install`, `reset`, `dry_run`, and so on, and
-`mix composer.cookbook.lint` says so.
-
 ## What it runs
 
-The plan (app, cookbook, source, base generator and every command) is
-printed first, every time. `--dry-run` stops there.
+The plan (app, cookbooks and their sources, recipe, base generator and
+every command) is printed first, every time. `--dry-run` stops there.
 
-0. **Preflight**: the ref and options are valid; APP doesn't exist (unless
+0. **Preflight**: the options are valid; APP doesn't exist (unless
    `--reset`); `igniter_new` >= 0.5.32 is installed; the `--with` task's
-   archive is installed; `git` is on the PATH.
+   archive is installed; `git` is on the PATH; each cookbook that comes
+   from Hex is a Hex package (only a warning when Hex can't be reached or
+   `HEX_OFFLINE` is set).
 1. **Create**: `mix igniter.new APP --no-git --yes`, with `--with`,
    `--with-args` and `--local`.
 2. **Install**: in APP, `mix composer_new.install PKG,... --yes` for the
    `--install` packages, then
    `mix composer_new.install composer@SRC,COOKBOOK@SRC,... --only dev,test --yes`.
-   The cookbook's own deps come with it.
+   The cookbooks' own deps come with them.
 
    `composer_new.install` ships in this archive. It is
-   `mix igniter.install`, except that it reads each `PKG@SOURCE` as a REF's
-   SOURCE: `igniter.install` rejects a version requirement such as
+   `mix igniter.install`, except that it reads each `PKG@SOURCE` as
+   `--cookbook` does: `igniter.install` rejects a version requirement such as
    `~> 0.3`, while `composer_new.install` writes it to `mix.exs` as given.
 3. **Record**: in APP, `git init`, `git add -A`, and a commit whose message
    is the `mix composer.new` command line. `git log --reverse` shows how to
    rebuild the app, and `recipe.run` gets the clean tree it needs.
 4. **Run**: in APP, `mix composer.recipe.run COOKBOOK/CHAPTER/RECIPE
-   [RECIPE-FLAGS]`, which commits the recipe's changes. Skipped without a
-   REF, or with `--no-recipe`.
+   [RECIPE-ARGS]`, which commits the recipe's changes. Skipped without
+   `--recipe`.
 
 Each command is its own `mix` (or `git`) process, with its output streamed
 to the terminal.
@@ -136,8 +168,8 @@ The run stops at the first command that fails, and exits non-zero.
 
 - **Create or install failed**: APP is partial. Fix the cause and rerun the
   same command with `--reset`.
-- **The recipe failed** (a mistyped flag, an unmet `requires`, a step
-  error): APP is left at its generation commit, and the exact command to
+- **The recipe failed** (no such recipe, a mistyped flag, an unmet
+  `requires`, a step error): APP is left at its generation commit, and the exact command to
   retry is printed:
 
   ```bash
@@ -157,10 +189,10 @@ in a project with a `package:` section.
 
 A cookbook from `@github:` or `@git:` runs someone else's code on your
 machine, just as `igniter.new --install` does. To see what a recipe would do
-first:
+first, give the `--cookbook` without `--recipe`:
 
 ```bash
-mix composer.new my_app cb_lab/lv/base@github:elixir-composer/cb_lab --no-recipe
+mix composer.new my_app --cookbook cb_lab@github:elixir-composer/cb_lab
 cd my_app
 mix composer.recipe.show cb_lab/lv/base
 mix composer.recipe.run cb_lab/lv/base --dry-run

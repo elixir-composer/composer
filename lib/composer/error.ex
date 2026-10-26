@@ -525,24 +525,15 @@ defmodule Composer.Error do
   end
 
   def message({:reserved_flag, ref, flag}) do
-    by =
-      if Composer.Recipe.archive_flag?(flag),
-        do: "mix composer.new, which passes every other switch to the recipe",
-        else: "mix composer.recipe.run"
-
     """
     Recipe #{ref} declares the flag #{inspect(flag)}, but --#{dashed(flag)} is \
-    reserved by #{by}. Rename the #{flag}: flag (and its if: :#{flag}).
+    reserved by mix composer.recipe.run. Rename the #{flag}: flag (and its if: :#{flag}).
     """
   end
 
   def message({:reserved_flag, flag}) do
-    by =
-      if Composer.Recipe.archive_flag?(flag),
-        do: "mix composer.new",
-        else: "mix composer.recipe.run"
-
-    "Flag :#{flag} is reserved by #{by}; rename the #{flag}: flag (and its if: :#{flag}) in your recipes"
+    "Flag :#{flag} is reserved by mix composer.recipe.run; " <>
+      "rename the #{flag}: flag (and its if: :#{flag}) in your recipes"
   end
 
   def message({:requires_unmet, failures}) do

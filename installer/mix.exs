@@ -35,10 +35,10 @@ defmodule ComposerNew.MixProject do
     ]
   end
 
-  # An archive loads into every Mix project, so it starts nothing and needs
-  # no applications beyond what Mix already runs.
+  # An archive loads into every Mix project, so it starts nothing. The OTP
+  # applications listed are those preflight's Hex lookup starts itself.
   def application do
-    [extra_applications: []]
+    [extra_applications: [:inets, :ssl, :public_key]]
   end
 
   # Never a runtime dep: an archive can't carry deps.

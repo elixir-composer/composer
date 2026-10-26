@@ -1,9 +1,9 @@
 defmodule ComposerNew.Ref do
   @moduledoc """
-  Parses a `mix composer.new` recipe address: `COOKBOOK/CHAPTER/RECIPE`,
-  with an optional `@SOURCE` naming where the cookbook comes from.
+  Parses a `mix composer.new` recipe address, `COOKBOOK/CHAPTER/RECIPE`,
+  as `--recipe` takes it.
 
-      iex> ComposerNew.Ref.parse("cb_lab/lv/base@github:elixir-composer/cb_lab@v0.3.0")
+      iex> ComposerNew.Ref.parse("cb_lab/lv/base")
       {:ok,
        %{
          kind: :recipe,
@@ -11,8 +11,8 @@ defmodule ComposerNew.Ref do
          cookbook: "cb_lab",
          up: 0,
          segments: ["lv", "base"],
-         source: [github: "elixir-composer/cb_lab", ref: "v0.3.0"],
-         spec: "github:elixir-composer/cb_lab@v0.3.0"
+         source: [],
+         spec: nil
        }}
 
   This is a copy of the address grammar of `Composer.Ref` (the archive
@@ -26,17 +26,15 @@ defmodule ComposerNew.Ref do
       bare name is a search
     * names are lowercase `[a-z0-9_]`; `.` and `..` only begin an address;
       one kind of separator per address; relative steps are reserved
-    * `hex:` takes one package name; a source is a version (`3.5.0` is
-      `== 3.5.0`, a partial `3.5` is `~> 3.0`, Igniter's rule, and a
-      requirement such as `~> 3.5` is kept), `github:OWNER/REPO[@GITREF]`,
-      `git:URL` or `path:PATH`
+    * only `hex:` takes an `@` source, and one package name; a source is a
+      version (`3.5.0` is `== 3.5.0`, a partial `3.5` is `~> 3.0`,
+      Igniter's rule, and a requirement such as `~> 3.5` is kept),
+      `github:OWNER/REPO[@GITREF]`, `git:URL` or `path:PATH`
 
-  The grammar differs from composer's in one place: here a recipe address
-  takes an `@SOURCE` too, naming where the cookbook is installed from.
   `parse_address/1` is the shared grammar; `parse/1` adds the archive's
-  rules: the address is a qualified recipe (no root, relative, search,
-  step or `hex:` address), and `cb_std/`, which ships with composer, takes
-  no source.
+  rule: the address is a qualified recipe (no root, relative, search,
+  step or `hex:` address). Where a recipe's cookbook comes from is
+  `--cookbook`'s business, so a recipe takes no source.
 
   Parsing never creates atoms.
   """
@@ -56,16 +54,15 @@ defmodule ComposerNew.Ref do
           spec: String.t() | nil
         }
 
-  @example "cb_lab/lv/base@github:elixir-composer/cb_lab@v0.3.0"
+  @example "cb_lab/lv/base"
 
   @doc """
-  Parses a recipe address for `mix composer.new`. `spec` is the text after
-  the `@` as written, or `nil`; `source` is its parsed form (`[]` for none,
-  meaning the latest Hex release).
+  Parses a recipe address for `mix composer.new`'s `--recipe`.
   """
   @spec parse(String.t()) :: {:ok, t()} | {:error, String.t()}
   def parse(string) when is_binary(string) do
-    with {:ok, ref} <- parse_address(string),
+    with :ok <- no_source(string),
+         {:ok, ref} <- parse_address(string),
          :ok <- archive_rules(string, ref),
          do: {:ok, ref}
   end
@@ -107,7 +104,7 @@ defmodule ComposerNew.Ref do
 
   @doc """
   Like `install_spec/3`, for a whole `package[@spec]` string as
-  `--install` and `--extra-dep` take it.
+  `--install`, `--cookbook` and `--extra-dep` take it.
   """
   @spec expand_package(String.t(), %{cwd: Path.t(), home: Path.t()}) :: String.t()
   def expand_package(string, env) do
@@ -241,7 +238,6 @@ defmodule ComposerNew.Ref do
 
   defp name_reason(name), do: "#{inspect(name)} is not a name; names are lowercase [a-z0-9_]"
 
-  # Unlike Composer.Ref, a recipe takes a source: where its cookbook comes from.
   defp address_source(_ref, nil, _original, _invalid), do: {:ok, []}
 
   defp address_source(%{cookbook: "hex", segments: [package]}, spec, original, invalid) do
@@ -256,9 +252,6 @@ defmodule ComposerNew.Ref do
     end
   end
 
-  defp address_source(%{kind: :recipe, scope: :qualified}, spec, original, _invalid),
-    do: parse_spec(original, spec)
-
   defp address_source(%{segments: segments}, spec, _original, invalid) do
     invalid.(
       "only a hex: address takes an @ source; for a Hex package write " <>
@@ -266,9 +259,29 @@ defmodule ComposerNew.Ref do
     )
   end
 
-  defp archive_rules(original, %{kind: :recipe, scope: :qualified, cookbook: "cb_std", spec: spec})
-       when spec != nil,
-       do: {:error, invalid(original, "cb_std ships with composer; drop the @source")}
+  # A recipe with an @ source was the old REF form; point at --cookbook.
+  defp no_source(string) do
+    case split(string) do
+      {name, spec} when is_binary(spec) ->
+        if String.contains?(name, "/") and not String.starts_with?(name, ["/", "."]) do
+          [cookbook | _] = String.split(name, "/")
+
+          why =
+            if cookbook == "cb_std",
+              do: "cb_std ships with composer; drop the @source",
+              else:
+                "a recipe takes no @source; give its cookbook's with " <>
+                  "--cookbook #{String.replace(cookbook, "-", "_")}@#{spec}"
+
+          {:error, invalid(string, why)}
+        else
+          :ok
+        end
+
+      _ ->
+        :ok
+    end
+  end
 
   defp archive_rules(original, %{kind: :recipe, scope: :qualified, segments: [_]}),
     do:

@@ -87,32 +87,32 @@ defmodule Composer.Recipe.ChapterTest do
     assert Error.message(reason) =~ ~s(flags: [credo: "What --credo does"])
   end
 
-  test "a flag named like a mix composer.new option is reserved" do
-    assert {:error, {:reserved_flag, "mine/reserved_flag/base", :with} = reason} =
+  test "a flag named like a mix composer.recipe.run option is reserved" do
+    assert {:error, {:reserved_flag, "mine/reserved_flag/base", :yes} = reason} =
              load("reserved_flag")
 
-    assert Error.message(reason) =~ "--with is reserved by mix composer.new"
+    assert Error.message(reason) =~ "--yes is reserved by mix composer.recipe.run"
 
     {term, _} = Code.eval_file(fixture("reserved_flag"))
     {[], errors} = Chapter.check(term, fixture("reserved_flag"), "mine")
 
     assert Enum.sort(errors) == [
-             {:reserved_flag, "mine/reserved_flag/base", :extra_dep},
-             {:reserved_flag, "mine/reserved_flag/base", :with}
+             {:reserved_flag, "mine/reserved_flag/base", :no_commit},
+             {:reserved_flag, "mine/reserved_flag/base", :yes}
            ]
   end
 
-  test "reserved flags cover recipe.run, Igniter and mix composer.new" do
+  test "reserved flags cover recipe.run and Igniter, but not mix composer.new" do
     reserved = Recipe.reserved_flags()
 
-    for flag <- ~w(no_commit yes dry_run only with with_args install composer extra_dep
-                   igniter_local reset no_recipe recipe)a,
+    for flag <- ~w(no_commit yes dry_run only)a,
         do: assert(flag in reserved, "#{flag} is not reserved")
 
+    # composer.new takes recipe flags in --recipe-args, apart from its own options.
+    for flag <- ~w(with with_args install composer cookbook recipe extra_dep reset)a,
+        do: refute(flag in reserved, "#{flag} is reserved")
+
     assert reserved == Enum.uniq(reserved)
-    assert Recipe.archive_flag?(:with_args)
-    refute Recipe.archive_flag?(:dry_run)
-    refute Recipe.archive_flag?(:no_commit)
   end
 
   test "check/3 reports every problem" do

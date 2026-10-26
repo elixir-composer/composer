@@ -11,7 +11,8 @@ defmodule ComposerNew.IntegrationTest do
   @installer Path.expand("../..", __DIR__)
   @composer Path.dirname(@installer)
   @fixture Path.join(@composer, "test/fixtures/fake_dep")
-  @ref "fake_dep:main/default@path:#{@fixture}"
+  @cookbook ["--cookbook", "fake_dep@path:#{@fixture}"]
+  @recipe ["--recipe", "fake_dep/main/default"]
 
   setup_all do
     archives =
@@ -55,14 +56,18 @@ defmodule ComposerNew.IntegrationTest do
     tmp_dir: dir,
     archives: archives
   } do
-    args = ["tmp_app", @ref, "--composer", "path:#{@composer}"]
+    args = ["tmp_app" | @cookbook] ++ @recipe ++ ["--composer", "path:#{@composer}"]
     {out, status} = composer_new(args, dir, archives)
     assert status == 0, out
 
     app = Path.join(dir, "tmp_app")
     assert [first, second] = log(app)
-    assert first == "mix composer.new tmp_app #{@ref} --composer path:#{@composer}"
-    assert second =~ "fake_dep:main/default"
+
+    assert first ==
+             "mix composer.new tmp_app --cookbook fake_dep@path:#{@fixture} " <>
+               "--recipe fake_dep/main/default --composer path:#{@composer}"
+
+    assert second =~ "fake_dep/main/default"
     assert File.exists?(Path.join(app, "hi.txt"))
 
     {out, status} =
@@ -76,9 +81,9 @@ defmodule ComposerNew.IntegrationTest do
   end
 
   test "--dry-run prints the commands and creates nothing", %{tmp_dir: dir, archives: archives} do
-    {out, 0} = composer_new(["dry_app", @ref, "--dry-run"], dir, archives)
+    {out, 0} = composer_new(["dry_app" | @cookbook] ++ @recipe ++ ["--dry-run"], dir, archives)
     assert out =~ "mix igniter.new dry_app --no-git --yes"
-    assert out =~ "mix composer.recipe.run fake_dep:main/default"
+    assert out =~ "mix composer.recipe.run fake_dep/main/default"
     assert out =~ "Dry run: nothing was run."
     refute File.exists?(Path.join(dir, "dry_app"))
   end
@@ -87,7 +92,10 @@ defmodule ComposerNew.IntegrationTest do
     tmp_dir: dir,
     archives: archives
   } do
-    args = ["bad_app", @ref, "--composer", "path:#{@composer}", "--no-such-flag"]
+    args =
+      ["bad_app" | @cookbook] ++
+        @recipe ++ ["--recipe-args=--no-such-flag", "--composer", "path:#{@composer}"]
+
     {out, status} = composer_new(args, dir, archives)
     assert status != 0
 
@@ -97,7 +105,22 @@ defmodule ComposerNew.IntegrationTest do
     assert out =~ "is at its generation commit"
 
     assert out =~
-             "cd #{app} && mix composer.recipe.run fake_dep:main/default --no-such-flag"
+             "cd #{app} && mix composer.recipe.run fake_dep/main/default --no-such-flag"
+  end
+
+  test "a recipe the cookbook doesn't have fails, after the generation commit", %{
+    tmp_dir: dir,
+    archives: archives
+  } do
+    args =
+      ["nope_app" | @cookbook] ++
+        ["--recipe", "fake_dep/main/no_such_recipe", "--composer", "path:#{@composer}"]
+
+    {out, status} = composer_new(args, dir, archives)
+    assert status != 0
+    assert out =~ "no_such_recipe"
+    assert out =~ "is at its generation commit"
+    assert [_only] = log(Path.join(dir, "nope_app"))
   end
 
   test "the default composer comes from Hex, and requirements are kept as written", %{

@@ -31,5 +31,5 @@
       {"a:b:c", if: :x}
     ]
   ],
-  reserved: [shortdoc: "x", flags: [with: "W"], steps: []]
+  reserved: [shortdoc: "x", flags: [yes: "Y"], steps: []]
 ]

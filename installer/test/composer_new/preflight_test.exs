@@ -9,7 +9,8 @@ defmodule ComposerNew.PreflightTest do
     exists?: &__MODULE__.never/1,
     task?: &__MODULE__.always/1,
     igniter_new_version: &__MODULE__.current/0,
-    executable?: &__MODULE__.always/1
+    executable?: &__MODULE__.always/1,
+    hex_package?: &__MODULE__.always/1
   ]
 
   def never(_), do: false
@@ -63,15 +64,52 @@ defmodule ComposerNew.PreflightTest do
     assert {:ok, []} = check(~w(my_app), no_with)
   end
 
+  describe "cookbooks from Hex" do
+    test "the cookbook --recipe implies must be on Hex" do
+      assert {:ok, []} = check(~w(my_app --recipe cb_lab/lv/base))
+
+      assert {:error, [message]} =
+               check(~w(my_app --recipe cb_lab/lv/base), hex_package?: &never/1)
+
+      assert message =~ "--recipe names the cb_lab cookbook, which isn't given with --cookbook"
+      assert message =~ "--cookbook cb_lab@SOURCE"
+    end
+
+    test "a --cookbook with no source, or a version, must be on Hex" do
+      assert {:error, [message]} = check(~w(my_app --cookbook cb_lab), hex_package?: &never/1)
+      assert message =~ "--cookbook cb_lab: there is no cb_lab package on Hex"
+
+      assert {:error, [_]} = check(~w(my_app --cookbook cb_lab@0.3), hex_package?: &never/1)
+    end
+
+    test "other sources, and cb_std, aren't looked up" do
+      lookup = [hex_package?: fn name -> flunk("looked up #{name}") end]
+
+      assert {:ok, []} =
+               check(~w(my_app --cookbook cb_lab@path:../x --recipe cb_lab/lv/base), lookup)
+
+      assert {:ok, []} = check(~w(my_app --cookbook cb_lab@github:o/r), lookup)
+      assert {:ok, []} = check(~w(my_app --recipe cb_std/debug/echo), lookup)
+    end
+
+    test "a failed lookup only warns" do
+      assert {:ok, [warning]} =
+               check(~w(my_app --recipe cb_lab/lv/base), hex_package?: fn _ -> :unknown end)
+
+      assert warning =~ "Can't check Hex for the cb_lab cookbook"
+    end
+  end
+
   test "reports every problem at once" do
     assert {:error, problems} =
-             check(~w(my_app --with phx.new),
+             check(~w(my_app --with phx.new --recipe cb_lab/lv/base),
                exists?: &always/1,
                task?: &never/1,
-               executable?: &never/1
+               executable?: &never/1,
+               hex_package?: &never/1
              )
 
-    assert length(problems) == 4
-    assert List.last(problems) =~ "git is required"
+    assert length(problems) == 5
+    assert List.last(problems) =~ "isn't on Hex"
   end
 end

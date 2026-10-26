@@ -11,13 +11,17 @@ defmodule ComposerNew.Plan do
       mix igniter.new APP --no-git --yes [--local REL] [--with TASK]
           [--with-args=ARGS]
       (in APP) mix composer_new.install PKG,... --yes      (--install PKG,...)
-      (in APP) mix composer_new.install composer@SRC[,COOKBOOK[@SRC]][,EXTRA,...]
+      (in APP) mix composer_new.install composer@SRC[,COOKBOOK[@SRC],...][,EXTRA,...]
           --only dev,test --yes
       (in APP) git init
       (in APP) git add -A
       (in APP) git commit -m "mix composer.new <argv as typed>"
-      (in APP) mix composer.recipe.run COOKBOOK/CHAPTER/RECIPE [FLAGS]
-                                               (REF given, no --no-recipe)
+      (in APP) mix composer.recipe.run COOKBOOK/CHAPTER/RECIPE [RECIPE-ARGS]
+                                                            (--recipe)
+
+  The cookbooks are each `--cookbook`, then the cookbook `--recipe` names,
+  from Hex, when it is neither `cb_std` (which ships with composer) nor
+  given with `--cookbook`.
 
   `igniter.new` gets `--no-git`, so the history starts with the commit
   above rather than with igniter's own. `git init` is harmless in a repo
@@ -40,23 +44,46 @@ defmodule ComposerNew.Plan do
   @type step :: Command.t() | {:rm_rf, Path.t()}
   @type t :: %__MODULE__{summary: map(), commands: [step()], parsed: Argv.t()}
 
+  @typedoc """
+  A cookbook to install: its `name`, its `mix composer_new.install`
+  argument, a description of its source, and whether it comes from Hex
+  (`hex?`, which preflight checks) because `--recipe` named it (`implied?`).
+  """
+  @type cookbook :: %{
+          name: String.t(),
+          spec: String.t(),
+          source: String.t(),
+          hex?: boolean(),
+          implied?: boolean()
+        }
+
   @app_name ~r/\A[a-z][a-z0-9_]*\z/
 
   @doc "Builds the plan for `argv`."
   @spec build([String.t()], env()) :: {:ok, t()} | {:error, String.t()}
   def build(argv, env) do
     with {:ok, parsed} <- Argv.parse(argv),
-         {:ok, ref} <- parse_ref(parsed.ref),
-         {:ok, composer} <- composer_spec(parsed.opts[:composer], env),
-         {:ok, install} <- packages(parsed.opts[:install], "--install", env),
-         {:ok, extra} <- packages(parsed.opts[:extra_dep], "--extra-dep", env),
+         opts = parsed.opts,
+         {:ok, ref} <- parse_recipe(opts[:recipe]),
+         {:ok, composer} <- composer_spec(opts[:composer], env),
+         {:ok, install} <- packages(opts[:install], "--install", env),
+         {:ok, cookbooks} <- cookbooks(opts[:cookbook], ref, env),
+         {:ok, extra} <- packages(opts[:extra_dep], "--extra-dep", env),
+         :ok <- distinct(cookbooks, opts[:extra_dep]),
          :ok <- check_app(parsed.app) do
-      {:ok, plan(argv, parsed, ref, %{composer: composer, install: install, extra: extra}, env)}
+      packages = %{composer: composer, install: install, cookbooks: cookbooks, extra: extra}
+      {:ok, plan(argv, parsed, ref, packages, env)}
     end
   end
 
-  defp parse_ref(nil), do: {:ok, nil}
-  defp parse_ref(string), do: Ref.parse(string)
+  defp parse_recipe(nil), do: {:ok, nil}
+
+  defp parse_recipe(string) do
+    case Ref.parse(string) do
+      {:ok, ref} -> {:ok, ref}
+      {:error, message} -> {:error, "--recipe: " <> message}
+    end
+  end
 
   @doc """
   The composer requirement an app gets without `--composer`: this
@@ -91,6 +118,79 @@ defmodule ComposerNew.Plan do
     end)
   end
 
+  defp cookbooks(strings, ref, env) do
+    given =
+      Enum.reduce_while(strings, {:ok, []}, fn string, {:ok, acc} ->
+        case cookbook(string, env) do
+          {:ok, cookbook} -> {:cont, {:ok, acc ++ [cookbook]}}
+          {:error, message} -> {:halt, {:error, "--cookbook: " <> message}}
+        end
+      end)
+
+    with {:ok, given} <- given do
+      names = Enum.map(given, & &1.name)
+
+      cond do
+        names != Enum.uniq(names) ->
+          {:error, "--cookbook #{hd(names -- Enum.uniq(names))} is given more than once"}
+
+        ref == nil or ref.cookbook == "cb_std" or ref.cookbook in names ->
+          {:ok, given}
+
+        true ->
+          implied = %{
+            name: ref.cookbook,
+            spec: ref.cookbook,
+            source: "hex, latest; named by --recipe",
+            hex?: true,
+            implied?: true
+          }
+
+          {:ok, given ++ [implied]}
+      end
+    end
+  end
+
+  defp cookbook(string, env) do
+    with {:ok, dep} <- Dep.parse(string) do
+      if dep.name == "cb_std" do
+        {:error, "cb_std ships with composer; there is nothing to install"}
+      else
+        {:ok,
+         %{
+           name: dep.name,
+           spec: Ref.expand_package(string, env),
+           source: describe_source(string),
+           hex?: dep.opts == [] and hex_source?(dep.source),
+           implied?: false
+         }}
+      end
+    end
+  end
+
+  defp hex_source?([]), do: true
+  defp hex_source?(version: _), do: true
+  defp hex_source?(_source), do: false
+
+  defp describe_source(string) do
+    case String.split(String.trim(string), "@", parts: 2) do
+      [_name] -> "hex, latest"
+      [_name, spec] -> spec
+    end
+  end
+
+  # A package given with both --cookbook and --extra-dep would be installed twice.
+  defp distinct(cookbooks, extra_deps) do
+    names = MapSet.new(cookbooks, & &1.name)
+
+    Enum.find_value(extra_deps, :ok, fn string ->
+      {:ok, %{name: name}} = Dep.parse(string)
+
+      if name in names,
+        do: {:error, "--extra-dep #{string}: #{name} is a cookbook; give it only with --cookbook"}
+    end)
+  end
+
   defp check_app(app) do
     name = Path.basename(app)
 
@@ -110,9 +210,11 @@ defmodule ComposerNew.Plan do
 
     dir = Ref.expand(app_arg, env)
     install = packages.install
-    deps = [packages.composer | List.wrap(cookbook_spec(ref, env))] ++ packages.extra
+    cookbooks = packages.cookbooks
+    deps = [packages.composer | Enum.map(cookbooks, & &1.spec)] ++ packages.extra
 
-    recipe = if ref && not opts[:no_recipe], do: Ref.recipe(ref)
+    recipe = ref && Ref.recipe(ref)
+    recipe_args = if opts[:recipe_args], do: OptionParser.split(opts[:recipe_args]), else: []
 
     create =
       ["igniter.new", app_arg, "--no-git", "--yes"] ++
@@ -157,7 +259,7 @@ defmodule ComposerNew.Plan do
             %Command{
               label: :run,
               cmd: "mix",
-              args: ["composer.recipe.run", recipe | parsed.recipe_flags],
+              args: ["composer.recipe.run", recipe | recipe_args],
               cd: dir
             }
           ],
@@ -167,8 +269,7 @@ defmodule ComposerNew.Plan do
     summary = %{
       app: Path.basename(dir),
       dir: dir,
-      cookbook: ref && ref.cookbook,
-      source: source(ref),
+      cookbooks: cookbooks,
       recipe: recipe,
       base: base(opts),
       install: install,
@@ -178,11 +279,6 @@ defmodule ComposerNew.Plan do
 
     %__MODULE__{summary: summary, commands: commands, parsed: parsed}
   end
-
-  # A cb_std/ recipe needs no cookbook install: cb_std ships with composer.
-  defp cookbook_spec(nil, _env), do: nil
-  defp cookbook_spec(%{cookbook: "cb_std"}, _env), do: nil
-  defp cookbook_spec(ref, env), do: Ref.install_spec(ref.cookbook, ref.spec, env)
 
   # igniter.new writes `path: Path.join("..", local)` into the app's mix.exs,
   # so --local must be relative to the app's parent directory.
@@ -194,11 +290,6 @@ defmodule ComposerNew.Plan do
   end
 
   defp message(argv), do: Command.join(["mix", "composer.new" | argv])
-
-  defp source(nil), do: nil
-  defp source(%{cookbook: "cb_std"}), do: "ships with composer"
-  defp source(%{spec: nil}), do: "hex, latest"
-  defp source(%{spec: spec}), do: spec
 
   defp base(opts) do
     with_args = if opts[:with_args], do: " " <> opts[:with_args], else: ""

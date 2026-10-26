@@ -8,7 +8,7 @@ defmodule Mix.Tasks.ComposerNew.Install do
 
       mix composer_new.install 'composer@~> 0.3,cb_lab@github:elixir-composer/cb_lab' --only dev,test --yes
 
-  SOURCE is written as in a `mix composer.new` REF: a version (`0.3.1`,
+  SOURCE is written as in `mix composer.new --cookbook`: a version (`0.3.1`,
   `0.3`) or a version requirement (`~> 0.3`, `>= 1.0.0`), `github:`,
   `git:` or `path:`; with no SOURCE, the latest Hex release. Unlike
   `mix igniter.install`, a requirement is written to `mix.exs` as given

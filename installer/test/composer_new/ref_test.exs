@@ -34,16 +34,20 @@ defmodule ComposerNew.RefTest do
     end
   end
 
-  test "keeps the spec as written" do
-    assert {:ok, %{spec: "path:../cb-lab"}} = Ref.parse("cb-lab/lv/base@path:../cb-lab")
-    assert {:ok, %{spec: nil}} = Ref.parse("cb_lab/lv/base")
-    assert Ref.recipe(elem(Ref.parse("cb_lab/ash/ui/base@0.3"), 1)) == "cb_lab/ash/ui/base"
+  test "recipe/1 is the address composer.recipe.run takes" do
+    assert Ref.recipe(elem(Ref.parse("cb-lab/ash/ui/base"), 1)) == "cb_lab/ash/ui/base"
   end
 
   describe "archive rules" do
-    test "accepts a qualified recipe with a source" do
-      assert {:ok, %{cookbook: "cb_lab", segments: ["lv", "base"], source: [github: _, ref: _]}} =
-               Ref.parse("cb_lab/lv/base@github:elixir-composer/cb_lab@v0.3.0")
+    test "accepts a qualified recipe" do
+      assert {:ok, %{cookbook: "cb_lab", segments: ["lv", "base"], source: []}} =
+               Ref.parse("cb_lab/lv/base")
+    end
+
+    test "a recipe with a source points at --cookbook" do
+      assert {:error, message} = Ref.parse("cb-lab/lv/base@github:o/cb_lab@v0.3.0")
+      assert message =~ "a recipe takes no @source"
+      assert message =~ "--cookbook cb_lab@github:o/cb_lab@v0.3.0"
     end
 
     test "rejects root, relative and search addresses" do
@@ -54,7 +58,7 @@ defmodule ComposerNew.RefTest do
           ] do
         assert {:error, message} = Ref.parse(address)
         assert message =~ why
-        assert message =~ "cb_lab/lv/base@"
+        assert message =~ "as in cb_lab/lv/base"
       end
     end
 

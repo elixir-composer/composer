@@ -2,20 +2,28 @@ defmodule Mix.Tasks.Composer.New do
   @shortdoc "Creates an Elixir app and applies a composer recipe"
 
   @moduledoc """
-  Creates an app with `igniter.new`, installs composer and a cookbook,
+  Creates an app with `igniter.new`, installs composer and cookbooks,
   records the command line as the first commit, and runs a recipe.
 
-      mix composer.new APP [REF] [RECIPE-FLAGS] [OPTIONS]
+      mix composer.new APP [--cookbook PKG]... [--recipe REF [--recipe-args ARGS]] [OPTIONS]
 
-      mix composer.new my_app cb_std/completions/install --with phx.new --with-args=--no-ecto
-      mix composer.new my_app cb_lab/lv/base@github:elixir-composer/cb_lab@v0.3.0
-      mix composer.new my_app cb_home/lv/base@path:~/src/Gen/cb_home --with phx.new
-      mix composer.new my_app cb_mine/phx/saas --oban-pro --gigalixir
+      mix composer.new my_app --recipe cb_std/completions/install \\
+        --with phx.new --with-args=--no-ecto
+      mix composer.new my_app --cookbook cb_lab@github:elixir-composer/cb_lab@v0.3.0 \\
+        --recipe cb_lab/lv/base
+      mix composer.new my_app --cookbook cb_home@path:~/src/Gen/cb_home \\
+        --recipe cb_home/lv/base --with phx.new
+      mix composer.new my_app --recipe cb_mine/phx/saas --recipe-args="--oban-pro --gigalixir"
 
-  ## REF
+  Without `--recipe`, the app gets composer and the `--cookbook`s only:
+  run a recipe in it later, or `mix composer.init` to start your own
+  cookbook.
 
-  `COOKBOOK/CHAPTER/RECIPE[@SOURCE]`, where SOURCE says where the cookbook
-  comes from, as in `mix igniter.install`:
+  ## Cookbooks
+
+  `--cookbook PKG[@SOURCE]` installs a cookbook as a dev/test dep, and may
+  be repeated. SOURCE says where it comes from, as in
+  `mix igniter.install`:
 
     * none - the latest Hex release
     * a version requirement, `@~> 0.3` or `@>= 0.3.1`, kept as written
@@ -24,11 +32,25 @@ defmodule Mix.Tasks.Composer.New do
     * `@git:URL`
     * `@path:PATH`
 
-  REF is a qualified recipe address: root (`/lv/base`), relative
-  (`./base`) and bare (`base`) addresses are rejected, as are steps and
-  `hex:` packages. `cb_std/CHAPTER/RECIPE` takes no source, since `cb_std`
-  ships with composer. Without a REF, the app gets composer only: run
-  `mix composer.init` in it to start your own cookbook.
+  `cb_std` ships with composer, so it is never given here.
+
+  ## Recipe
+
+  `--recipe COOKBOOK/CHAPTER/RECIPE` is the recipe to run, at most one.
+  Root (`/lv/base`), relative (`./base`) and bare (`base`) addresses are
+  rejected, as are steps and `hex:` packages. A recipe takes no
+  `@SOURCE`: its cookbook is
+
+    * `cb_std`, which ships with composer, or
+    * a `--cookbook` of that name, or else
+    * the latest Hex release of that name. If there is no such package on
+      Hex, preflight fails before anything is created.
+
+  `--recipe-args ARGS` are the recipe's flags, one string split as a shell
+  would (`--recipe-args="--oban-pro --title 'My App'"`), passed on to
+  `mix composer.recipe.run`, which rejects any the recipe doesn't
+  declare. If the cookbook has no such recipe, `mix composer.recipe.run`
+  fails too, after the app is committed.
 
   ## Options
 
@@ -37,22 +59,24 @@ defmodule Mix.Tasks.Composer.New do
     * `--with-args ARGS` - arguments for `--with`. Prefer the `=` form:
       `--with-args="--no-ecto --binary-id"`
     * `--install PKG[,PKG]` - base packages installed with the app, as
-      prod deps (repeatable); `PKG[@SOURCE]`, with SOURCE as in REF
+      prod deps (repeatable); `PKG[@SOURCE]`, with SOURCE as in
+      `--cookbook`
+    * `--cookbook PKG` - a cookbook (repeatable); see above
+    * `--recipe REF` - the recipe to run; see above
+    * `--recipe-args ARGS` - the recipe's flags; needs `--recipe`
     * `--composer SOURCE` - where composer comes from (`path:...`,
       `github:...`, a version); default `~> MAJOR.MINOR` of this archive's
       version
-    * `--extra-dep PKG` - another dev/test dep, such as a second cookbook
+    * `--extra-dep PKG` - another dev/test dep that isn't a cookbook
       (repeatable); `PKG[@SOURCE]`, as `--install`
     * `--igniter-local PATH` - a local igniter checkout, passed to
       `igniter.new --local` relative to the app's parent directory
     * `--reset` - delete APP first
     * `--dry-run` - print the plan and run nothing
-    * `--no-recipe` - create, install and commit, but don't run the recipe
 
-  Every other switch is a recipe flag, passed on to
-  `mix composer.recipe.run`, which rejects any the recipe doesn't
-  declare. Everything after `--` is a recipe flag too. There is no
-  `--yes`: the command runs unattended.
+  Any other switch is an error. Options other than `--install`,
+  `--cookbook` and `--extra-dep` may be given once. There is no `--yes`:
+  the command runs unattended.
 
   ## What it runs
 
@@ -64,13 +88,13 @@ defmodule Mix.Tasks.Composer.New do
     3. in APP, `mix composer_new.install composer,COOKBOOK,... --only dev,test --yes`
     4. in APP, `git init`, `git add -A` and `git commit`, with this command
        line as the message: `git log --reverse` shows how to rebuild the app
-    5. in APP, `mix composer.recipe.run COOKBOOK/CHAPTER/RECIPE [RECIPE-FLAGS]`,
-       unless there is no REF or `--no-recipe` is given
+    5. in APP, `mix composer.recipe.run COOKBOOK/CHAPTER/RECIPE [RECIPE-ARGS]`,
+       with `--recipe`
 
   `mix composer_new.install`, which this archive provides, is
-  `mix igniter.install` taking SOURCE as REF does: `igniter.install`
-  rejects a version requirement such as `~> 0.3`, and this writes it to
-  `mix.exs` as given.
+  `mix igniter.install` taking SOURCE as `--cookbook` does:
+  `igniter.install` rejects a version requirement such as `~> 0.3`, and
+  this writes it to `mix.exs` as given.
 
   ## Recovery
 
@@ -82,20 +106,20 @@ defmodule Mix.Tasks.Composer.New do
   ## A recipe is code
 
   A cookbook from `@github:` or `@git:` runs someone else's code on your
-  machine, as `igniter.new --install` does. To look first, pass
-  `--no-recipe`, then run `mix composer.recipe.show REF` and
-  `mix composer.recipe.run REF --dry-run` in the app.
+  machine, as `igniter.new --install` does. To look first, give the
+  `--cookbook` without `--recipe`, then run `mix composer.recipe.show REF`
+  and `mix composer.recipe.run REF --dry-run` in the app.
   """
 
   use Mix.Task
 
-  alias ComposerNew.{Command, Plan, Preflight, Shell}
+  alias ComposerNew.{Argv, Command, Plan, Preflight, Shell}
 
   @version Mix.Project.config()[:version]
 
   @impl Mix.Task
   def run(argv) do
-    if argv == [] or (Enum.any?(argv, &(&1 in ["--help", "-h"])) and "--" not in argv) do
+    if argv == [] or Argv.help?(argv) do
       Mix.Task.run("help", ["composer.new"])
     else
       new(argv)

@@ -1,23 +1,20 @@
 defmodule ComposerNew.Argv do
   @moduledoc """
-  Splits `mix composer.new` argv into APP, REF, the archive's own options
-  and the recipe flags.
+  Splits `mix composer.new` argv into APP and the archive's options.
 
   This is a manual pass, like `igniter.new`'s, rather than `OptionParser`
-  in `:strict` mode: a strict parse drops the switches it doesn't know,
-  which are the recipe flags here, and would read the `--no-ecto` of
+  in `:strict` mode: a strict parse would read the `--no-ecto` of
   `--with-args --no-ecto` as a switch. The rules:
 
-    * APP is the first argument
+    * APP is the first argument, and the only positional one
     * an option with a value takes `--opt=value` or `--opt value`; for
-      `--with-args`, the separate form takes the next argument as it is,
-      even when it starts with `-`
-    * `--install` and `--extra-dep` repeat, and `--install` also splits
-      on `,`
-    * `--reset`, `--dry-run` and `--no-recipe` are booleans
-    * any other `-x` or `--x` is a recipe flag, kept in order
-    * after `--`, everything is a recipe flag
-    * the second positional argument is REF, and a third is an error
+      `--with-args` and `--recipe-args`, the separate form takes the next
+      argument as it is, even when it starts with `-`
+    * `--install`, `--cookbook` and `--extra-dep` repeat, and `--install`
+      also splits on `,`; any other option may be given once
+    * `--reset` and `--dry-run` are booleans
+    * any other switch is an error: recipe flags go in `--recipe-args`
+    * `--recipe-args` needs `--recipe`
   """
 
   @valued %{
@@ -25,55 +22,66 @@ defmodule ComposerNew.Argv do
     "--with-args" => :with_args,
     "--install" => :install,
     "--composer" => :composer,
+    "--cookbook" => :cookbook,
+    "--recipe" => :recipe,
+    "--recipe-args" => :recipe_args,
     "--extra-dep" => :extra_dep,
     "--igniter-local" => :igniter_local
   }
 
-  @booleans %{"--reset" => :reset, "--dry-run" => :dry_run, "--no-recipe" => :no_recipe}
+  @booleans %{"--reset" => :reset, "--dry-run" => :dry_run}
 
-  @repeated [:install, :extra_dep]
+  # Options whose separate form takes the next argument even if it starts with -.
+  @verbatim [:with_args, :recipe_args]
+
+  @repeated [:install, :cookbook, :extra_dep]
 
   @defaults [
     with: nil,
     with_args: nil,
     install: [],
     composer: nil,
+    cookbook: [],
+    recipe: nil,
+    recipe_args: nil,
     extra_dep: [],
     igniter_local: nil,
     reset: false,
-    dry_run: false,
-    no_recipe: false
+    dry_run: false
   ]
 
-  @type t :: %{
-          app: String.t(),
-          ref: String.t() | nil,
-          opts: keyword(),
-          recipe_flags: [String.t()]
-        }
+  @usage "mix composer.new APP [--cookbook PKG] [--recipe REF [--recipe-args ARGS]] [OPTIONS]"
+
+  @type t :: %{app: String.t(), opts: keyword()}
 
   @doc "Parses argv."
   @spec parse([String.t()]) :: {:ok, t()} | {:error, String.t()}
-  def parse([]), do: {:error, "Give the app name first: mix composer.new APP [REF] [OPTIONS]"}
+  def parse([]), do: {:error, "Give the app name first: #{@usage}"}
 
   def parse(["-" <> _ = first | _rest]) do
-    {:error,
-     "The first argument must be the app name, got: #{first}. " <>
-       "Usage: mix composer.new APP [REF] [OPTIONS]"}
+    {:error, "The first argument must be the app name, got: #{first}. Usage: #{@usage}"}
   end
 
   def parse([app | rest]) do
-    acc = %{app: app, ref: nil, opts: @defaults, recipe_flags: []}
-
-    with {:ok, acc} <- walk(rest, acc) do
-      {:ok, %{acc | recipe_flags: Enum.reverse(acc.recipe_flags)}}
-    end
+    with {:ok, acc} <- walk(rest, %{app: app, opts: @defaults, given: MapSet.new()}),
+         :ok <- recipe_args(acc.opts),
+         do: {:ok, Map.take(acc, [:app, :opts])}
   end
 
-  defp walk([], acc), do: {:ok, acc}
+  @doc """
+  True when argv asks for help: a `--help` or `-h` that isn't the value of
+  `--with-args` or `--recipe-args`.
+  """
+  @spec help?([String.t()]) :: boolean()
+  def help?([]), do: false
 
-  defp walk(["--" | rest], acc),
-    do: {:ok, %{acc | recipe_flags: Enum.reverse(rest, acc.recipe_flags)}}
+  def help?([switch, _value | rest]) when switch in ["--with-args", "--recipe-args"],
+    do: help?(rest)
+
+  def help?([arg | _rest]) when arg in ["--help", "-h"], do: true
+  def help?([_arg | rest]), do: help?(rest)
+
+  defp walk([], acc), do: {:ok, acc}
 
   defp walk(["-" <> _ = arg | rest], acc) do
     {switch, inline} =
@@ -90,33 +98,52 @@ defmodule ComposerNew.Argv do
         walk(rest, put(acc, key, true))
 
       true ->
-        walk(rest, %{acc | recipe_flags: [arg | acc.recipe_flags]})
+        {:error,
+         "Unknown option #{arg}. Recipe flags go in --recipe-args, " <>
+           ~s(as in --recipe-args="#{arg}")}
     end
   end
 
-  defp walk([positional | rest], %{ref: nil} = acc), do: walk(rest, %{acc | ref: positional})
-
   defp walk([positional | _rest], acc) do
+    hint =
+      if String.contains?(positional, "/"),
+        do: "; name the recipe with --recipe #{positional}",
+        else: ""
+
     {:error,
-     "Unexpected argument #{inspect(positional)}: mix composer.new takes APP and one REF " <>
-       "(got #{inspect(acc.app)} and #{inspect(acc.ref)})"}
+     "Unexpected argument #{inspect(positional)}: mix composer.new takes only APP " <>
+       "(got #{inspect(acc.app)})" <> hint}
   end
 
-  defp valued(key, _switch, value, rest, acc) when is_binary(value),
-    do: walk(rest, put(acc, key, value))
+  defp valued(key, switch, value, rest, acc) do
+    cond do
+      key not in @repeated and MapSet.member?(acc.given, key) ->
+        {:error, "#{switch} may be given only once"}
 
-  defp valued(:with_args, _switch, nil, [value | rest], acc),
-    do: walk(rest, put(acc, :with_args, value))
+      is_binary(value) ->
+        walk(rest, put(acc, key, value))
 
-  defp valued(key, switch, nil, [value | rest], acc) do
-    if String.starts_with?(value, "-"),
-      do: missing(switch),
-      else: walk(rest, put(acc, key, value))
+      rest == [] ->
+        missing(switch)
+
+      key in @verbatim ->
+        walk(tl(rest), put(acc, key, hd(rest)))
+
+      String.starts_with?(hd(rest), "-") ->
+        missing(switch)
+
+      true ->
+        walk(tl(rest), put(acc, key, hd(rest)))
+    end
   end
-
-  defp valued(_key, switch, nil, [], _acc), do: missing(switch)
 
   defp missing(switch), do: {:error, "#{switch} needs a value"}
+
+  defp recipe_args(opts) do
+    if opts[:recipe_args] && !opts[:recipe],
+      do: {:error, "--recipe-args needs --recipe: the arguments are the recipe's flags"},
+      else: :ok
+  end
 
   defp put(acc, :install, value) do
     packages = String.split(value, ",", trim: true)
@@ -126,5 +153,6 @@ defmodule ComposerNew.Argv do
   defp put(acc, key, value) when key in @repeated,
     do: %{acc | opts: Keyword.update!(acc.opts, key, &(&1 ++ [value]))}
 
-  defp put(acc, key, value), do: %{acc | opts: Keyword.put(acc.opts, key, value)}
+  defp put(acc, key, value),
+    do: %{acc | opts: Keyword.put(acc.opts, key, value), given: MapSet.put(acc.given, key)}
 end

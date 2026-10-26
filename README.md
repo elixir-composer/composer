@@ -118,14 +118,15 @@ command:
 ```bash
 mix archive.install hex igniter_new     # 0.5.32 or later
 mix archive.install hex composer_new
-mix composer.new my_app cb_std/completions/install --with phx.new
+mix composer.new my_app --recipe cb_std/completions/install --with phx.new
 ```
 
-It runs `igniter.new`, installs composer and the cookbook as dev/test deps,
-commits the command line as the app's first commit, and runs the recipe.
-The cookbook can come from Hex, `@github:`, `@git:` or `@path:`, and
-`--dry-run` prints every command first. Without a recipe
-(`mix composer.new my_app`), you get an app with composer installed, ready
+It runs `igniter.new`, installs composer and any cookbooks as dev/test
+deps, commits the command line as the app's first commit, and runs the
+recipe. A cookbook can come from Hex, `@github:`, `@git:` or `@path:`
+(`--cookbook cb_lab@github:elixir-composer/cb_lab`), recipe flags go in
+`--recipe-args`, and `--dry-run` prints every command first. Without a
+recipe (`mix composer.new my_app`), you get an app with composer installed, ready
 for step 2 below. See the [archive's README](installer/README.md).
 
 To set up an existing app by hand instead:

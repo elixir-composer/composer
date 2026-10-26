@@ -4,7 +4,7 @@ defmodule ComposerNew.Dep do
   dependency it becomes in the app's `mix.exs`.
 
   SOURCE is parsed by `ComposerNew.Ref.parse_source/1`, so it is written
-  as in a `mix composer.new` REF:
+  as in `mix composer.new --cookbook`:
 
       iex> ComposerNew.Dep.parse("composer@~> 0.3")
       {:ok, %{name: "composer", opts: [], source: [version: "~> 0.3"]}}

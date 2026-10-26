@@ -297,19 +297,16 @@ When an app also gets one of your cookbook's dependencies from Hex (say
 ## Publishing a cookbook
 
 A cookbook installed from Hex or git, for example with
-`mix composer.new my_app cb_mine/lv/base@github:me/cb_mine`, must declare
+`mix composer.new my_app --cookbook cb_mine@github:me/cb_mine`, must declare
 Hex or git dependencies, not path dependencies. Mix resolves a path
 relative to the cookbook, which is now a checkout in the app's `deps/`, so
 `path: "../composer"` points at nothing. `mix composer.cookbook.lint`
 warns about every path dependency in a project that has a `package:`
 section.
 
-Some flag names are reserved: a recipe can't declare `no_commit`, one of
-Igniter's global switches (`yes`, `dry_run`, `only`, ...), or an option of
-`mix composer.new` (`with`, `with_args`, `install`, `composer`,
-`extra_dep`, `igniter_local`, `reset`, `no_recipe`) or `recipe`.
-`mix composer.new` passes every other switch to the recipe, so a flag
-with one of those names could never reach it. Lint reports them.
+Some flag names are reserved: a recipe can't declare `no_commit`, or one
+of Igniter's global switches (`yes`, `dry_run`, `only`, ...), since
+`mix composer.recipe.run` takes those itself. Lint reports them.
 
 ## Bundling a cookbook with a framework
 

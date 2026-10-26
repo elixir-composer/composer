@@ -15,7 +15,7 @@ defmodule ComposerNew.Shell do
     rows =
       [
         {"app", "#{summary.app} (#{summary.dir})"},
-        {"cookbook", summary.cookbook && "#{summary.cookbook} (#{summary.source})"},
+        {"cookbooks", cookbooks(summary.cookbooks)},
         {"recipe", summary.recipe || "none"},
         {"base", summary.base},
         {"install", if(summary.install != [], do: Enum.join(summary.install, ", "))},
@@ -25,7 +25,7 @@ defmodule ComposerNew.Shell do
     lines =
       for {label, value} <- rows,
           value != nil,
-          do: "  #{String.pad_trailing(label <> ":", 10)} #{value}"
+          do: "  #{String.pad_trailing(label <> ":", 11)} #{value}"
 
     numbered =
       commands
@@ -36,6 +36,9 @@ defmodule ComposerNew.Shell do
       Enum.join(["mix composer.new will create:" | lines] ++ ["", "Commands:" | numbered], "\n")
     )
   end
+
+  defp cookbooks([]), do: nil
+  defp cookbooks(cookbooks), do: Enum.map_join(cookbooks, ", ", &"#{&1.name} (#{&1.source})")
 
   @doc """
   Runs the plan's commands in order, stopping at the first that fails.

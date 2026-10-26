@@ -8,11 +8,9 @@ defmodule ComposerNew.ArgvTest do
     parsed
   end
 
-  test "APP and REF, with defaults" do
-    parsed = parse!(~w(my_app cb_lab/lv/base))
+  test "APP alone, with defaults" do
+    parsed = parse!(~w(my_app))
     assert parsed.app == "my_app"
-    assert parsed.ref == "cb_lab/lv/base"
-    assert parsed.recipe_flags == []
 
     assert Enum.sort(parsed.opts) ==
              Enum.sort(
@@ -20,40 +18,42 @@ defmodule ComposerNew.ArgvTest do
                with_args: nil,
                install: [],
                composer: nil,
+               cookbook: [],
+               recipe: nil,
+               recipe_args: nil,
                extra_dep: [],
                igniter_local: nil,
                reset: false,
-               dry_run: false,
-               no_recipe: false
+               dry_run: false
              )
   end
 
-  test "no REF" do
-    parsed = parse!(~w(my_app --reset))
-    assert parsed.ref == nil
-    assert parsed.opts[:reset]
-  end
-
-  test "own options versus recipe flags, interleaved, in order" do
+  test "--cookbook, --recipe and --recipe-args" do
     parsed =
-      parse!(
-        ~w(my_app --oban-pro cb_lab/phx/saas --with phx.new --gigalixir -x --dry-run --no-recipe)
-      )
+      parse!([
+        "my_app",
+        "--cookbook",
+        "cb_lab@github:o/cb_lab",
+        "--recipe",
+        "cb_lab/phx/saas",
+        "--cookbook=cb_more",
+        "--recipe-args=--oban-pro --gigalixir",
+        "--dry-run"
+      ])
 
-    assert parsed.ref == "cb_lab/phx/saas"
-    assert parsed.opts[:with] == "phx.new"
+    assert parsed.opts[:cookbook] == ~w(cb_lab@github:o/cb_lab cb_more)
+    assert parsed.opts[:recipe] == "cb_lab/phx/saas"
+    assert parsed.opts[:recipe_args] == "--oban-pro --gigalixir"
     assert parsed.opts[:dry_run]
-    assert parsed.opts[:no_recipe]
-    assert parsed.recipe_flags == ~w(--oban-pro --gigalixir -x)
   end
 
-  test "--with-args with =, and with a separate value starting with -" do
+  test "--with-args and --recipe-args take a separate value starting with -" do
     assert parse!(["a", "--with-args=--no-ecto --binary-id"]).opts[:with_args] ==
              "--no-ecto --binary-id"
 
-    parsed = parse!(["a", "--with-args", "--a --b", "--c"])
+    parsed = parse!(["a", "--with-args", "--a --b", "--recipe", "x/y/z", "--recipe-args", "--c"])
     assert parsed.opts[:with_args] == "--a --b"
-    assert parsed.recipe_flags == ["--c"]
+    assert parsed.opts[:recipe_args] == "--c"
   end
 
   test "= inside a value is kept" do
@@ -63,21 +63,21 @@ defmodule ComposerNew.ArgvTest do
              ["foo@git:https://h/x?a=b"]
   end
 
-  test "--install and --extra-dep repeat; --install splits on ," do
-    parsed = parse!(~w(a --install a,b --install c --extra-dep x --extra-dep=y@path:../y))
+  test "--install, --cookbook and --extra-dep repeat; --install splits on ," do
+    parsed =
+      parse!(~w(a --install a,b --install c --extra-dep x --extra-dep=y@path:../y --cookbook p))
+
     assert parsed.opts[:install] == ~w(a b c)
     assert parsed.opts[:extra_dep] == ~w(x y@path:../y)
+    assert parsed.opts[:cookbook] == ~w(p)
   end
 
-  test "everything after -- is a recipe flag" do
-    parsed = parse!(~w(a cb_std/debug/echo --gigalixir -- --reset --with x extra))
-    assert parsed.recipe_flags == ~w(--gigalixir --reset --with x extra)
-    refute parsed.opts[:reset]
-    assert parsed.opts[:with] == nil
-  end
-
-  test "a boolean with = is not an own option" do
-    assert parse!(~w(a --reset=true)).recipe_flags == ["--reset=true"]
+  test "help?/1 skips the values of --with-args and --recipe-args" do
+    assert Argv.help?(~w(a --help))
+    assert Argv.help?(~w(-h))
+    refute Argv.help?(~w(a --with-args --help))
+    refute Argv.help?(~w(a --recipe x/y/z --recipe-args -h))
+    refute Argv.help?(~w(a --recipe-args=--help))
   end
 
   test "errors" do
@@ -86,9 +86,27 @@ defmodule ComposerNew.ArgvTest do
     assert {:error, "The first argument must be the app name, got: --reset" <> _} =
              Argv.parse(~w(--reset a))
 
-    assert {:error, "Unexpected argument \"extra\"" <> _} = Argv.parse(~w(a b:c/d extra))
+    assert {:error, "Unexpected argument \"cb_lab/lv/base\"" <> rest} =
+             Argv.parse(~w(a cb_lab/lv/base))
+
+    assert rest =~ "name the recipe with --recipe cb_lab/lv/base"
+
+    assert {:error, "Unknown option --oban-pro. Recipe flags go in --recipe-args" <> _} =
+             Argv.parse(~w(a --recipe x/y/z --oban-pro))
+
+    assert {:error, "Unknown option --reset=true" <> _} = Argv.parse(~w(a --reset=true))
+    assert {:error, "Unknown option --no-recipe" <> _} = Argv.parse(~w(a --no-recipe))
+    assert {:error, "Unknown option --" <> _} = Argv.parse(~w(a -- --x))
     assert {:error, "--with needs a value"} = Argv.parse(~w(a --with))
     assert {:error, "--composer needs a value"} = Argv.parse(~w(a --composer --reset))
     assert {:error, "--with-args needs a value"} = Argv.parse(~w(a --with-args))
+
+    assert {:error, "--recipe may be given only once"} =
+             Argv.parse(~w(a --recipe x/y/z --recipe=x/y/w))
+
+    assert {:error, "--recipe-args may be given only once"} =
+             Argv.parse(~w(a --recipe x/y/z --recipe-args=-a --recipe-args=-b))
+
+    assert {:error, "--recipe-args needs --recipe" <> _} = Argv.parse(~w(a --recipe-args=--x))
   end
 end

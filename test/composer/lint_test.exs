@@ -49,7 +49,7 @@ defmodule Composer.LintTest do
       {"unknown_key", ~r/Recipe mine\/unknown_key\/base has an unknown key :help/},
       {"bad_value", ~r/Recipe mine\/bad_value\/base has an invalid flags:/},
       {"undeclared_flag", ~r/Recipe mine\/undeclared_flag\/base uses if: :credo/},
-      {"reserved_flag", ~r/mine\/reserved_flag\/base declares the flag :with/},
+      {"reserved_flag", ~r/mine\/reserved_flag\/base declares the flag :(yes|no_commit)/},
       {"duplicate", ~r/duplicate.exs defines the recipe base more than once/},
       {"raises", ~r/Could not evaluate chapter mine\/raises\/.*boom/s},
       {"BadName", ~r/BadName.exs has an invalid name/},
