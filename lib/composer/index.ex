@@ -25,7 +25,9 @@ defmodule Composer.Index do
   to load lists its recipes with no shortdoc and never fails the refresh.
 
   Every composer task refreshes the index as a side effect, and
-  `mix composer.index` rebuilds it explicitly.
+  `mix composer.index` rebuilds it explicitly. `mix composer.completion`
+  prints the scripts that read it; a change to these lines needs a matching
+  change to them. See the [completion guide](completion.md).
   """
 
   alias Composer.{Manifest, Ref, Cookbook}

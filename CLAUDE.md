@@ -126,7 +126,10 @@ are excluded from formatting on purpose.
   one-line usage.
 - `Composer.Index` writes `_build/composer/index` (plain text) so shell
   completion (`priv/completion/`) never starts the BEAM; every task refreshes
-  it.
+  it. The awk program between the `# -- segments.awk --` markers must stay
+  identical in the bash, zsh and fish scripts, and any change to the index
+  lines needs a matching script change and test
+  (`test/composer/completion*_test.exs`). See `guides/completion.md`.
 
 ## The `composer_new` archive (`installer/`)
 

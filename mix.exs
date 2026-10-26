@@ -65,6 +65,7 @@ defmodule Composer.MixProject do
         "guides/templates.md",
         "guides/lint.md",
         "guides/composer_lsp.md",
+        "guides/completion.md",
         "CHANGELOG.md",
         "LICENSE.md"
       ],
@@ -83,6 +84,7 @@ defmodule Composer.MixProject do
         Tooling: [
           Composer.Manifest,
           Composer.Index,
+          Composer.Completion,
           Composer.Lint,
           Composer.Lint.Diagnostic,
           Composer.Lint.Format,

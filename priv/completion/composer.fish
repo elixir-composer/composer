@@ -8,13 +8,20 @@
 # A bare word completes to cookbook names and to the recipes or steps it
 # names; a leading / or : is the project's own cookbook. Fish completions
 # add up, so other `mix` completions are untouched. Save it as
-# ~/.config/fish/completions/mix.fish, or source it from there.
+# ~/.config/fish/conf.d/composer_mix.fish, not as completions/mix.fish,
+# which would hide the mix.fish that fish ships.
+#
+# Hints once per session, on stderr, when the index is older than mix.lock.
 
 function __composer_index
     set -l index _build/composer/index
     test -f mix.exs; and test -f $index; or return 1
 
     if test -f mix.lock; and command test mix.lock -nt $index
+        if not set -q __composer_stale_hinted
+            set -g __composer_stale_hinted 1
+            printf '\n(composer: the completion index is stale; run mix composer.index)\n' >&2
+        end
         return 1
     end
 

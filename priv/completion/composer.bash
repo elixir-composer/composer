@@ -9,21 +9,45 @@
 # names; a leading / or : is the project's own cookbook. Every other `mix`
 # completion goes to mix_completions (https://hex.pm/packages/mix_completions)
 # when it is loaded. Source this file after mix_completions' script.
+#
+# Hints once per session, on stderr, when the index is older than mix.lock
+# or mix_completions' task cache is stale.
 
-# Prints the index path, or fails when it is missing or older than mix.lock.
+# Prints "(composer: MESSAGE)" on stderr, once per session for each KEY.
+__composer_hint() {
+  local guard=__composer_hinted_$1
+  [[ -z ${!guard-} ]] || return 0
+  printf -v "$guard" 1
+  printf '\n(composer: %s)\n' "$2" >&2
+}
+
+# Sets the caller's `index` to the index path, or fails when it is missing
+# or older than mix.lock. Not run in a subshell, so a hint's guard sticks.
 __composer_index() {
-  local index="_build/composer/index"
+  index="_build/composer/index"
   [[ -f mix.exs && -f $index ]] || return 1
 
   if [[ -f mix.lock && mix.lock -nt $index ]]; then
-    if [[ -z ${__composer_stale_hinted-} ]]; then
-      __composer_stale_hinted=1
-      printf '\n(composer: the completion index is stale; run mix composer.index)\n' >&2
-    fi
+    __composer_hint index "the completion index is stale; run mix composer.index"
     return 1
   fi
+}
 
-  printf '%s\n' "$index"
+# Hints when mix_completions' task cache is stale: in a project, older than
+# mix.lock; elsewhere, the global cache older than the archives directory.
+# A missing cache gives no hint.
+__composer_mix_cache_check() {
+  if [[ -f mix.exs ]]; then
+    if [[ -f .mix_complete.cache && -f mix.lock && mix.lock -nt .mix_complete.cache ]]; then
+      __composer_hint project_cache "mix task completions are stale; run mix complete"
+    fi
+  else
+    local archives=${MIX_HOME:-$HOME/.mix}/archives
+    local cache=${XDG_CACHE_HOME:-$HOME/.cache}/.mix_complete.cache
+    if [[ -e $archives && -f $cache && $archives -nt $cache ]]; then
+      __composer_hint global_cache "mix task completions are stale; run mix complete outside a project"
+    fi
+  fi
 }
 
 # The same program is in composer.zsh and composer.fish.
@@ -98,7 +122,7 @@ __composer_complete() {
   COMPREPLY=()
   # A word starting with / or . never falls back to filenames.
   compopt +o default 2>/dev/null
-  index=$(__composer_index) || return 0
+  __composer_index || return 0
 
   # ':' is in COMP_WORDBREAKS, so "cb_std:setup:cr" arrives as several words.
   # Rebuild the whole argument from the line instead (ids never contain spaces).
@@ -148,6 +172,7 @@ _composer_mix_complete() {
   if [[ -n $mode && $COMP_CWORD -ge 2 && ${COMP_WORDS[COMP_CWORD]} != -* ]]; then
     __composer_complete "$mode"
   elif declare -F _mix_complete_complete >/dev/null; then
+    __composer_mix_cache_check
     _mix_complete_complete "$@"
   else
     COMPREPLY=()

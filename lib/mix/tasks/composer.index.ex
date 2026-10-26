@@ -7,8 +7,8 @@ defmodule Mix.Tasks.Composer.Index do
       mix composer.index
 
   Every composer task refreshes the index as a side effect, so this is only
-  needed after adding a dependency or a recipe. See `Composer.Index`
-  and `mix composer.completion`.
+  needed after adding a dependency or a recipe. See `Composer.Index`,
+  `mix composer.completion` and the [completion guide](completion.md).
 
   ## Options
 

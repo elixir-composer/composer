@@ -441,12 +441,31 @@ against the applied project on disk, after everything else.
 ## Shell completion
 
 ```bash
-mix composer.completion bash > ~/.local/share/bash-completion/completions/mix-composer
+mix composer.completion bash > ~/.complete/mix_composer.bash   # or zsh, fish
 ```
 
-Completion of step and recipe ids reads a plain-text index under
-`_build/composer/`, so it never starts the BEAM. Every composer task keeps
-the index fresh; `mix composer.index` rebuilds it.
+| You type                         | Completed by           | From                    |
+|----------------------------------|------------------------|-------------------------|
+| `mix compo<TAB>`                 | [mix_completions]      | the task cache          |
+| `mix composer.<TAB>`             | mix_completions        | the task cache          |
+| `mix composer.recipe.show <TAB>` | composer's script      | `_build/composer/index` |
+| `mix help composer.rec<TAB>`     | mix_completions (fork) | the task cache          |
+
+Composer's script completes step and recipe addresses from a plain-text
+index, so it never starts the BEAM, and hands every other `mix` completion
+to mix_completions. In bash, source it after mix_completions' script.
+
+- Every composer task keeps the index fresh; `mix composer.index` rebuilds
+  it.
+- Run `mix complete` after deps change, in the project, and after
+  installing or removing an archive, outside one.
+
+The script hints, once per session, when either is stale. The
+experimental `cb_lab:completions:composer` and `cb_lab:completions:mix`
+steps install composer's script and mix_completions for you. See the
+[completion guide](guides/completion.md) for how it all fits together.
+
+[mix_completions]: https://hex.pm/packages/mix_completions
 
 ## License
 

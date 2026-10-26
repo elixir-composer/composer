@@ -13,17 +13,45 @@
 #
 # Save it on your fpath after mix_completions' _mix, e.g. as
 # ~/.zsh/functions/_composer_mix, or source it after compinit.
+#
+# Hints once per session, as a completion message, when the index is older
+# than mix.lock or mix_completions' task cache is stale.
 
+# Shows "composer: MESSAGE" once per session for each KEY.
+__composer_hint() {
+  local guard=__composer_hinted_$1
+  [[ -n ${(P)guard} ]] && return 0
+  typeset -g $guard=1
+  _message "composer: $2"
+}
+
+# Sets the caller's `index` to the index path, or fails when it is missing
+# or older than mix.lock. Not run in a subshell, so the message is shown.
 __composer_index() {
-  local index="_build/composer/index"
+  index="_build/composer/index"
   [[ -f mix.exs && -f $index ]] || return 1
 
   if [[ -f mix.lock && mix.lock -nt $index ]]; then
-    _message "composer: the completion index is stale; run mix composer.index"
+    __composer_hint index "the completion index is stale; run mix composer.index"
     return 1
   fi
+}
 
-  print -r -- $index
+# Hints when mix_completions' task cache is stale: in a project, older than
+# mix.lock; elsewhere, the global cache older than the archives directory.
+# A missing cache gives no hint.
+__composer_mix_cache_check() {
+  if [[ -f mix.exs ]]; then
+    if [[ -f .mix_complete.cache && -f mix.lock && mix.lock -nt .mix_complete.cache ]]; then
+      __composer_hint project_cache "mix task completions are stale; run mix complete"
+    fi
+  else
+    local archives=${MIX_HOME:-$HOME/.mix}/archives
+    local cache=${XDG_CACHE_HOME:-$HOME/.cache}/.mix_complete.cache
+    if [[ -e $archives && -f $cache && $archives -nt $cache ]]; then
+      __composer_hint global_cache "mix task completions are stale; run mix complete outside a project"
+    fi
+  fi
 }
 
 # The same program is in composer.bash and composer.fish.
@@ -104,7 +132,7 @@ _composer_mix() {
   if [[ -n $mode && $CURRENT -ge 3 && $PREFIX != -* ]]; then
     local index nospace candidate description
     local -a spaced spaced_d stems stems_d
-    index=$(__composer_index) || return 1
+    __composer_index || return 1
 
     # step.run takes a comma-separated list: complete the last item.
     [[ $mode == step ]] && compset -P '*,'
@@ -125,6 +153,7 @@ _composer_mix() {
     (( $#spaced )) && compadd -Q -l -d spaced_d -- $spaced
     return 0
   elif (( $+functions[_mix] )) || autoload +X _mix 2>/dev/null; then
+    __composer_mix_cache_check
     _mix "$@"
   else
     _files

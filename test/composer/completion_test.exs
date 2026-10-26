@@ -1,6 +1,8 @@
 defmodule Composer.CompletionTest do
   use ExUnit.Case, async: true
 
+  alias Composer.Index
+
   @moduletag :tmp_dir
 
   unless System.find_executable("bash"), do: @moduletag(skip: "bash is not installed")
@@ -45,30 +47,55 @@ defmodule Composer.CompletionTest do
   end
 
   # Completes `line` the way bash would split it, with ':' as a word break,
-  # and returns {COMPREPLY, nospace?}. compopt is stubbed, since it only
-  # works inside a real completion.
+  # and returns {COMPREPLY, nospace?, default?}.
   defp complete(dir, line) do
-    words = line |> String.split(~r/(?<=:)|(?=:)| /) |> Enum.reject(&(&1 == ""))
-    words = if String.ends_with?(line, " "), do: words ++ [""], else: words
+    {[result], _stderr} = session(dir, [line])
+    result
+  end
+
+  # Completes each of `lines` in turn, in one bash process, and returns
+  # {[{COMPREPLY, nospace?, default?}], stderr}. compopt is stubbed, since it
+  # only works inside a real completion.
+  defp session(dir, lines, env \\ []) do
+    stderr = Path.join(dir, ".stderr")
 
     script = """
     source #{@script}
     compopt() { [[ $* == "-o nospace" ]] && __nospace=1; [[ $* == "-o default" ]] && __default=1; return 0; }
     _mix_complete_complete() { COMPREPLY=(delegated); }
+    #{Enum.map_join(lines, "\n", &tab(&1, stderr))}
+    """
+
+    {output, 0} = System.cmd("bash", ["-c", script], cd: dir, env: env)
+
+    results =
+      output
+      |> String.split("<end>\n")
+      |> Enum.drop(-1)
+      |> Enum.map(fn out ->
+        out = String.split(out, "\n", trim: true)
+        {out -- ["<nospace>", "<default>"], "<nospace>" in out, "<default>" in out}
+      end)
+
+    {results, if(File.exists?(stderr), do: File.read!(stderr), else: "")}
+  end
+
+  defp tab(line, stderr) do
+    words = line |> String.split(~r/(?<=:)|(?=:)| /) |> Enum.reject(&(&1 == ""))
+    words = if String.ends_with?(line, " "), do: words ++ [""], else: words
+
+    """
+    __nospace= __default= COMPREPLY=()
     COMP_LINE=#{shell_quote(line)}
     COMP_POINT=${#COMP_LINE}
     COMP_WORDS=(#{Enum.map_join(words, " ", &shell_quote/1)})
     COMP_CWORD=#{length(words) - 1}
-    _composer_mix_complete mix
+    _composer_mix_complete mix 2>>#{shell_quote(stderr)}
     printf '%s\\n' "${COMPREPLY[@]}"
-    [[ -n ${__nospace-} ]] && echo '<nospace>'
-    [[ -n ${__default-} ]] && echo '<default>'
-    true
+    [[ -n $__nospace ]] && echo '<nospace>'
+    [[ -n $__default ]] && echo '<default>'
+    echo '<end>'
     """
-
-    {output, 0} = System.cmd("bash", ["-c", script], cd: dir, stderr_to_stdout: true)
-    lines = String.split(output, "\n", trim: true)
-    {lines -- ["<nospace>", "<default>"], "<nospace>" in lines, "<default>" in lines}
   end
 
   defp candidates(dir, line), do: elem(complete(dir, line), 0)
@@ -143,15 +170,66 @@ defmodule Composer.CompletionTest do
     assert candidates(dir, "mix composer.step.list cb_std:cluster:") == ["gigalixir:"]
   end
 
-  test "offers nothing when the index is older than mix.lock", %{tmp_dir: dir} do
+  test "offers nothing when the index is older than mix.lock, and hints once", %{tmp_dir: dir} do
     File.touch!(Path.join(dir, "mix.lock"))
     File.touch!(Path.join(dir, "_build/composer/index"), System.os_time(:second) - 60)
-    assert Enum.reject(candidates(dir, "mix composer.step.run co"), &(&1 =~ "stale")) == []
+
+    lines = ["mix composer.step.run co", "mix composer.recipe.run m"]
+    assert {[{[], false, false}, {[], false, false}], stderr} = session(dir, lines)
+    assert hints(stderr) == ["(composer: the completion index is stale; run mix composer.index)"]
   end
 
   test "everything else is delegated to mix_completions", %{tmp_dir: dir} do
     assert candidates(dir, "mix comp") == ["delegated"]
     assert candidates(dir, "mix composer.step.run --dr") == ["delegated"]
+    assert candidates(dir, "mix help composer.rec") == ["delegated"]
+  end
+
+  describe "mix_completions' task cache" do
+    test "older than mix.lock: hints once, and still delegates", %{tmp_dir: dir} do
+      File.write!(Path.join(dir, ".mix_complete.cache"), "")
+      File.touch!(Path.join(dir, ".mix_complete.cache"), System.os_time(:second) - 120)
+
+      assert {[{["delegated"], _, _}, {["delegated"], _, _}], stderr} =
+               session(dir, ["mix comp", "mix help comp"])
+
+      assert hints(stderr) == ["(composer: mix task completions are stale; run mix complete)"]
+    end
+
+    test "fresh or missing: no hint", %{tmp_dir: dir} do
+      assert {[{["delegated"], _, _}], ""} = session(dir, ["mix comp"])
+
+      File.write!(Path.join(dir, ".mix_complete.cache"), "")
+      assert {[{["delegated"], _, _}], ""} = session(dir, ["mix comp"])
+    end
+
+    test "outside a project, the global cache older than the archives: hints once", %{
+      tmp_dir: dir
+    } do
+      elsewhere = Path.join(dir, "elsewhere")
+      mix_home = Path.join(dir, "mix_home")
+      cache_home = Path.join(dir, "cache")
+      File.mkdir_p!(elsewhere)
+      File.mkdir_p!(Path.join(mix_home, "archives"))
+      File.mkdir_p!(cache_home)
+      File.write!(Path.join(cache_home, ".mix_complete.cache"), "")
+      File.touch!(Path.join(cache_home, ".mix_complete.cache"), System.os_time(:second) - 120)
+
+      env = [{"MIX_HOME", mix_home}, {"XDG_CACHE_HOME", cache_home}]
+
+      assert {[{["delegated"], _, _}, {["delegated"], _, _}], stderr} =
+               session(elsewhere, ["mix comp", "mix comp"], env)
+
+      assert hints(stderr) == [
+               "(composer: mix task completions are stale; run mix complete outside a project)"
+             ]
+
+      # A fresh global cache: no hint.
+      File.touch!(Path.join(cache_home, ".mix_complete.cache"))
+      File.touch!(Path.join(mix_home, "archives"), System.os_time(:second) - 120)
+      File.rm!(Path.join(elsewhere, ".stderr"))
+      assert {[{["delegated"], _, _}], ""} = session(elsewhere, ["mix comp"], env)
+    end
   end
 
   test "the bash, zsh and fish scripts share one segment program" do
@@ -164,4 +242,62 @@ defmodule Composer.CompletionTest do
 
     assert [same, same, same] = programs
   end
+
+  describe "the index Composer.Index writes" do
+    # cb_std has a committed manifest and step groups, fake_book has none,
+    # and nested_book has nested chapters. Run from composer, so cb_std is
+    # the project's own cookbook.
+    setup %{tmp_dir: dir} do
+      cookbooks =
+        Enum.map([Composer.CbStd, Composer.FakeBook, Composer.NestedBook], &from_module/1)
+
+      lines = Index.lines(cookbooks)
+      File.write!(Path.join(dir, "_build/composer/index"), Enum.map(lines, &[&1, "\n"]))
+      %{entries: Enum.map(lines, &String.split(&1, "\t"))}
+    end
+
+    test "a step segment", %{tmp_dir: dir, entries: entries} do
+      expected = next_segments(entries, ~w(step group), "fake_book:", ":")
+      assert expected != []
+
+      # Bash replaces only what follows the last ':'.
+      assert Enum.sort(candidates(dir, "mix composer.step.run fake_book:")) ==
+               Enum.map(expected, &String.replace_prefix(&1, "fake_book:", ""))
+    end
+
+    test "a recipe segment", %{tmp_dir: dir, entries: entries} do
+      expected = next_segments(entries, ~w(recipe chapter dir), "nested_book/ash/", "/")
+      assert expected != []
+      assert Enum.sort(candidates(dir, "mix composer.recipe.run nested_book/ash/")) == expected
+    end
+
+    test "a root address is the self cookbook", %{tmp_dir: dir, entries: entries} do
+      assert ["self", own, _] = Enum.find(entries, &(hd(&1) == "self"))
+      expected = next_segments(entries, ~w(step group), own <> ":", ":")
+      assert expected != []
+
+      assert Enum.sort(candidates(dir, "mix composer.step.run :")) ==
+               Enum.map(expected, &String.replace_prefix(&1, own <> ":", ""))
+    end
+  end
+
+  defp from_module(module), do: Composer.Cookbook.from_module(module)
+
+  # The candidates that follow `prefix` in the index entries of `kinds`: the
+  # next segment, ending in `sep` when more segments follow.
+  defp next_segments(entries, kinds, prefix, sep) do
+    for [kind, id | _] <- entries,
+        kind in kinds,
+        rest = String.replace_prefix(id, prefix, ""),
+        rest != id and rest != "",
+        uniq: true do
+      case String.split(rest, sep, parts: 2) do
+        [segment, _] -> prefix <> segment <> sep
+        [segment] -> prefix <> segment
+      end
+    end
+    |> Enum.sort()
+  end
+
+  defp hints(stderr), do: String.split(stderr, "\n", trim: true)
 end
