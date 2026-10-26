@@ -50,7 +50,7 @@ defmodule Composer.MixProject do
         "GitHub" => @source_url,
         "Changelog" => "#{@source_url}/blob/master/CHANGELOG.md"
       },
-      files: ~w(lib priv .formatter.exs mix.exs README* LICENSE* CHANGELOG*)
+      files: ~w(lib .formatter.exs mix.exs README* LICENSE* CHANGELOG*)
     ]
   end
 
@@ -84,7 +84,6 @@ defmodule Composer.MixProject do
         Tooling: [
           Composer.Manifest,
           Composer.Index,
-          Composer.Completion,
           Composer.Lint,
           Composer.Lint.Diagnostic,
           Composer.Lint.Format,

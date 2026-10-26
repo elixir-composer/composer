@@ -2,9 +2,9 @@ defmodule Composer.CbStd.Steps.Completions.Composer do
   @moduledoc """
   Install composer's shell completion script
 
-  Copies composer's completion script for a shell (from
-  `Composer.Completion`, which reads it from composer's `priv/completion/`)
-  to where that shell loads it. The script completes addresses for
+  Copies composer's completion script for a shell, from this step's
+  templates (`_composer/composer.{bash,zsh,fish}`), to where that shell
+  loads it. The script completes addresses for
   composer's mix tasks from each project's `_build/composer/index`, without
   starting the BEAM, so one global copy serves every project.
 
@@ -41,7 +41,15 @@ defmodule Composer.CbStd.Steps.Completions.Composer do
     stability: :experimental,
     tags: [:completions]
 
-  alias Composer.Completion
+  @targets %{
+    # Sorts after mix_autocomplete.bash, so it is sourced last.
+    "bash" => %{path: "~/.complete/mix_composer.bash", create_dir?: false},
+    "zsh" => %{path: "~/.zsh/functions/_composer_mix", create_dir?: true},
+    # Not completions/mix.fish, which would hide fish's own mix.fish.
+    "fish" => %{path: "~/.config/fish/conf.d/composer_mix.fish", create_dir?: true}
+  }
+
+  @shells Map.keys(@targets)
 
   @impl Igniter.Mix.Task
   def info(_argv, _composing_task) do
@@ -53,22 +61,28 @@ defmodule Composer.CbStd.Steps.Completions.Composer do
     options = igniter.args.options
     shell = options[:shell]
 
-    if shell in Completion.shells() do
-      path = options[:path] || Completion.default_path(shell)
+    if shell in @shells do
+      path = options[:path] || @targets[shell].path
       install(igniter, shell, Path.expand(path), create_dir?: options[:path] != nil)
     else
       Igniter.add_issue(igniter, "unknown --shell #{inspect(shell)}; use bash, zsh or fish")
     end
   end
 
+  @doc "The supported shells."
+  @spec shells() :: [String.t()]
+  def shells, do: @shells
+
   @doc """
-  Returns each shell's install path, and whether its directory may be
-  created.
+  Returns each shell's install path, unexpanded (`~/...`), and whether its
+  directory may be created.
   """
-  def targets do
-    Map.new(Completion.shells(), fn shell ->
-      {shell, %{path: Completion.default_path(shell), create_dir?: shell != "bash"}}
-    end)
+  def targets, do: @targets
+
+  @doc "The completion script for `shell`, read from this step's templates."
+  @spec script!(String.t()) :: binary()
+  def script!(shell) when shell in @shells do
+    template("composer.#{shell}") |> Composer.Templates.path() |> File.read!()
   end
 
   @doc """
@@ -77,9 +91,9 @@ defmodule Composer.CbStd.Steps.Completions.Composer do
   `create_dir?: true` creates the directory for any shell.
   """
   def install(igniter, shell, path, opts \\ []) do
-    script = Completion.script!(shell)
+    script = script!(shell)
     dir = Path.dirname(path)
-    create_dir? = Keyword.get(opts, :create_dir?, false) or targets()[shell].create_dir?
+    create_dir? = Keyword.get(opts, :create_dir?, false) or @targets[shell].create_dir?
 
     cond do
       not create_dir? and not File.dir?(dir) ->

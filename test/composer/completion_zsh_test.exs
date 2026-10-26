@@ -5,7 +5,7 @@ defmodule Composer.CompletionZshTest do
 
   unless System.find_executable("zsh"), do: @moduletag(skip: "zsh is not installed")
 
-  @script Path.expand("priv/completion/composer.zsh")
+  @script Path.expand("lib/composer/cb_std/steps/completions/_composer/composer.zsh")
 
   @index """
   self\tmine\t

@@ -7,7 +7,7 @@ defmodule Composer.CompletionTest do
 
   unless System.find_executable("bash"), do: @moduletag(skip: "bash is not installed")
 
-  @script Path.expand("priv/completion/composer.bash")
+  @script Path.expand("lib/composer/cb_std/steps/completions/_composer/composer.bash")
 
   @index """
   self\tmine\t
@@ -235,7 +235,7 @@ defmodule Composer.CompletionTest do
   test "the bash, zsh and fish scripts share one segment program" do
     programs =
       for shell <- ~w(bash zsh fish) do
-        source = File.read!("priv/completion/composer.#{shell}")
+        source = File.read!("lib/composer/cb_std/steps/completions/_composer/composer.#{shell}")
         [_, program, _] = String.split(source, ~r/# -- (end )?segments.awk --\n/)
         program |> String.split("\n") |> Enum.drop(1) |> Enum.drop(-2)
       end

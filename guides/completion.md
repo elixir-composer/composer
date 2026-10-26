@@ -20,9 +20,9 @@ mix_completions' function (`_mix_complete_complete` in bash, `_mix` in zsh).
 Neither program starts the BEAM on Tab; each reads a plain-text file that an
 earlier `mix` run wrote.
 
-The scripts ship in composer's `priv/completion/`. `Composer.Completion`
-gives each one, and its default install path, to installers such as the
-`cb_std:completions:composer` step, which copies it into `~`. The
+The scripts are the templates of the `cb_std:completions:composer` step,
+in `lib/composer/cb_std/steps/completions/_composer/`, like any step's templates; the step copies
+one into `~`. The
 `cb_std/completions/install` recipe runs that step and
 `cb_std:completions:mix`.
 
@@ -141,8 +141,8 @@ hint. A hint never changes the candidates.
 ## The contract
 
 `Composer.Index` writes the index, and the awk program in
-`priv/completion/composer.{bash,zsh,fish}` reads it. Both live in composer
-and are tested together:
+`lib/composer/cb_std/steps/completions/_composer/composer.{bash,zsh,fish}`
+reads it. Both live in composer and are tested together:
 
 - The awk program between the `# -- segments.awk --` markers must stay
   identical in the three scripts. A test checks this, and shell-specific

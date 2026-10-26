@@ -4,7 +4,7 @@ defmodule Composer.CbStd.Steps.Completions.ComposerTest do
   import Igniter.Test
 
   alias Composer.CbStd.Steps.Completions
-  alias Composer.Completion
+  alias Composer.CbStd.Steps.Completions.Composer, as: Step
 
   @moduletag :tmp_dir
 
@@ -18,16 +18,27 @@ defmodule Composer.CbStd.Steps.Completions.ComposerTest do
     assert meta.action == :gen
   end
 
+  test "each shell's script is a template of the step, shipped in lib/" do
+    assert "lib" in Mix.Project.config()[:package][:files]
+
+    for shell <- Step.shells() do
+      assert Step.script!(shell) =~ ~r/completion for composer's mix tasks/
+      assert "~/" <> _ = Step.targets()[shell].path
+    end
+
+    assert_raise FunctionClauseError, fn -> Step.script!("nope") end
+  end
+
   test "writes composer's script for each shell", %{tmp_dir: dir} do
-    for shell <- Completion.shells() do
-      path = Path.join([dir, shell, Path.basename(Completion.default_path(shell))])
+    for shell <- Step.shells() do
+      path = Path.join([dir, shell, Path.basename(Step.targets()[shell].path)])
       File.mkdir_p!(Path.dirname(path))
 
       igniter = Completions.Composer.install(test_project(), shell, path)
 
       assert igniter.issues == []
       assert igniter.notices == ["composer completions are installed in #{path}"]
-      assert File.read!(path) == Completion.script!(shell)
+      assert File.read!(path) == Step.script!(shell)
       assert File.stat!(path).mode |> Bitwise.band(0o777) == 0o755
     end
   end
@@ -68,7 +79,7 @@ defmodule Composer.CbStd.Steps.Completions.ComposerTest do
       ])
 
     assert igniter.issues == []
-    assert File.read!(path) == Completion.script!("bash")
+    assert File.read!(path) == Step.script!("bash")
   end
 
   test "zsh and fish create their directory", %{tmp_dir: dir} do
@@ -77,7 +88,7 @@ defmodule Composer.CbStd.Steps.Completions.ComposerTest do
       igniter = Completions.Composer.install(test_project(), shell, path)
 
       assert igniter.issues == []
-      assert File.read!(path) == Completion.script!(shell)
+      assert File.read!(path) == Step.script!(shell)
     end
   end
 end

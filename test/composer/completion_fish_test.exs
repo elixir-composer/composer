@@ -5,7 +5,7 @@ defmodule Composer.CompletionFishTest do
 
   unless System.find_executable("fish"), do: @moduletag(skip: "fish is not installed")
 
-  @script Path.expand("priv/completion/composer.fish")
+  @script Path.expand("lib/composer/cb_std/steps/completions/_composer/composer.fish")
 
   @index """
   self\tmine\t
