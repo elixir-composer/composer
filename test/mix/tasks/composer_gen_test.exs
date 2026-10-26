@@ -114,7 +114,22 @@ defmodule Mix.Tasks.Composer.GenTest do
     assert {[_, _], []} = Composer.Recipe.Chapter.check(chapter, "ash.exs", "test")
   end
 
-  test "gen.recipe rejects a duplicate and an unqualified name" do
+  test "gen.recipe with a bare name creates an empty top-level chapter" do
+    igniter = Igniter.compose_task(test_project(), "composer.gen.recipe", ["deploy"])
+    source = parses!(igniter, "lib/composer/test/recipes/deploy.exs")
+    assert source =~ "# test/deploy/<name>; run one with:"
+    assert {[], _} = Code.eval_string(source)
+
+    igniter = Igniter.compose_task(igniter, "composer.gen.recipe", ["deploy/fly"])
+    {chapter, _} = Code.eval_string(parses!(igniter, "lib/composer/test/recipes/deploy.exs"))
+    assert Keyword.keys(chapter) == [:fly]
+
+    assert_raise Mix.Error, ~r/recipes\/deploy.exs already exists/, fn ->
+      Igniter.compose_task(igniter, "composer.gen.recipe", ["deploy"])
+    end
+  end
+
+  test "gen.recipe rejects a duplicate and an invalid name" do
     project =
       test_project(
         files: %{"lib/composer/test/recipes/ash.exs" => ~s([base: [shortdoc: "B", steps: []]])}
@@ -124,7 +139,7 @@ defmodule Mix.Tasks.Composer.GenTest do
       Igniter.compose_task(project, "composer.gen.recipe", ["ash/base"])
     end
 
-    for bad <- ["base", "./a/b", "Ash/base"] do
+    for bad <- ["Base", "./a/b", "Ash/base", "/"] do
       assert_raise Mix.Error, ~r/Give it as chapter\/name/, fn ->
         Igniter.compose_task(test_project(), "composer.gen.recipe", [bad])
       end

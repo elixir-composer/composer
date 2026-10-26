@@ -1,18 +1,23 @@
 defmodule Mix.Tasks.Composer.Gen.Recipe do
-  @shortdoc "Adds a recipe to a chapter"
+  @shortdoc "Adds a recipe to a chapter, or creates a chapter"
 
   @moduledoc """
   Adds a recipe stub to a chapter, creating the chapter file when it
-  does not exist.
+  does not exist, or creates an empty top-level chapter.
 
       mix composer.gen.recipe ash/base
       mix composer.gen.recipe ash/ui/tailwind/base
+      mix composer.gen.recipe ash
 
   adds the recipe `base` to `lib/composer/<app>/recipes/ash.exs` (or
   `recipes/ash/ui/tailwind.exs`) in the current project's cookbook. The
   argument is `chapter/name`, where the chapter may be a nested path; the
   root address `/ash/base` is accepted too. The recipe is then addressed
   as `<app>/ash/base`, or `/ash/base` from inside the cookbook.
+
+  A bare name (`ash`) creates the chapter `recipes/ash.exs` holding no
+  recipes yet; add them with `mix composer.gen.recipe ash/<name>`. Lint
+  reports a chapter that is still empty. An existing chapter is an error.
 
   A new chapter file starts with a comment listing the entry forms. Adding
   to an existing chapter appends to its keyword list; a recipe of the same
@@ -43,25 +48,51 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
     arg = igniter.args.positional.path
     path = arg |> String.trim() |> String.trim_leading("/") |> String.replace("-", "_")
 
-    {chapter, name} =
-      case {Path.dirname(path), Path.basename(path)} do
-        {"." <> _, _name} ->
-          invalid!(arg)
-
-        {chapter, name} ->
-          if Chapter.valid_path?(chapter) and Chapter.valid_name?(name),
-            do: {chapter, name},
-            else: invalid!(arg)
-      end
-
     cookbook = igniter |> Igniter.Project.Application.app_name() |> GenCookbook.cookbook_name()
-    file = "lib/composer/#{cookbook}/recipes/#{chapter}.exs"
-    ref = Composer.Ref.id(:recipe, cookbook, path)
+
+    case {Path.dirname(path), Path.basename(path)} do
+      {".", chapter} ->
+        if Chapter.valid_name?(chapter),
+          do: chapter(igniter, cookbook, chapter),
+          else: invalid!(arg)
+
+      {"." <> _, _name} ->
+        invalid!(arg)
+
+      {chapter, name} ->
+        if Chapter.valid_path?(chapter) and Chapter.valid_name?(name),
+          do: recipe(igniter, cookbook, chapter, name),
+          else: invalid!(arg)
+    end
+  end
+
+  defp chapter(igniter, cookbook, chapter) do
+    file = chapter_file(cookbook, chapter)
+
+    if Igniter.exists?(igniter, file) do
+      Mix.raise(
+        "#{file} already exists. Add a recipe to it with mix composer.gen.recipe #{chapter}/<name>."
+      )
+    end
+
+    igniter
+    |> Igniter.create_new_file(file, header(cookbook, chapter, "<name>") <> "[]\n")
+    |> Igniter.add_notice("""
+    Add recipes to the chapter with:
+
+        mix composer.gen.recipe #{chapter}/<name>
+    """)
+  end
+
+  defp recipe(igniter, cookbook, chapter, name) do
+    file = chapter_file(cookbook, chapter)
+    ref = Composer.Ref.id(:recipe, cookbook, chapter <> "/" <> name)
 
     igniter =
       if Igniter.exists?(igniter, file),
         do: append(igniter, file, name, ref),
-        else: Igniter.create_new_file(igniter, file, source(chapter, name, ref))
+        else:
+          Igniter.create_new_file(igniter, file, header(cookbook, chapter, name) <> stub(name))
 
     Igniter.add_notice(igniter, """
     Preview and run the recipe with:
@@ -71,11 +102,14 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
     """)
   end
 
+  defp chapter_file(cookbook, chapter), do: "lib/composer/#{cookbook}/recipes/#{chapter}.exs"
+
   defp invalid!(arg) do
     Mix.raise("""
     Invalid recipe #{inspect(arg)}. Give it as chapter/name (e.g. ash/base, \
     or ash/ui/base for a nested chapter): the recipe name in the chapter \
-    file recipes/<chapter>.exs. Every segment is lowercase [a-z0-9_].
+    file recipes/<chapter>.exs; or a bare chapter name (e.g. ash) to create \
+    an empty chapter. Every segment is lowercase [a-z0-9_].
     """)
   end
 
@@ -124,12 +158,16 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
     """
   end
 
-  defp source(chapter, name, ref) do
+  # The comment that starts a new chapter file, with recipe `name` in the
+  # example command.
+  defp header(cookbook, chapter, name) do
+    stem = Composer.Ref.id(:recipe, cookbook, chapter)
+
     """
     # Chapter #{chapter}. Each recipe here is addressed as
-    # #{String.replace_suffix(ref, "/" <> name, "/<name>")}; run one with:
+    # #{stem}/<name>; run one with:
     #
-    #     mix composer.recipe.run #{ref}
+    #     mix composer.recipe.run #{stem}/#{name}
     #
     # A recipe is a keyword list:
     #
@@ -152,6 +190,6 @@ defmodule Mix.Tasks.Composer.Gen.Recipe do
     #
     # Browse steps with `mix composer.step.list`. This file is evaluated as
     # Elixir code.
-    """ <> stub(name)
+    """
   end
 end

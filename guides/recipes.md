@@ -125,11 +125,13 @@ Every `if: :flag` in a recipe's own steps must be declared in its own
 A chapter has the same relative path, file format and addressing rule
 in every cookbook. Chapters may be nested in directories under `recipes/`;
 every directory and file name is a lowercase `[a-z0-9_]` name. Add a
-recipe to a chapter (creating the file if needed) with:
+recipe to a chapter (creating the file if needed), or create an empty
+top-level chapter, with:
 
 ```bash
 mix composer.gen.recipe ash/base                  # in this project's cookbook
 mix composer.gen.recipe ash/ui/tailwind/base      # a nested chapter
+mix composer.gen.recipe ash                       # an empty chapter
 ```
 
 > **Chapter files are Elixir code**, evaluated with `Code.eval_file/1`. Only
