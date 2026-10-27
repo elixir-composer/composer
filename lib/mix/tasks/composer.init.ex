@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.Composer.Init do
-  @shortdoc "Generates your project's cookbook and default recipe"
+  @shortdoc "Generates a project cookbook and default recipe"
 
   @moduledoc """
   Sets up the current app as a composer cookbook, with a default recipe
