@@ -17,7 +17,8 @@ defmodule Composer.MixProject do
       # test/fixtures holds a whole Mix project used by the integration test.
       test_ignore_filters: [&String.starts_with?(&1, "test/fixtures/")],
       package: package(),
-      docs: docs()
+      docs: docs(),
+      aliases: aliases()
     ]
   end
 
@@ -94,6 +95,12 @@ defmodule Composer.MixProject do
         Cookbooks: [Composer.CbStd],
         "Built-in steps": ~r/^Composer.CbStd.Steps./
       ]
+    ]
+  end
+
+  defp aliases do
+    [
+      lint: ["composer.cookbook.manifest", "composer.cookbook.lint"]
     ]
   end
 end
