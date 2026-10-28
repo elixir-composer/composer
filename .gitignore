@@ -17,3 +17,6 @@ composer-*.tar
 
 # Editor tooling (Expert LSP logs)
 .expert/
+
+# Claude Code per-machine settings
+.claude/settings.local.json
