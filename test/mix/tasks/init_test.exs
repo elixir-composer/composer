@@ -37,7 +37,7 @@ defmodule Mix.Tasks.Composer.InitTest do
     {manifest, _} = Code.eval_string(content(igniter, "lib/composer/test/manifest.exs"))
 
     assert manifest.recipes == [
-             %{id: "app/default", shortdoc: "Every built-in step, in a sensible order"}
+             %{id: "app/default", shortdoc: "A starter set of steps, in a sensible order"}
            ]
   end
 
@@ -46,9 +46,9 @@ defmodule Mix.Tasks.Composer.InitTest do
 
     {chapter, _binding} = Code.eval_string(content)
     assert {[default], []} = Recipe.Chapter.check(chapter, @recipe, "test")
-    assert default.shortdoc == "Every built-in step, in a sensible order"
-    assert default.doc =~ "Every built-in step"
-    assert Keyword.keys(default.flags) == [:exsync, :mix_test_watch, :oban_pro, :gigalixir]
+    assert default.shortdoc == "A starter set of steps, in a sensible order"
+    assert default.doc =~ "A starter set of steps"
+    assert default.flags == []
     assert content == content |> Code.format_string!() |> IO.iodata_to_binary() |> Kernel.<>("\n")
     assert content =~ "This project's chapter"
   end
@@ -56,27 +56,8 @@ defmodule Mix.Tasks.Composer.InitTest do
   test "every step carries its description from the step's summary" do
     {_igniter, content} = generated()
 
-    assert content =~ ~r{# Removes daisyUI\n\s+"cb_std:phx:remove_daisy_ui",}
-    assert content =~ ~r{# Adds pgvector support\n\s+"cb_std:pg:vector",}
-
     assert content =~
              ~r/# Installs oban and runs the package's own igniter installer\n\s+"hex:oban",/
-  end
-
-  test "optional steps document their flag" do
-    {_igniter, content} = generated()
-
-    assert content =~ ~s({"cb_std:oban_pro", if: :oban_pro})
-    assert content =~ "Adds Oban Pro extensions (only with --oban-pro)"
-    assert content =~ ~s({"cb_std:cluster:gigalixir:libcluster", if: :gigalixir})
-  end
-
-  test "oban_pro follows oban, whose installer it patches, and sort_deps is last" do
-    refs = Mix.Tasks.Composer.Init.cookbook()
-    position = &Enum.find_index(refs, fn ref -> ref == &1 end)
-
-    assert position.("hex:oban") < position.("cb_std:oban_pro")
-    assert List.last(refs) == "cb_std:setup:sort_deps"
   end
 
   test "the default recipe references only resolvable steps, without warnings" do
@@ -96,12 +77,12 @@ defmodule Mix.Tasks.Composer.InitTest do
 
       File.write!(Path.join(dir, "recipes/mine.exs"), """
       [
-        base: [shortdoc: "Base", steps: ["cb_std:setup:credo"]],
+        base: [shortdoc: "Base", steps: ["cb_std:completions:mix"]],
         app: [
           shortdoc: "Mine",
           doc: "My app.",
           flags: [gigalixir: "Deploy"],
-          steps: ["./base", {"./base", if: :gigalixir}, {"cb_std:cluster:gigalixir", if: :gigalixir}]
+          steps: ["./base", {"./base", if: :gigalixir}, {"cb_std:completions:composer", if: :gigalixir}]
         ]
       ]
       """)
@@ -113,7 +94,7 @@ defmodule Mix.Tasks.Composer.InitTest do
 
       assert content =~ "Copied from mine/mine/app"
       assert content =~ "by `mix composer.init --from mine/mine/app`"
-      refute content =~ "cb_std:phx:remove_daisy_ui"
+      refute content =~ "hex:oban"
 
       {chapter, _} = Code.eval_string(content)
 
@@ -125,7 +106,7 @@ defmodule Mix.Tasks.Composer.InitTest do
                  steps: [
                    "mine/mine/base",
                    {"mine/mine/base", if: :gigalixir},
-                   {"cb_std:cluster:gigalixir", if: :gigalixir}
+                   {"cb_std:completions:composer", if: :gigalixir}
                  ]
                ]
              ]

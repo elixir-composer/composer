@@ -21,12 +21,12 @@ defmodule Composer.Recipe.ChapterTest do
              shortdoc: "The base",
              doc: nil,
              flags: [],
-             steps: ["cb_std:setup:gitignore"]
+             steps: ["cb_std:echo"]
            } = base
 
     assert base.path == fixture("clean")
     assert app.doc == "Builds on clean/base.\n"
-    assert app.flags == [credo: "Add Credo"]
+    assert app.flags == [completions: "Add shell completion"]
   end
 
   test "ids/1 reads names from the syntax tree, matching load/2" do
@@ -40,7 +40,7 @@ defmodule Composer.Recipe.ChapterTest do
 
     # Bindings before a literal list are fine.
     assert Chapter.ids(fixture("bindings")) == {:ok, ["base"]}
-    assert {:ok, [%{steps: ["cb_std:setup:gitignore"]}]} = load("bindings")
+    assert {:ok, [%{steps: ["cb_std:echo"]}]} = load("bindings")
   end
 
   test "a non-literal top level cannot be listed" do

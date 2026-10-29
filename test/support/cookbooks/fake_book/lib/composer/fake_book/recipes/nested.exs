@@ -1,6 +1,6 @@
 [
   extra: [
     shortdoc: "Extra steps",
-    steps: ["cb_std:setup:gitignore", ":hello"]
+    steps: ["cb_std:echo", ":hello"]
   ]
 ]

@@ -11,7 +11,7 @@ defmodule Composer.LSP.NestedTest do
 
   @tailwind """
   [
-    base: [shortdoc: "Tailwind base", steps: ["cb_std:setup:credo"]],
+    base: [shortdoc: "Tailwind base", steps: ["fake_book:setup:credo"]],
     full: [
       shortdoc: "Everything",
       steps: [

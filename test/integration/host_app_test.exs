@@ -152,16 +152,16 @@ defmodule Composer.Integration.HostAppTest do
     assert mix!(app, ["composer.cookbook.lint", "--file", chapter]) =~ "mine.exs is valid."
 
     show = mix!(app, ["composer.recipe.show", "fake_dep/mine/app"])
-    assert show =~ ~r/--ignore\s+Add macOS files/
+    assert show =~ ~r/--shout\s+Print a message/
     assert show =~ "fake_dep:hi  [fake_dep/mine/base]"
 
     {output, status} = mix(app, ["composer.recipe.run", "fake_dep/mine/app", "--nope"])
     assert status != 0
     assert output =~ "Unknown flag --nope"
 
-    mix!(app, ["composer.recipe.run", "fake_dep/mine/app", "--ignore", "--yes", "--no-commit"])
+    run = mix!(app, ["composer.recipe.run", "fake_dep/mine/app", "--shout", "--yes", "--no-commit"])
     assert File.read!(Path.join(app, "hi.txt")) == "hi from host_app\n"
-    assert File.exists?(Path.join(app, ".gitignore"))
+    assert run =~ "Shouting from fake_dep"
   end
 
   test "a hex: path source is added to mix.exs and its installer gets the argv",

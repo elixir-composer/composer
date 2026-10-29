@@ -75,7 +75,7 @@ defmodule Composer.Lint.DiagnosticsTest do
       assert old.fix == %{
                range: {{14, 8}, {14, 25}},
                expect: "setup/gitignore",
-               text: ~s("cb_std:setup:gitignore")
+               text: ~s("other_book:setup:gitignore")
              }
 
       mismatch = find(diagnostics, :kind_mismatch)
@@ -241,8 +241,8 @@ defmodule Composer.Lint.DiagnosticsTest do
         "ash.exs" =>
           ~s|[\n  base: [shortdoc: "x", steps: ["credoo", "cb_std:nope"]],\n  mid: [shortdoc: "x", steps: ["./base"]]\n]\n|,
         "app.exs" =>
-          ~s|[\n  full: [shortdoc: "x", steps: ["mine/ash/mid", "cb_std:setup:gitignore"]]\n]\n|,
-        "clean.exs" => ~s|[\n  ok: [shortdoc: "x", steps: ["cb_std:setup:gitignore"]]\n]\n|
+          ~s|[\n  full: [shortdoc: "x", steps: ["mine/ash/mid", "other_book:setup:gitignore"]]\n]\n|,
+        "clean.exs" => ~s|[\n  ok: [shortdoc: "x", steps: ["other_book:setup:gitignore"]]\n]\n|
       })
 
       %{

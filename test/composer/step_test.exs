@@ -23,9 +23,9 @@ defmodule Composer.StepTest do
     {:docs_v1, _, _, _, %{"en" => doc}, _, _} = Code.fetch_docs(Composer.FakeBook.Steps.Hello)
     assert doc == "Writes hello.txt"
 
-    Code.ensure_loaded!(Composer.CbStd.Steps.Setup.Credo)
-    assert Igniter.Mix.Task.igniter_task?(Composer.CbStd.Steps.Setup.Credo)
-    refute Mix.Task.shortdoc(Composer.CbStd.Steps.Setup.Credo)
+    Code.ensure_loaded!(Composer.CbStd.Steps.Echo)
+    assert Igniter.Mix.Task.igniter_task?(Composer.CbStd.Steps.Echo)
+    refute Mix.Task.shortdoc(Composer.CbStd.Steps.Echo)
   end
 
   test "Meta.rows/1: the metadata shown by step.show and hover, empty values left out" do

@@ -10,12 +10,13 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
   @moduletag :tmp_dir
 
   @recipes %{
-    "base" => ~s(["cb_std:setup:gitignore"]),
-    "deploy" => ~s(["cb_std:ecto:force_drop"]),
-    "app" => ~s(["./base", {"cb_std:ecto:force_drop", if: :force_drop}, {:queue, "foo.bar", []}]),
+    "base" => ~s(["other_book:setup:gitignore"]),
+    "deploy" => ~s(["other_book:ecto:force_drop"]),
+    "app" =>
+      ~s(["./base", {"other_book:ecto:force_drop", if: :force_drop}, {:queue, "foo.bar", []}]),
     "gated" => ~s(["./base", {"./deploy", if: :deploy}]),
-    "reserved" => ~s([{"cb_std:setup:gitignore", if: :yes}]),
-    "cookbook" => ~s(["fake_book:hello", "cb_std:setup:gitignore"]),
+    "reserved" => ~s([{"other_book:setup:gitignore", if: :yes}]),
+    "cookbook" => ~s(["fake_book:hello", "other_book:setup:gitignore"]),
     "cookbook_gated" => ~s([{"fake_book:hello", if: :hello}]),
     "cookbook_missing" => ~s(["fake_book:nope"]),
     "legacy" => "[{:gen, :gitignore}]",
@@ -75,7 +76,7 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
     File.cd!(app)
 
     Application.put_env(:composer, :discovery,
-      modules: [Composer.FakeBook],
+      modules: [Composer.FakeBook, Composer.OtherBook],
       cookbooks: [code_cookbook(book)]
     )
 
@@ -125,15 +126,15 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
     assert_received {:steps,
                      [
                        {:module, Composer.FakeBook.Steps.Hello},
-                       {:module, Composer.CbStd.Steps.Setup.Gitignore}
+                       {:module, Composer.OtherBook.Steps.Setup.Gitignore}
                      ]}
 
     run(["mine/t/app", "--no-commit", "--force-drop"])
 
     assert_received {:steps,
                      [
-                       {:module, Composer.CbStd.Steps.Setup.Gitignore},
-                       {:module, Composer.CbStd.Steps.Ecto.ForceDrop},
+                       {:module, Composer.OtherBook.Steps.Setup.Gitignore},
+                       {:module, Composer.OtherBook.Steps.Ecto.ForceDrop},
                        {:queue, "foo.bar", []}
                      ]}
   end
@@ -172,8 +173,8 @@ defmodule Mix.Tasks.Composer.Recipe.RunTest do
            Flags: --force-drop
 
            Steps:
-           1. cb_std:setup:gitignore [mine/t/base]
-           2. cb_std:ecto:force_drop [mine/t/app]
+           1. other_book:setup:gitignore [mine/t/base]
+           2. other_book:ecto:force_drop [mine/t/app]
            3. {:queue, "foo.bar", []} [mine/t/app]
            """
   end

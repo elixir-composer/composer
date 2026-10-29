@@ -140,8 +140,8 @@ defmodule Composer.ResolverTest do
     end
 
     test "a step address where a recipe is expected, and the reverse", %{books: books} do
-      assert {:error, {:kind_mismatch, :recipe, "cb_std:setup:credo", nil, nil} = reason} =
-               Resolver.find_recipe(books, "cb_std:setup:credo", @cli)
+      assert {:error, {:kind_mismatch, :recipe, "other_book:setup:credo", nil, nil} = reason} =
+               Resolver.find_recipe(books, "other_book:setup:credo", @cli)
 
       assert Composer.Error.message(reason) =~ "is a step address"
 
@@ -169,7 +169,7 @@ defmodule Composer.ResolverTest do
     end
 
     test "a unique last segment resolves", %{books: books} do
-      assert {:ok, [%{ref: "cb_std:setup:sort_deps"}]} =
+      assert {:ok, [%{ref: "other_book:setup:sort_deps"}]} =
                Resolver.resolve_steps(books, ["sort_deps"], context: @cli)
 
       assert Resolver.find_recipe(books, "inputs", @cli) ==
@@ -180,7 +180,7 @@ defmodule Composer.ResolverTest do
       assert {:error, {:ambiguous, :address, "libcluster", nil, ids}} =
                Resolver.find_step(books, "libcluster", @cli)
 
-      assert ids == ["cb_std:cluster:gigalixir:libcluster", "cb_std:cluster:libcluster"]
+      assert ids == ["other_book:cluster:gigalixir:libcluster", "other_book:cluster:libcluster"]
     end
 
     test "a recipe and a step tie", %{books: books} do
@@ -212,11 +212,11 @@ defmodule Composer.ResolverTest do
     test "qualified addresses resolve exactly", %{tmp_dir: dir} do
       books =
         cookbooks(dir, %{
-          "g/p" => ~s(["cb_std:setup:credo", "fake_book:ash:postgres", "hex:oban"])
+          "g/p" => ~s(["other_book:setup:credo", "fake_book:ash:postgres", "hex:oban"])
         })
 
       assert {:ok, %{steps: [credo, postgres, oban]}} = resolve(books, "mine/g/p")
-      assert credo.step == {:module, Composer.CbStd.Steps.Setup.Credo}
+      assert credo.step == {:module, Composer.OtherBook.Steps.Setup.Credo}
       assert postgres.step == {:module, Composer.FakeBook.Steps.Ash.Postgres}
       assert oban.step == {:install, :oban, []}
       assert credo.origin == "mine/g/p"
@@ -242,8 +242,8 @@ defmodule Composer.ResolverTest do
       assert {:error, {:bare_word, "credo", "mine/g/q", candidates, []} = reason} =
                resolve(books, "mine/g/q")
 
-      assert candidates == ["cb_std:setup:credo", "fake_book:setup:credo"]
-      assert Composer.Error.message(reason) =~ ~s(did you mean "cb_std:setup:credo" or)
+      assert candidates == ["fake_book:setup:credo", "other_book:setup:credo"]
+      assert Composer.Error.message(reason) =~ ~s(did you mean "fake_book:setup:credo" or)
     end
 
     test "a bare word naming one of the cookbook's own steps has one rewrite", %{tmp_dir: dir} do
@@ -262,7 +262,7 @@ defmodule Composer.ResolverTest do
     test "a bare typo suggests the close step, not a Hex package", %{tmp_dir: dir} do
       books = cookbooks(dir, %{"g/p" => ~s(["gitignroe"])})
 
-      assert {:error, {:bare_word, "gitignroe", "mine/g/p", [], ["cb_std:setup:gitignore"]}} =
+      assert {:error, {:bare_word, "gitignroe", "mine/g/p", [], ["other_book:setup:gitignore"]}} =
                resolve(books, "mine/g/p")
     end
 
@@ -275,16 +275,16 @@ defmodule Composer.ResolverTest do
     end
 
     test "a step that moved into a group is suggested first", %{tmp_dir: dir} do
-      books = cookbooks(dir, %{"g/p" => ~s(["cb_std:gigalixir:libcluster"])})
+      books = cookbooks(dir, %{"g/p" => ~s(["other_book:gigalixir:libcluster"])})
 
-      assert {:error, {:missing_step, _, _, ["cb_std:cluster:gigalixir:libcluster" | _]}} =
+      assert {:error, {:missing_step, _, _, ["other_book:cluster:gigalixir:libcluster" | _]}} =
                resolve(books, "mine/g/p")
     end
 
     test "a step whose name became a group is suggested first", %{tmp_dir: dir} do
-      books = cookbooks(dir, %{"g/p" => ~s(["cb_std:setup_gitignore"])})
+      books = cookbooks(dir, %{"g/p" => ~s(["other_book:setup_gitignore"])})
 
-      assert {:error, {:missing_step, _, _, ["cb_std:setup:gitignore" | _]}} =
+      assert {:error, {:missing_step, _, _, ["other_book:setup:gitignore" | _]}} =
                resolve(books, "mine/g/p")
     end
 
@@ -317,12 +317,12 @@ defmodule Composer.ResolverTest do
 
       assert {:ok, [args, credo]} =
                Resolver.resolve_steps(books, ["fake_book:args", ":setup:credo"],
-                 context: %{@cli | cookbook: "cb_std"},
+                 context: %{@cli | cookbook: "other_book"},
                  argv: ["--bar"]
                )
 
       assert args.step == {:module, Composer.FakeBook.Steps.Args, ["--bar"]}
-      assert credo.ref == "cb_std:setup:credo"
+      assert credo.ref == "other_book:setup:credo"
     end
   end
 
@@ -330,12 +330,13 @@ defmodule Composer.ResolverTest do
     test "is an error naming the new spelling", %{tmp_dir: dir} do
       books =
         cookbooks(dir, %{
-          "g/mixed" => ~s(["cb_std:setup/credo"]),
+          "g/mixed" => ~s(["other_book:setup/credo"]),
           "g/path" => ~s(["ash/postgres"]),
           "g/both" => ~s(["setup/credo"])
         })
 
-      assert {:error, {:old_syntax, "mine/g/mixed", "cb_std:setup/credo", ["cb_std:setup:credo"]}} =
+      assert {:error,
+              {:old_syntax, "mine/g/mixed", "other_book:setup/credo", ["other_book:setup:credo"]}} =
                resolve(books, "mine/g/mixed")
 
       assert {:error,
@@ -345,7 +346,7 @@ defmodule Composer.ResolverTest do
       assert Composer.Error.message(reason) =~ "mix composer.cookbook.lint --fix"
 
       assert {:error,
-              {:old_syntax, _, "setup/credo", ["cb_std:setup:credo", "fake_book:setup:credo"]}} =
+              {:old_syntax, _, "setup/credo", ["fake_book:setup:credo", "other_book:setup:credo"]}} =
                resolve(books, "mine/g/both")
     end
 
@@ -519,16 +520,16 @@ defmodule Composer.ResolverTest do
     test "includes expand in place, nested, across cookbooks", %{tmp_dir: dir} do
       books =
         cookbooks(dir, %{
-          "g/a" => ~s(["./b", "cb_std:setup:sort_deps"]),
-          "g/b" => ~s(["cb_std:setup:credo", "fake_book/main/base"])
+          "g/a" => ~s(["./b", "other_book:setup:sort_deps"]),
+          "g/b" => ~s(["other_book:setup:credo", "fake_book/main/base"])
         })
 
       assert {:ok, result} = resolve(books, "mine/g/a")
 
       assert refs({:ok, result}) == [
-               "cb_std:setup:credo",
+               "other_book:setup:credo",
                "fake_book:hello",
-               "cb_std:setup:sort_deps"
+               "other_book:setup:sort_deps"
              ]
 
       assert Enum.map(result.recipes, & &1.ref) == [
@@ -545,7 +546,7 @@ defmodule Composer.ResolverTest do
     end
 
     test "a root address on the command line finds this project's recipe", %{tmp_dir: dir} do
-      books = cookbooks(dir, %{"g/mine" => ~s(["cb_std:setup:credo"])})
+      books = cookbooks(dir, %{"g/mine" => ~s(["other_book:setup:credo"])})
 
       assert {:ok, %{root: "mine/g/mine"}} =
                resolve(books, "/g/mine", context: %{@cli | cookbook: "mine"})
@@ -564,15 +565,15 @@ defmodule Composer.ResolverTest do
       books =
         cookbooks(dir, %{
           "g/top" => ~s(["./left", "./right"]),
-          "g/left" => ~s(["./shared", "cb_std:setup:credo"]),
-          "g/right" => ~s(["./shared", "cb_std:setup:quokka"]),
-          "g/shared" => ~s(["cb_std:setup:gitignore"])
+          "g/left" => ~s(["./shared", "other_book:setup:credo"]),
+          "g/right" => ~s(["./shared", "other_book:setup:quokka"]),
+          "g/shared" => ~s(["other_book:setup:gitignore"])
         })
 
       assert refs(resolve(books, "mine/g/top")) == [
-               "cb_std:setup:gitignore",
-               "cb_std:setup:credo",
-               "cb_std:setup:quokka"
+               "other_book:setup:gitignore",
+               "other_book:setup:credo",
+               "other_book:setup:quokka"
              ]
     end
 
@@ -580,13 +581,13 @@ defmodule Composer.ResolverTest do
       books =
         cookbooks(dir, %{
           "g/p" =>
-            ~s(["cb_std:setup:gitignore", "cb_std:setup:gitignore", {"cb_std:setup:gitignore", if: :x}])
+            ~s(["other_book:setup:gitignore", "other_book:setup:gitignore", {"other_book:setup:gitignore", if: :x}])
         })
 
       assert {:ok, result} = resolve(books, "mine/g/p")
-      assert refs({:ok, result}) == ["cb_std:setup:gitignore", "cb_std:setup:gitignore"]
+      assert refs({:ok, result}) == ["other_book:setup:gitignore", "other_book:setup:gitignore"]
       assert Enum.map(result.steps, & &1.if) == [nil, :x]
-      assert [%{label: "cb_std:setup:gitignore", if: nil}] = result.duplicates
+      assert [%{label: "other_book:setup:gitignore", if: nil}] = result.duplicates
     end
 
     test "{:task, ...} and {:queue, ...} are leaves", %{tmp_dir: dir} do
@@ -603,18 +604,18 @@ defmodule Composer.ResolverTest do
     test "relative and root includes across chapters", %{tmp_dir: dir} do
       books =
         cookbooks(dir, %{
-          "ash/base" => ~s(["cb_std:setup:credo"]),
-          "ash/ecto" => ~s(["./base", "cb_std:setup:gitignore"]),
-          "lv/base" => ~s(["cb_std:setup:quokka"]),
+          "ash/base" => ~s(["other_book:setup:credo"]),
+          "ash/ecto" => ~s(["./base", "other_book:setup:gitignore"]),
+          "lv/base" => ~s(["other_book:setup:quokka"]),
           "lv/app" => ~s(["./base", "/ash/ecto"])
         })
 
       assert {:ok, result} = resolve(books, "mine/lv/app")
 
       assert refs({:ok, result}) == [
-               "cb_std:setup:quokka",
-               "cb_std:setup:credo",
-               "cb_std:setup:gitignore"
+               "other_book:setup:quokka",
+               "other_book:setup:credo",
+               "other_book:setup:gitignore"
              ]
 
       assert Enum.map(result.recipes, & &1.ref) ==
@@ -624,7 +625,7 @@ defmodule Composer.ResolverTest do
     test "a relative include missing from the chapter fails", %{tmp_dir: dir} do
       books =
         cookbooks(dir, %{
-          "ash/base" => ~s(["cb_std:setup:credo"]),
+          "ash/base" => ~s(["other_book:setup:credo"]),
           "ash/ecto" => ~s(["./bsae"])
         })
 
@@ -645,11 +646,11 @@ defmodule Composer.ResolverTest do
       File.write!(Path.join(dir, "recipes/g.exs"), """
       [
         app: [shortdoc: "App", flags: [own: "Own"], steps: [{"./deploy", if: :own}]],
-        deploy: [shortdoc: "Deploy", flags: [gigalixir: "Gigalixir"], steps: [{"cb_std:cluster:gigalixir", if: :gigalixir}]]
+        deploy: [shortdoc: "Deploy", flags: [gigalixir: "Gigalixir"], steps: [{"other_book:cluster:gigalixir", if: :gigalixir}]]
       ]
       """)
 
-      books = discover(dir, [])
+      books = discover(dir, [:other_book])
       {:ok, result} = resolve(books, "mine/g/app")
       assert Resolver.declared_flags(result) == [own: "Own", gigalixir: "Gigalixir"]
     end
@@ -669,10 +670,10 @@ defmodule Composer.ResolverTest do
         books:
           cookbooks(dir, %{
             "g/app" =>
-              ~s(["./base", {"./deploy", if: :deploy}, {"cb_std:setup:credo", if: :credo}]),
-            "g/base" => ~s(["cb_std:setup:gitignore"]),
-            "g/deploy" => ~s(["cb_std:cluster:gigalixir", {"./cluster", if: :cluster}]),
-            "g/cluster" => ~s(["cb_std:cluster:libcluster"]),
+              ~s(["./base", {"./deploy", if: :deploy}, {"other_book:setup:credo", if: :credo}]),
+            "g/base" => ~s(["other_book:setup:gitignore"]),
+            "g/deploy" => ~s(["other_book:cluster:gigalixir", {"./cluster", if: :cluster}]),
+            "g/cluster" => ~s(["other_book:cluster:libcluster"]),
             "g/late" => ~s([{"./deploy", if: :deploy}, "./deploy"])
           })
       }
@@ -680,11 +681,15 @@ defmodule Composer.ResolverTest do
 
     test "a gated include follows its flag", %{books: books} do
       assert refs(resolve(books, "mine/g/app", flags: [deploy: true])) ==
-               ["cb_std:setup:gitignore", "cb_std:cluster:gigalixir", "cb_std:setup:credo"]
+               [
+                 "other_book:setup:gitignore",
+                 "other_book:cluster:gigalixir",
+                 "other_book:setup:credo"
+               ]
 
       assert refs(resolve(books, "mine/g/app", flags: [])) == [
-               "cb_std:setup:gitignore",
-               "cb_std:setup:credo"
+               "other_book:setup:gitignore",
+               "other_book:setup:credo"
              ]
     end
 
@@ -692,21 +697,21 @@ defmodule Composer.ResolverTest do
       assert {:ok, result} = resolve(books, "mine/g/app")
       assert Resolver.flags(result) == [:deploy, :cluster, :credo]
 
-      assert List.last(Enum.filter(result.steps, &(&1.ref == "cb_std:cluster:libcluster"))).gates ==
+      assert List.last(Enum.filter(result.steps, &(&1.ref == "other_book:cluster:libcluster"))).gates ==
                [:deploy, :cluster]
     end
 
     test "a gated-off include still expands through a later ungated include", %{books: books} do
-      assert refs(resolve(books, "mine/g/late", flags: [])) == ["cb_std:cluster:gigalixir"]
+      assert refs(resolve(books, "mine/g/late", flags: [])) == ["other_book:cluster:gigalixir"]
     end
 
     test "active/2 drops entries whose own if: is off", %{books: books} do
       {:ok, result} = resolve(books, "mine/g/app", flags: [])
-      assert refs(Resolver.active(result.steps, [])) == ["cb_std:setup:gitignore"]
+      assert refs(Resolver.active(result.steps, [])) == ["other_book:setup:gitignore"]
 
       assert refs(Resolver.active(result.steps, credo: true)) == [
-               "cb_std:setup:gitignore",
-               "cb_std:setup:credo"
+               "other_book:setup:gitignore",
+               "other_book:setup:credo"
              ]
     end
   end

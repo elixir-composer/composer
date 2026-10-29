@@ -24,7 +24,7 @@ defmodule Mix.Tasks.Composer.Step.RunTest do
   defp run(argv), do: Igniter.compose_task(test_project(), "composer.step.run", argv)
 
   test "runs comma-separated steps as one diff" do
-    run(["fake_book:hello,cb_std:setup:gitignore"])
+    run(["fake_book:hello,other_book:setup:gitignore"])
     |> assert_creates("hello.txt", "hello\n")
     |> assert_has_patch(".gitignore", "+ |.expert/")
   end
@@ -33,14 +33,14 @@ defmodule Mix.Tasks.Composer.Step.RunTest do
   # one of its steps, and a bare name is searched.
   test "hands the runner internal steps, for root, search and hex: addresses" do
     Application.put_env(:composer, :runner, RecordingRunner)
-    run([":phx:remove_topbar, postgres, hex:oban, cb_std:setup:credo"])
+    run([":echo, postgres, hex:oban, other_book:setup:credo"])
 
     assert_received {:steps,
                      [
-                       {:module, Composer.CbStd.Steps.Phx.RemoveTopbar},
+                       {:module, Composer.CbStd.Steps.Echo},
                        {:module, Composer.FakeBook.Steps.Ash.Postgres},
                        {:install, :oban, []},
-                       {:module, Composer.CbStd.Steps.Setup.Credo}
+                       {:module, Composer.OtherBook.Steps.Setup.Credo}
                      ]}
   end
 

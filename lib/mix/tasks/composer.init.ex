@@ -3,14 +3,14 @@ defmodule Mix.Tasks.Composer.Init do
 
   @moduledoc """
   Sets up the current app as a composer cookbook, with a default recipe
-  listing every built-in step:
+  listing a starter set of steps:
 
       lib/composer/<app>.ex
       lib/composer/<app>/recipes/app.exs   (the recipe /app/default)
       lib/composer/<app>/steps/             (your own one-off steps)
 
-  The recipe lists every built-in step in a sensible order, each with a
-  one-line description pulled from the step itself. It is data, not
+  The recipe lists its steps in a sensible order, each with a one-line
+  description pulled from the step itself. It is data, not
   machinery: delete what you don't want, reorder freely, add your own steps.
   Run it with:
 
@@ -42,64 +42,19 @@ defmodule Mix.Tasks.Composer.Init do
   alias Composer.{CLI, Ref, Cookbook}
   alias Mix.Tasks.Composer.Gen.Cookbook, as: GenCookbook
 
-  # The default recipe written into new projects: every built-in step,
-  # grouped and ordered, with taste-heavy or license-gated steps behind
-  # flags. Descriptions are rendered from each step's summary at generation
-  # time, so the file can never drift from the actual cookbook.
-  @shortdoc_default "Every built-in step, in a sensible order"
+  # The default recipe written into new projects: a starter set of steps,
+  # grouped and ordered, any of them optionally behind a flag. Descriptions
+  # are rendered from each step's summary at generation time, so the file
+  # can never drift from the actual cookbook.
+  @shortdoc_default "A starter set of steps, in a sensible order"
 
   @sections [
-    {"Undo phx.new defaults you don't want",
-     [
-       "cb_std:phx:remove_agents_md",
-       "cb_std:phx:remove_daisy_ui",
-       "cb_std:phx:remove_live_title_suffix",
-       "cb_std:phx:remove_theme_toggle",
-       "cb_std:phx:remove_topbar"
-     ]},
-    {"Generate configuration and code",
-     [
-       "cb_std:phx:minimal_app_layout",
-       "cb_std:phx:minimal_home_page",
-       "cb_std:phx:tailwind_formatter",
-       "cb_std:setup:gitignore",
-       "cb_std:pg:extensions",
-       "cb_std:setup:generator_defaults",
-       "cb_std:ecto:base_schema",
-       "cb_std:setup:mix_env_config"
-     ]},
     {"Add packages",
      [
-       "cb_std:phx:bun",
-       "cb_std:setup:credo",
-       "cb_std:setup:dotenv_parser",
-       {"cb_std:setup:exsync", if: :exsync},
-       "cb_std:cluster:libcluster",
-       "cb_std:pg:vector",
-       "cb_std:setup:quokka",
-       "cb_std:phx:remixicons",
-       "cb_std:ecto:uuidv7",
-       {"cb_std:setup:mix_test_watch", if: :mix_test_watch},
        {:comment, "No built-in step: these ship their own installers, which run here."},
        "hex:oban",
        "hex:oban_web",
-       "hex:tidewave",
-       {:comment,
-        "tidewave's own installer only wires the plug — it writes no MCP config, so this follows it in the list to fill that gap."},
-       "cb_std:tidewave:tidewave_config",
-       {:comment, "Patches what oban's installer wrote, so it follows it in the list."},
-       {"cb_std:oban_pro", if: :oban_pro}
-     ]},
-    {"Deployment",
-     [
-       {"cb_std:cluster:gigalixir", if: :gigalixir},
-       {"cb_std:cluster:gigalixir:libcluster", if: :gigalixir}
-     ]},
-    {"Tidy mix.exs",
-     [
-       "cb_std:ecto:force_drop",
-       {:comment, "Last, so it also sorts the deps the steps above added"},
-       "cb_std:setup:sort_deps"
+       "hex:tidewave"
      ]}
   ]
 
@@ -171,7 +126,6 @@ defmodule Mix.Tasks.Composer.Init do
     # recipe here is addressed as /app/<name>:
     #
     #     mix composer.recipe.run /app/default
-    #     mix composer.recipe.run /app/default --oban-pro --gigalixir
     #
     # Steps run top to bottom, and every change is shown as one diff before it
     # is applied. This file is yours: delete steps you don't want, reorder
@@ -179,7 +133,7 @@ defmodule Mix.Tasks.Composer.Init do
     # optional (it then runs only when you pass the matching `--flag`), and
     # describe the flag under flags:.
     #
-    #   "cb_std:setup:credo"      a step, as "cookbook:path:to:step"
+    #   "cb_std:completions:mix"  a step, as "cookbook:path:to:step"
     #   "hex:oban"                a Hex package and its own installer
     #   "./other"                 another recipe in this chapter, in place
     #   "cb_lab/lv/base"          a recipe in another cookbook
@@ -191,8 +145,8 @@ defmodule Mix.Tasks.Composer.Init do
       default: [
         shortdoc: #{inspect(@shortdoc_default)},
         doc: \"\"\"
-        Every built-in step, grouped and ordered. Taste-heavy or license-gated
-        steps run only with their flag.
+        A starter set of steps, grouped and ordered. Steps tagged with
+        `if: :flag` run only with their flag.
         \"\"\",
         flags: [
     #{Enum.join(flags, "\n")}

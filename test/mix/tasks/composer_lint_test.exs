@@ -12,7 +12,7 @@ defmodule Mix.Tasks.Composer.Cookbook.LintTest do
     broken = Path.join(dir, "recipes/broken.exs")
     clean = Path.join(dir, "recipes/clean.exs")
     File.write!(broken, ~s|[\n  a: [shortdoc: "x", steps: ["credoo", "cb_std:nope"]]\n]\n|)
-    File.write!(clean, ~s|[\n  b: [shortdoc: "x", steps: ["cb_std:setup:gitignore"]]\n]\n|)
+    File.write!(clean, ~s|[\n  b: [shortdoc: "x", steps: ["cb_std:echo"]]\n]\n|)
 
     Application.put_env(:composer, :discovery,
       modules: [Composer.FakeBook],

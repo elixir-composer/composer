@@ -82,18 +82,19 @@ defmodule Composer.ManifestTest do
     # A chapter that fails to load still lists its ids, with no shortdoc.
     File.write!(Path.join(dir, "recipes/broken.exs"), "[x: raise(\"boom\")]\n")
 
-    cookbooks = discover(dir, [:fake_book])
+    cookbooks = discover(dir, [:fake_book, :other_book])
 
     lines = Index.lines(cookbooks)
-    assert "step\tcb_std:setup:credo\tAdds Credo for static code analysis" in lines
+    assert "step\tcb_std:echo\tPrints a message to stdout" in lines
     assert "step\tfake_book:ash:postgres\tAdds AshPostgres" in lines
     assert "recipe\tfake_book/nested/extra\tExtra steps" in lines
     assert "recipe\tmine/mine/a\tMy recipe" in lines
     assert "recipe\tmine/broken/x\t" in lines
     assert "chapter\tmine/mine/\t2 recipes" in lines
     assert "chapter\tfake_book/main/\t2 recipes" in lines
-    assert "group\tcb_std:cluster:\t3 steps" in lines
-    assert "group\tcb_std:cluster:gigalixir:\t1 step" in lines
+    assert "group\tcb_std:completions:\t2 steps" in lines
+    assert "group\tother_book:cluster:\t3 steps" in lines
+    assert "group\tother_book:cluster:gigalixir:\t1 step" in lines
     assert "group\tfake_book:ash:\t1 step" in lines
     assert "cookbook\tmine\tTest recipes in #{dir}" in lines
     assert Enum.any?(lines, &String.starts_with?(&1, "cookbook\tfake_book\t"))

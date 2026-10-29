@@ -20,9 +20,9 @@ defmodule Mix.Tasks.Composer.ListTest do
           "fake_book/main/full",
           "fake_book:ash:postgres",
           "fake_book:sqlite",
-          {"cb_std:setup:credo", if: :credo},
-          "cb_std:setup:gitignore",
-          "cb_std:setup:gitignore"
+          {"fake_book:setup:credo", if: :credo},
+          "cb_std:echo",
+          "cb_std:echo"
         ]
       ]
     ]
@@ -46,11 +46,11 @@ defmodule Mix.Tasks.Composer.ListTest do
 
   test "cookbook.list shows each cookbook with its counts" do
     output = run("composer.cookbook.list", [])
-    assert output =~ ~r/cb_std\s+composer\s+32 steps\s+2 recipes/
+    assert output =~ ~r/cb_std\s+composer\s+3 steps\s+2 recipes/
     assert output =~ ~r/fake_book\s+fake_book\s+\d+ steps\s+3 recipes\s+A fixture cookbook/
     assert output =~ ~r/mine\s+composer\s+0 steps\s+1 recipes/
 
-    assert %{"cookbooks" => [%{"name" => "cb_std", "steps" => 32} | _]} =
+    assert %{"cookbooks" => [%{"name" => "cb_std", "steps" => 3} | _]} =
              json("composer.cookbook.list", [])
   end
 
@@ -64,9 +64,9 @@ defmodule Mix.Tasks.Composer.ListTest do
 
     assert run("composer.step.list", ["--tag", "greeting"]) =~ "fake_book:hello"
 
-    removes = json("composer.step.list", ["--action", "remove"])["steps"]
-    assert length(removes) == 5
-    assert Enum.all?(removes, &(&1["action"] == "remove"))
+    adds = json("composer.step.list", ["--action", "add"])["steps"]
+    assert length(adds) == 4
+    assert Enum.all?(adds, &(&1["action"] == "add"))
 
     assert %{
              "ref" => "fake_book:ash:postgres",
@@ -96,9 +96,9 @@ defmodule Mix.Tasks.Composer.ListTest do
     assert output =~ ~r/requires:\s+fake_book:hello/
     assert output =~ ~r/files: .*postgres.txt/
 
-    data = json("composer.step.show", ["cb_std:setup:credo"])
-    assert data["summary"] == "Adds Credo for static code analysis"
-    assert %{"files" => ["mix.exs"], "deps" => ["credo"]} = data["dry_run"]
+    data = json("composer.step.show", ["fake_book:setup:credo"])
+    assert data["summary"] == "A second credo step"
+    assert %{"files" => ["credo.txt"]} = data["dry_run"]
 
     assert run("composer.step.show", ["hex:oban"]) =~ "hex:oban - the Hex package oban"
     assert run("composer.step.show", ["sqlite"]) =~ "fake_book:sqlite - Adds SQLite"
@@ -177,13 +177,12 @@ defmodule Mix.Tasks.Composer.ListTest do
   test "step.list takes stems" do
     refs = &Enum.map(json("composer.step.list", &1)["steps"], fn p -> p["ref"] end)
 
-    assert refs.(["cb_std:cluster:"]) == [
-             "cb_std:cluster:gigalixir",
-             "cb_std:cluster:gigalixir:libcluster",
-             "cb_std:cluster:libcluster"
+    assert refs.(["cb_std:completions:"]) == [
+             "cb_std:completions:composer",
+             "cb_std:completions:mix"
            ]
 
-    assert refs.(["cb_std:cluster:gigalixir:"]) == ["cb_std:cluster:gigalixir:libcluster"]
+    assert refs.(["fake_book:setup:"]) == ["fake_book:setup:credo"]
     assert "fake_book:hello" in refs.(["fake_book:"])
 
     assert_raise Mix.Error, ~r/Invalid argument "cb_std\/"/, fn ->
@@ -194,7 +193,7 @@ defmodule Mix.Tasks.Composer.ListTest do
   test "recipe.list --only-leaves hides recipes included within their chapter", %{tmp_dir: dir} do
     File.write!(Path.join(dir, "recipes/site.exs"), """
     [
-      ui: [shortdoc: "UI", steps: ["cb_std:setup:gitignore"]],
+      ui: [shortdoc: "UI", steps: ["cb_std:echo"]],
       parts: [shortdoc: "Parts", steps: ["mine/site/ui"]],
       app: [shortdoc: "App", steps: ["./parts", "mine/phx/standard_app"]]
     ]
@@ -268,7 +267,7 @@ defmodule Mix.Tasks.Composer.ListTest do
     assert output =~ ~r/Flags:\n\s+--credo\s+Add Credo/
     assert output =~ ~r/Flags from used recipes:\n\s+--extra\s+Add the extra steps/
     assert output =~ "1. fake_book:hello  [fake_book/main/base]"
-    assert output =~ "cb_std:setup:credo, if: :credo  [mine/phx/standard_app]"
+    assert output =~ "fake_book:setup:credo, if: :credo  [mine/phx/standard_app]"
     assert output =~ "Duplicates dropped"
     assert output =~ "fake_book:sqlite (phase cleanup) runs after fake_book:hello (phase setup)"
     assert output =~ "all provide :datalayer"
@@ -296,14 +295,14 @@ defmodule Mix.Tasks.Composer.ListTest do
       aliased: [
         shortdoc: "Aliased",
         aliases: [fb: "fake_book"],
-        steps: ["fb:sqlite", "cb_std:setup:gitignore"]
+        steps: ["fb:sqlite", "cb_std:echo"]
       ]
     ]
     """)
 
     output = run("composer.recipe.show", ["mine/lab/aliased"])
     assert output =~ "1. fake_book:sqlite (as fb)  [mine/lab/aliased]"
-    assert output =~ "2. cb_std:setup:gitignore  [mine/lab/aliased]"
+    assert output =~ "2. cb_std:echo  [mine/lab/aliased]"
 
     data = json("composer.recipe.show", ["mine/lab/aliased"])
     assert data["aliases"] == %{"fb" => "fake_book"}
