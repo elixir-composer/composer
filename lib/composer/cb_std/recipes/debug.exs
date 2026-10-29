@@ -1,5 +1,6 @@
-# cb_std's debugging recipes: cb_std/debug/<name>.
+# cb_std/debug recipes
 [
+  # cb_stc/debug/echo
   echo: [
     shortdoc: "Shows how to print messages with cb_std:echo",
     doc: """

@@ -1,5 +1,6 @@
-# cb_std's shell completion recipes: cb_std/completions/<name>.
+# cb_std/completions recipes
 [
+  # cb_std/completions/install
   install: [
     shortdoc: "Installs shell completion for mix and composer",
     doc: """
