@@ -80,7 +80,7 @@ defmodule Composer.Cookbook do
   @module_names ~w(
     runner step cookbook templates helpers versions resolver ref recipe
     discovery manifest index completion facets error git cli preflight
-    lint lsp editor
+    lint lsp editor edit
   )
 
   @reserved ["cb_std", "hex", "local" | @module_names]

@@ -139,7 +139,7 @@ defmodule Composer.CbStd.Steps.Completions.Mix do
 
   defp ignore_cache(igniter) do
     if Igniter.exists?(igniter, ".gitignore") do
-      Composer.Helpers.update_file_content(igniter, ".gitignore", fn content ->
+      Composer.Edit.Files.update(igniter, ".gitignore", fn content ->
         if String.contains?(content, @cache_file) do
           content
         else

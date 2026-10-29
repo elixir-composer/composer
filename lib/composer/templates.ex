@@ -72,8 +72,8 @@ defmodule Composer.Templates do
 
     %{
       app_name: app_name,
-      app_module: Composer.Helpers.app_module(igniter),
-      web_module: Composer.Helpers.app_web_module(igniter),
+      app_module: Composer.Edit.Project.app_module(igniter),
+      web_module: Composer.Edit.Project.app_web_module(igniter),
       web_dir: app_name <> "_web"
     }
   end
@@ -231,7 +231,7 @@ defmodule Composer.Templates do
     if present?(igniter, path, content) do
       igniter
     else
-      Composer.Helpers.update_file_checked(igniter, path, &insert_at(&1, content, at), warning)
+      Composer.Edit.Files.update_checked(igniter, path, &insert_at(&1, content, at), warning)
     end
   end
 
@@ -310,7 +310,7 @@ defmodule Composer.Templates do
         end)
 
       :skip ->
-        Composer.Helpers.create_unless_exists(igniter, target, content)
+        Composer.Edit.Files.create_unless_exists(igniter, target, content)
     end
   end
 

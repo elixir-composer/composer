@@ -330,7 +330,7 @@ defmodule Composer.Runner do
     path = "lib/#{app_name}_web/router.ex"
 
     if Igniter.exists?(igniter, path) do
-      Composer.Helpers.update_file_content(igniter, path, fn content ->
+      Composer.Edit.Files.update(igniter, path, fn content ->
         String.replace(content, ~r/oban_dashboard\((.+)\)(\s*)$/m, "oban_dashboard \\1\\2")
       end)
     else

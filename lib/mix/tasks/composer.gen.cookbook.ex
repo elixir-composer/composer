@@ -31,7 +31,8 @@ defmodule Mix.Tasks.Composer.Gen.Cookbook do
 
   use Igniter.Mix.Task
 
-  alias Composer.{Helpers, Manifest}
+  alias Composer.Edit.Files
+  alias Composer.Manifest
 
   # Igniter writes no empty files, so .gitkeep says what it is for.
   @gitkeep "Keeps this directory in git until it has files of its own.\n"
@@ -54,12 +55,12 @@ defmodule Mix.Tasks.Composer.Gen.Cookbook do
     # Every file is left alone if it exists, so re-running is harmless and
     # mix composer.init can write its own default recipe first.
     igniter
-    |> Helpers.create_unless_exists(
+    |> Files.create_unless_exists(
       "lib/composer/#{name}.ex",
       cookbook_source(app, name, bundled?)
     )
-    |> Helpers.create_unless_exists("#{root}/steps/.gitkeep", @gitkeep)
-    |> Helpers.create_unless_exists("#{root}/recipes/app.exs", default_recipe(name))
+    |> Files.create_unless_exists("#{root}/steps/.gitkeep", @gitkeep)
+    |> Files.create_unless_exists("#{root}/recipes/app.exs", default_recipe(name))
     |> write_manifest(app, name, "#{root}/recipes/app.exs", "#{root}/manifest.exs")
     |> Igniter.add_notice("""
     Your cookbook is lib/composer/#{name}/. Add steps and recipes with:
@@ -95,7 +96,7 @@ defmodule Mix.Tasks.Composer.Gen.Cookbook do
       recipes: recipes
     }
 
-    Helpers.create_unless_exists(igniter, path, Manifest.render(manifest))
+    Files.create_unless_exists(igniter, path, Manifest.render(manifest))
   end
 
   @doc false

@@ -370,10 +370,11 @@ end
 ```
 
 Reference it as `"my_app:deploy_config"` (or just `"deploy_config"` from your
-own recipes). `Composer.Templates`, `Composer.Helpers` and
-`Composer.Versions` provide conveniences for common patterns: rendering
-template files, app/repo module names, checked file edits, migration
-timestamps and latest-version lookups.
+own recipes). `Composer.Edit` (`Composer.Edit.Files`, `Composer.Edit.Project`
+and `Composer.Edit.Util`), `Composer.Templates` and `Composer.Versions`
+provide conveniences for common patterns: idempotent line, block and regex
+edits, checked file edits, app/repo module names, migration timestamps,
+rendering template files and latest-version lookups.
 
 ## Sharing steps and recipes
 

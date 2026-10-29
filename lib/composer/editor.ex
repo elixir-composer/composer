@@ -24,6 +24,8 @@ defmodule Composer.Editor do
   The command runs through `sh -c` and inherits the terminal (stdin,
   stdout and stderr), so a terminal editor takes it over until it exits;
   the task waits for the command to finish.
+
+  To change files in the target app from a step, see `Composer.Edit`.
   """
 
   @vars ~w(COMPOSER_EDITOR VISUAL EDITOR)

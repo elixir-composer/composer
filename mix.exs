@@ -81,7 +81,15 @@ defmodule Composer.MixProject do
           Composer.Resolver,
           Composer.Discovery
         ],
-        "Writing steps": [Composer.Templates, Composer.Helpers, Composer.Versions],
+        "Writing steps": [
+          Composer.Edit,
+          Composer.Edit.Files,
+          Composer.Edit.Project,
+          Composer.Edit.Util,
+          Composer.Templates,
+          Composer.Versions
+        ],
+        Deprecated: [Composer.Helpers],
         Engine: [Composer.Runner, Composer.Preflight, Composer.Git, Composer.Error],
         Tooling: [
           Composer.Manifest,

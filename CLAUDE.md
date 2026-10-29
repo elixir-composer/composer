@@ -84,9 +84,12 @@ OTP app, except the built-in `cb_std` (`lib/composer/cb_std/`). Layout:
   `steps/` must be a step (Elixir templates are `.ex.eex`); lint reports
   orphaned, unprefixed and unused template files.
 - Step helpers: `Composer.Templates` (EEx/template copying),
-  `Composer.Helpers` (app/repo module names, checked file edits, migration
-  timestamps), `Composer.Versions` (latest Hex/npm/GitHub versions, falling
-  back to permissive ranges offline).
+  `Composer.Edit.Files` (checked file edits and the idempotent
+  `ensure_line`/`ensure_block`/`replace`), `Composer.Edit.Project`
+  (app/repo module names), `Composer.Edit.Util` (migration timestamps),
+  `Composer.Versions` (latest Hex/npm/GitHub versions, falling
+  back to permissive ranges offline). `Composer.Helpers` holds deprecated
+  delegates to `Composer.Edit`; don't use it in new code.
 
 ### Adding or changing a built-in step
 
