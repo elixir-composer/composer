@@ -222,17 +222,15 @@ defmodule Composer.Templates do
   Content already in the file is not added again. A missing file or anchor
   is a loud warning rather than a silent no-op, so drift in the target
   surfaces. Pass `warning:` to word it.
+
+  This is `Composer.Edit.Files.ensure_block/4` with `markers: false`; use
+  that directly for a block that a later composer should be able to update
+  or remove.
   """
   @spec insert(Igniter.t(), Path.t(), String.t(), keyword()) :: Igniter.t()
   def insert(igniter, path, content, opts) do
-    at = Keyword.fetch!(opts, :at)
-    warning = Keyword.get_lazy(opts, :warning, fn -> missing_anchor(at, path) end)
-
-    if present?(igniter, path, content) do
-      igniter
-    else
-      Composer.Edit.Files.update_checked(igniter, path, &insert_at(&1, content, at), warning)
-    end
+    Keyword.fetch!(opts, :at)
+    Composer.Edit.Files.ensure_block(igniter, path, content, Keyword.put(opts, :markers, false))
   end
 
   @doc """
@@ -322,40 +320,5 @@ defmodule Composer.Templates do
         _ -> false
       end
     end)
-  end
-
-  defp present?(igniter, path, content) do
-    if Igniter.exists?(igniter, path) do
-      igniter
-      |> Igniter.include_existing_file(path)
-      |> Map.fetch!(:rewrite)
-      |> Rewrite.source!(path)
-      |> Rewrite.Source.get(:content)
-      |> String.contains?(content)
-    else
-      false
-    end
-  end
-
-  defp insert_at(text, content, :append), do: text <> content
-
-  defp insert_at(text, content, {:after, anchor}) do
-    case String.split(text, anchor, parts: 2) do
-      [before, rest] -> before <> anchor <> content <> rest
-      [_] -> text
-    end
-  end
-
-  defp insert_at(text, content, {:before, anchor}) do
-    case String.split(text, anchor, parts: 2) do
-      [before, rest] -> before <> content <> anchor <> rest
-      [_] -> text
-    end
-  end
-
-  defp missing_anchor(:append, path), do: "could not append to #{path}"
-
-  defp missing_anchor({position, anchor}, path) do
-    "could not find #{inspect(anchor)} in #{path}, so nothing was inserted #{position} it"
   end
 end
