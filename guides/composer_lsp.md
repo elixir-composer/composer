@@ -86,11 +86,12 @@ vim.lsp.config("composer_ls", {
     })
   end,
   filetypes = { "elixir" },
-  -- Attach to a cookbook's recipe files only, rooted at the nearest
-  -- mix.exs. Files under deps/ get no server.
+  -- Attach to a cookbook's chapter files only (also nested ones, like
+  -- recipes/astral/ui.exs), rooted at the nearest mix.exs. Files under
+  -- deps/ get no server.
   root_dir = function(bufnr, on_dir)
     local name = vim.api.nvim_buf_get_name(bufnr)
-    if name:match("/lib/composer/[^/]+/recipes/[^/]+%.exs$")
+    if name:match("/lib/composer/[^/]+/recipes/.+%.exs$")
       and not name:match("/deps/")
     then
       local root = vim.fs.root(bufnr, "mix.exs")
