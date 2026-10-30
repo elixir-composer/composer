@@ -46,7 +46,6 @@ defmodule Composer.CbStd.Steps.Completions.Mix do
   @help_case "[[ $prev == 'help' ]]"
   @cache_file ".mix_complete.cache"
   @legacy_script ".mix_completions.bash"
-  @gitignore_entry "\n# mix task completion cache (mix complete)\n#{@cache_file}\n"
 
   @impl Igniter.Mix.Task
   def igniter(igniter) do
@@ -138,17 +137,9 @@ defmodule Composer.CbStd.Steps.Completions.Mix do
   end
 
   defp ignore_cache(igniter) do
-    if Igniter.exists?(igniter, ".gitignore") do
-      Composer.Edit.Files.update(igniter, ".gitignore", fn content ->
-        if String.contains?(content, @cache_file) do
-          content
-        else
-          String.trim_trailing(content) <> "\n" <> @gitignore_entry
-        end
-      end)
-    else
-      Igniter.create_new_file(igniter, ".gitignore", String.trim_leading(@gitignore_entry))
-    end
+    Composer.Edit.Project.gitignore(igniter, @cache_file,
+      comment: "mix task completion cache (mix complete)"
+    )
   end
 
   # Earlier versions of this step wrote the generic bash script per project.
